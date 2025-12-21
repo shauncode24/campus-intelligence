@@ -20,12 +20,13 @@ export async function handleChat(question) {
       };
     }
 
-    const answer = await generateDefinitionAnswer(question, chunks[0]);
+    // Pass all 3 chunks for better context
+    const answer = await generateDefinitionAnswer(question, chunks);
     return { answer };
   }
 
-  // For general questions, get top 5 chunks
-  const chunks = await retrieveSemanticChunks(embedding, 5);
+  // For general questions, get top 8 chunks (more context)
+  const chunks = await retrieveSemanticChunks(embedding, 8);
   const answer = await generateSemanticAnswer(question, chunks);
 
   return { answer };

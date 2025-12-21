@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 
-export async function generateDefinitionAnswer(question, chunk) {
-  return generateAnswer(question, [chunk], true);
+export async function generateDefinitionAnswer(question, chunks) {
+  return generateAnswer(question, chunks, true);
 }
 
 export async function generateSemanticAnswer(question, chunks) {
@@ -12,26 +12,16 @@ async function generateAnswer(question, chunks, strict) {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_API_KEY missing");
 
-  const context = chunks.map((c, i) => `[${i + 1}] ${c.content}`).join("\n");
+  const context = chunks
+    .map((c, i) => `[${i + 1}] ${c.content}`)
+    .join("\n\n---\n\n");
 
   const prompt = strict
     ? `
-You are answering a factual lookup question.
+You are answering based on official documentation.
 
-ONLY extract the definition that directly answers the question.
-DO NOT explain.
-DO NOT infer.
-
-DOCUMENT EXCERPT:
-${context}
-
-QUESTION:
-${question}
-
-Answer in 2–3 sentences maximum.
-`
-    : `
-Answer the question using ONLY the information below.
+Extract and synthesize the answer from the documents below.
+If the answer spans multiple sections, combine them coherently.
 If not found, say "Not found in official documents."
 
 DOCUMENTS:
@@ -40,7 +30,28 @@ ${context}
 QUESTION:
 ${question}
 
-Cite sources like [1], [2].
+Instructions:
+- Answer directly and completely
+- Use 2-5 sentences depending on complexity
+- If listing steps or items, format them clearly
+- Cite sources like [1], [2] if referencing specific documents
+`
+    : `
+Answer the question using ONLY the information from these official documents.
+Combine information from multiple sections if needed.
+If not found, say "Not found in official documents."
+
+DOCUMENTS:
+${context}
+
+QUESTION:
+${question}
+
+Instructions:
+- Provide complete, accurate information
+- For lists, include all items mentioned
+- For processes, include all steps
+- Cite sources like [1], [2]
 `;
 
   const res = await fetch(
@@ -54,6 +65,10 @@ Cite sources like [1], [2].
             parts: [{ text: prompt }],
           },
         ],
+        generationConfig: {
+          temperature: 0.2, // Lower temperature for more factual responses
+          maxOutputTokens: 1024,
+        },
       }),
     }
   );
