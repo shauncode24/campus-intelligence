@@ -1,5 +1,6 @@
 import "./Homepage.css";
 import Header from "./../components/Header";
+import Footer from "../components/Footer";
 
 export default function Homepage() {
   return (
@@ -22,6 +23,7 @@ export default function Homepage() {
           </button>
         </div>
       </div>
+      <Footer />
     </>
   );
 }

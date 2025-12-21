@@ -60,3 +60,68 @@
 .homepage-hero-button-login:hover {
   background-color: #f7f6f6;
 }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .homepage-hero-title {
+    font-size: 4rem;
+    width: 75%;
+  }
+
+  .homepage-hero-sub-title {
+    font-size: 1.3rem;
+    width: 60%;
+  }
+}
+
+@media (max-width: 768px) {
+  .homepage-hero-title {
+    font-size: 3rem;
+    width: 85%;
+  }
+
+  .homepage-hero-sub-title {
+    font-size: 1.1rem;
+    width: 75%;
+  }
+
+  .homepage-hero-button-question,
+  .homepage-hero-button-login {
+    padding: 15px 30px;
+    font-size: 0.9rem;
+  }
+
+  .homepage-hero-button-div {
+    gap: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .homepage-hero-main {
+    padding: 0 20px;
+  }
+
+  .homepage-hero-title {
+    font-size: 2rem;
+    width: 95%;
+  }
+
+  .homepage-hero-sub-title {
+    font-size: 0.95rem;
+    width: 90%;
+  }
+
+  .homepage-hero-button-div {
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .homepage-hero-button-question,
+  .homepage-hero-button-login {
+    padding: 14px 25px;
+    font-size: 0.85rem;
+    width: 100%;
+    max-width: 280px;
+  }
+}
