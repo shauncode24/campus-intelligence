@@ -12,48 +12,45 @@ async function generateAnswer(question, chunks, strict) {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_API_KEY missing");
 
-  const context = chunks
+  // Back to reasonable chunk limits
+  const maxChunks = strict ? 3 : 5;
+  const maxCharsPerChunk = 1200;
+
+  const limitedChunks = chunks.slice(0, maxChunks).map((chunk) => ({
+    ...chunk,
+    content:
+      chunk.content.length > maxCharsPerChunk
+        ? chunk.content.slice(0, maxCharsPerChunk) + "..."
+        : chunk.content,
+  }));
+
+  const context = limitedChunks
     .map((c, i) => `[${i + 1}] ${c.content}`)
-    .join("\n\n---\n\n");
+    .join("\n\n");
+
+  const estimatedInputTokens = (context.length + question.length + 200) / 4;
+  console.log(
+    `🔢 Estimated input tokens: ~${Math.round(estimatedInputTokens)}`
+  );
 
   const prompt = strict
-    ? `
-You are answering based on official documentation.
+    ? `Answer from documents. If not found, say "Not found."
 
-Extract and synthesize the answer from the documents below.
-If the answer spans multiple sections, combine them coherently.
-If not found, say "Not found in official documents."
-
-DOCUMENTS:
+DOCS:
 ${context}
 
-QUESTION:
-${question}
+Q: ${question}
 
-Instructions:
-- Answer directly and completely
-- Use 2-5 sentences depending on complexity
-- If listing steps or items, format them clearly
-- Cite sources like [1], [2] if referencing specific documents
-`
-    : `
-Answer the question using ONLY the information from these official documents.
-Combine information from multiple sections if needed.
-If not found, say "Not found in official documents."
+IMPORTANT: Keep answer to 150 words maximum. Be concise. Cite [1], [2].`
+    : `Answer using ONLY these documents:
 
-DOCUMENTS:
 ${context}
 
-QUESTION:
-${question}
+Q: ${question}
 
-Instructions:
-- Provide complete, accurate information
-- For lists, include all items mentioned
-- For processes, include all steps
-- Cite sources like [1], [2]
-`;
+CRITICAL: Your answer must be 200 words or less. Be direct and concise. Cite [1], [2].`;
 
+  // Use gemini-1.5-pro (stable, larger context and output limits)
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
@@ -66,8 +63,10 @@ Instructions:
           },
         ],
         generationConfig: {
-          temperature: 0.2, // Lower temperature for more factual responses
-          maxOutputTokens: 1024,
+          temperature: 0.3,
+          maxOutputTokens: 2048, // Pro model can handle more
+          topP: 0.95,
+          topK: 40,
         },
       }),
     }
@@ -79,5 +78,17 @@ Instructions:
   }
 
   const data = await res.json();
-  return data.candidates[0].content.parts[0].text;
+
+  const response = data.candidates[0].content.parts[0].text;
+  const finishReason = data.candidates[0].finishReason;
+
+  if (finishReason === "STOP") {
+    console.log(`✅ Generation completed successfully`);
+  } else if (finishReason === "MAX_TOKENS") {
+    console.warn(`⚠️  Hit max tokens - model ignored word limit instruction`);
+  } else {
+    console.warn(`⚠️  Finish reason: ${finishReason}`);
+  }
+
+  return response;
 }

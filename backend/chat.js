@@ -7,27 +7,40 @@ function isDefinitionQuestion(q) {
 }
 
 export async function handleChat(question) {
-  // Get embedding for the question
-  const embedding = await getEmbedding(question);
+  try {
+    // Get embedding for the question
+    const embedding = await getEmbedding(question);
 
-  if (isDefinitionQuestion(question)) {
-    // For definitions, get top 3 most relevant chunks
-    const chunks = await retrieveSemanticChunks(embedding, 3);
+    if (isDefinitionQuestion(question)) {
+      // For definitions, get top 3 most relevant chunks
+      const chunks = await retrieveSemanticChunks(embedding, 3);
 
-    if (!chunks || chunks.length === 0) {
-      return {
-        answer: "Not explicitly defined in the document.",
-      };
+      if (!chunks || chunks.length === 0) {
+        return {
+          answer: "Not explicitly defined in the document.",
+        };
+      }
+
+      console.log(
+        `📚 Retrieved ${chunks.length} chunks for definition question`
+      );
+      const answer = await generateDefinitionAnswer(question, chunks);
+      return { answer };
     }
 
-    // Pass all 3 chunks for better context
-    const answer = await generateDefinitionAnswer(question, chunks);
+    // For complex questions, get top 5 chunks
+    const chunks = await retrieveSemanticChunks(embedding, 5);
+
+    console.log(`📚 Retrieved ${chunks.length} chunks for semantic question`);
+    console.log(
+      `📊 Chunk scores: ${chunks.map((c) => c.score.toFixed(3)).join(", ")}`
+    );
+
+    const answer = await generateSemanticAnswer(question, chunks);
+
     return { answer };
+  } catch (error) {
+    console.error("❌ Error in handleChat:", error);
+    throw error;
   }
-
-  // For general questions, get top 8 chunks (more context)
-  const chunks = await retrieveSemanticChunks(embedding, 8);
-  const answer = await generateSemanticAnswer(question, chunks);
-
-  return { answer };
 }
