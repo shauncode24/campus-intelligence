@@ -4,6 +4,7 @@
   background-color: #ffffff;
   flex-direction: row;
   border-bottom: 1px solid #ecedef;
+  position: fixed;
 }
 
 .header-left {

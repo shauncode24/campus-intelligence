@@ -1,5 +1,62 @@
-/* .homepage-hero-main {
-  height: 200vh;
-  width: 100vw;
-  background-color: blue;
-} */
+.homepage-hero-main {
+  height: 100vh;
+  min-width: 100%;
+  gap: 20px;
+}
+
+.homepage-hero-title {
+  font-size: 5rem;
+  font-weight: 600;
+  width: 65%;
+  text-align: center;
+}
+
+.homepage-hero-title span {
+  color: #4285f4;
+}
+
+.homepage-hero-sub-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  width: 50%;
+  text-align: center;
+  color: #8e8e8e;
+}
+
+.homepage-hero-button-div {
+  margin-top: 20px;
+  flex-direction: row;
+  gap: 20px;
+}
+
+.homepage-hero-button-question,
+.homepage-hero-button-login {
+  padding: 18px 40px;
+  border-radius: 30px;
+  border: none;
+  font-family: "Google Sans Flex", sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.homepage-hero-button-question {
+  background-color: #4285f4;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.homepage-hero-button-question:hover {
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.4);
+}
+
+.homepage-hero-button-login {
+  color: #4285f4;
+  background-color: white;
+  border: 1px solid #dfdede;
+  transition: all 0.3s ease;
+}
+
+.homepage-hero-button-login:hover {
+  background-color: #f7f6f6;
+}
