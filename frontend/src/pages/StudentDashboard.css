@@ -1,0 +1,23 @@
+.student-main {
+  height: 100vh;
+  min-width: 100%;
+  gap: 20px;
+}
+
+.student-main-title {
+  font-size: 3rem;
+  font-weight: 600;
+  width: 65%;
+  text-align: center;
+}
+
+.student-main-subtitle {
+  font-size: 1.2rem;
+  font-weight: 500;
+  width: 65%;
+  color: #757575;
+  text-align: center;
+}
+
+.student-main-chat {
+}

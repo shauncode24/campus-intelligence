@@ -1,10 +1,20 @@
 import "../styles/Header.css";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Header() {
+  const navigate = useNavigate();
+
+  const handleNavigation = (path) => {
+    navigate(path);
+  };
   return (
     <>
       <div className="default header-main">
-        <div className="default header-left">
+        <div
+          className="default header-left"
+          onClick={() => handleNavigation("/")}
+        >
           <div className="default header-left-icon-div">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -21,11 +31,36 @@ export default function Header() {
           <div className="default header-left-header">Campus Intelligence</div>
         </div>
         <div className="default header-right">
-          <span className="default header-right-options">Dashboard</span>
-          <span className="default header-right-options">History</span>
-          <span className="default header-right-options">Documents</span>
-          <span className="default header-right-options">About</span>
-          <span className="default admin-option">Admin Login</span>
+          <span
+            className="default header-right-options"
+            onClick={() => handleNavigation("/student")}
+          >
+            Dashboard
+          </span>
+          <span
+            className="default header-right-options"
+            onClick={() => handleNavigation("/")}
+          >
+            History
+          </span>
+          <span
+            className="default header-right-options"
+            onClick={() => handleNavigation("/")}
+          >
+            Documents
+          </span>
+          <span
+            className="default header-right-options"
+            onClick={() => handleNavigation("/")}
+          >
+            About
+          </span>
+          <span
+            className="default admin-option"
+            onClick={() => handleNavigation("/login")}
+          >
+            Admin Login
+          </span>
         </div>
       </div>
     </>

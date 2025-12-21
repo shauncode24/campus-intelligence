@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "../styles/Chat.css";
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
@@ -31,24 +32,40 @@ export default function Chat() {
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Campus Knowledge Chat</h2>
-
-      <div style={{ minHeight: 300 }}>
+    <>
+      <div>
         {messages.map((m, i) => (
           <p key={i}>
             <b>{m.role === "user" ? "You" : "AI"}:</b> {m.text}
           </p>
         ))}
-        {loading && <p>Thinking...</p>}
+        {loading && <p>Thinking...</p>}hi
       </div>
+      <div className="default chat-main-div">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="25"
+          height="25"
+          fill="currentColor"
+          class="bi bi-search"
+          viewBox="0 0 16 16"
+        >
+          <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+        </svg>
 
-      <input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Ask a question..."
-      />
-      <button onClick={sendMessage}>Send</button>
-    </div>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask a question..."
+          className="default chat-input"
+        />
+        <button
+          onClick={sendMessage}
+          className={`default chat-button ${input ? "active" : ""}`}
+        >
+          Ask
+        </button>
+      </div>
+    </>
   );
 }

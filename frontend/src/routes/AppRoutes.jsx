@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "../auth/Login";
 import AdminDashboard from "../dashboards/AdminDashboard";
-import StudentDashboard from "../dashboards/StudentDashboard";
+import StudentDashboard from "../pages/StudentDashboard";
 import Homepage from "../pages/Homepage";
 
 export default function AppRoutes() {

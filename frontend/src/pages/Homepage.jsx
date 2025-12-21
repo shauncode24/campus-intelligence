@@ -1,8 +1,15 @@
 import "./Homepage.css";
 import Header from "./../components/Header";
 import Footer from "../components/Footer";
+import { useNavigate } from "react-router-dom";
 
 export default function Homepage() {
+  const navigate = useNavigate();
+
+  const handleNavigation = (path) => {
+    navigate(path);
+  };
+
   return (
     <>
       <Header />
@@ -15,10 +22,16 @@ export default function Homepage() {
           deadlines, and procedures directly from the source.
         </div>
         <div className="default homepage-hero-button-div">
-          <button className="default homepage-hero-button-question">
+          <button
+            className="default homepage-hero-button-question"
+            onClick={() => handleNavigation("/student")}
+          >
             Ask a Question
           </button>
-          <button className="default homepage-hero-button-login">
+          <button
+            className="default homepage-hero-button-login"
+            onClick={() => handleNavigation("/login")}
+          >
             Admin Login
           </button>
         </div>
