@@ -1,0 +1,20 @@
+body {
+  height: 100vh;
+  min-width: 100vw;
+  background-color: #f8f9fa;
+  margin: 0;
+  padding: 0;
+
+  font-family: "Google Sans Flex", sans-serif;
+}
+
+.default {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.body-specific {
+  justify-content: flex-start;
+}

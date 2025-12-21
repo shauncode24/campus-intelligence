@@ -1,0 +1,70 @@
+.header-main {
+  width: calc(100vw - 40px);
+  padding: 12px 20px;
+  background-color: #ffffff;
+  flex-direction: row;
+  border-bottom: 1px solid #ecedef;
+}
+
+.header-left {
+  width: 30%;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.header-left-icon-div {
+  padding: 10px;
+  border-radius: 10px;
+  background-color: #4285f4;
+  flex-direction: row;
+  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.12);
+  transition: all 0.3s ease;
+}
+
+.header-left-icon-div:hover {
+  cursor: pointer;
+  transform: scale(1.01);
+}
+
+.header-left-header {
+  flex-direction: row;
+  font-weight: 500;
+  font-size: 1.3rem;
+  color: #3c3e41;
+}
+
+.header-right {
+  width: 70%;
+  flex-direction: row;
+  justify-content: flex-end;
+  font-weight: 400;
+  font-size: 1rem;
+  gap: 25px;
+  color: #4a4d51;
+}
+
+.header-right-options {
+  transition: all 0.3s ease;
+}
+
+.header-right-options:hover {
+  cursor: pointer;
+  transform: translateY(-5px);
+  color: #4285f4;
+}
+
+.admin-option {
+  font-size: 0.9rem;
+  padding: 12px 15px;
+  background-color: #dbeafe;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.admin-option:hover {
+  cursor: pointer;
+  color: white;
+  background-color: #4285f4;
+  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.16);
+}
