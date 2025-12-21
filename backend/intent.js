@@ -13,7 +13,7 @@ export function detectIntent(question) {
     return "requirement";
   }
 
-  if (/deadline|when is|last date/.test(q)) {
+  if (/deadline|when is|last date|by when|due date/.test(q)) {
     return "deadline";
   }
 

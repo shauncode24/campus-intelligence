@@ -4,12 +4,9 @@ import { retrieveSemanticChunks } from "./retrieve.js";
 import {
   generateDefinitionAnswer,
   generateProcedureAnswer,
+  generateDeadlineAnswer,
   generateSemanticAnswer,
 } from "./answer.js";
-
-function isDefinitionQuestion(q) {
-  return /^(what is|define|what does|what are)\b/i.test(q.trim());
-}
 
 export async function handleChat(question) {
   try {

@@ -12,6 +12,10 @@ export async function generateProcedureAnswer(question, chunks) {
   return generateStructuredAnswer(question, chunks);
 }
 
+export async function generateDeadlineAnswer(question, chunks) {
+  return generateTimelineAnswer(question, chunks);
+}
+
 async function generateAnswer(question, chunks, strict) {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_API_KEY missing");
@@ -181,4 +185,44 @@ Provide your answer as a numbered step-by-step procedure:`;
   }
 
   return response;
+}
+
+async function generateTimelineAnswer(question, chunks) {
+  const apiKey = process.env.GOOGLE_API_KEY;
+
+  const context = chunks.map((c, i) => `[${i + 1}] ${c.content}`).join("\n");
+
+  const prompt = `
+You are a campus assistant.
+
+Your task is to identify DEADLINES or DATES.
+
+Rules:
+- Extract exact dates if present
+- Do NOT infer or guess
+- If no date is explicitly mentioned, say:
+  "No deadline is explicitly mentioned in the document."
+
+DOCUMENTS:
+${context}
+
+QUESTION:
+${question}
+
+Respond clearly and concisely.
+`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    }
+  );
+
+  const data = await res.json();
+  return data.candidates[0].content.parts[0].text;
 }
