@@ -8,12 +8,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "description": "",
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
     "firebase-admin": "^13.6.0",
     "node-fetch": "^3.3.2",
-    "pdf-parse": "^2.4.5"
+    "pdf-parse-debugging-disabled": "^1.1.1"
   }
 }
