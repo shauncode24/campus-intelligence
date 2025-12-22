@@ -39,21 +39,21 @@ export default function Header() {
           </span>
           <span
             className="default header-right-options"
-            onClick={() => handleNavigation("/")}
+            onClick={() => handleNavigation("/history")}
           >
             History
+          </span>
+          <span
+            className="default header-right-options"
+            onClick={() => handleNavigation("/faq")}
+          >
+            FAQs
           </span>
           <span
             className="default header-right-options"
             onClick={() => handleNavigation("/")}
           >
             Documents
-          </span>
-          <span
-            className="default header-right-options"
-            onClick={() => handleNavigation("/")}
-          >
-            About
           </span>
           <span
             className="default admin-option"

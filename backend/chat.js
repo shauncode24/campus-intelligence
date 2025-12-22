@@ -7,93 +7,137 @@ import {
   generateDeadlineAnswer,
   generateSemanticAnswer,
 } from "./answer.js";
+import {
+  findSimilarQuestion,
+  storeQuestion,
+  incrementQuestionCount,
+  storeUserQuestion,
+} from "./questionCache.js";
 
-export async function handleChat(question) {
+export async function handleChat(question, userId = "anonymous") {
   try {
     const intent = detectIntent(question);
     console.log(`🎯 Detected intent: ${intent}`);
 
     // Get embedding for the question
     const embedding = await getEmbedding(question);
+    console.log(`🔢 Generated question embedding`);
 
-    // 🔒 Definition questions - top 3 chunks
+    // 🆕 PHASE 5.5: Check question cache first
+    const cachedQuestion = await findSimilarQuestion(embedding, intent);
+
+    if (cachedQuestion) {
+      console.log(`♻️ Reusing cached answer`);
+
+      // Increment count for this question
+      await incrementQuestionCount(cachedQuestion.id);
+
+      // Store in user history
+      await storeUserQuestion(userId, cachedQuestion.id, question);
+
+      return {
+        answer: cachedQuestion.answer,
+        cached: true,
+        similarity: cachedQuestion.similarity,
+      };
+    }
+
+    // No cache hit - proceed with normal RAG flow
+    console.log(`🤖 Generating new answer via RAG`);
+
+    let answer;
+    let chunks;
+
+    // 📚 Definition questions - top 3 chunks
     if (intent === "definition") {
-      const chunks = await retrieveSemanticChunks(embedding, 3);
+      chunks = await retrieveSemanticChunks(embedding, 3);
 
       if (!chunks || chunks.length === 0) {
         return {
           answer: "Not explicitly defined in the document.",
+          cached: false,
         };
       }
 
       console.log(
         `📚 Retrieved ${chunks.length} chunks for definition question`
       );
-      const answer = await generateDefinitionAnswer(question, chunks);
-      return { answer };
+      answer = await generateDefinitionAnswer(question, chunks);
     }
 
-    // 🧭 Procedure questions - top 5 chunks for better context
-    if (intent === "procedure") {
-      const chunks = await retrieveSemanticChunks(embedding, 5);
+    // 🧭 Procedure questions - top 5 chunks
+    else if (intent === "procedure") {
+      chunks = await retrieveSemanticChunks(embedding, 5);
 
       if (!chunks || chunks.length === 0) {
         return {
           answer: "No relevant information found in the documents.",
+          cached: false,
         };
       }
 
       console.log(
         `📋 Retrieved ${chunks.length} chunks for procedure question`
       );
-      const answer = await generateProcedureAnswer(question, chunks);
-      return { answer };
+      answer = await generateProcedureAnswer(question, chunks);
     }
 
     // 📅 Deadline questions - top 3 chunks
-    if (intent === "deadline") {
-      const chunks = await retrieveSemanticChunks(embedding, 3);
+    else if (intent === "deadline") {
+      chunks = await retrieveSemanticChunks(embedding, 3);
 
       if (!chunks || chunks.length === 0) {
         return {
           answer: "No deadline information found in the documents.",
+          cached: false,
         };
       }
 
       console.log(`⏰ Retrieved ${chunks.length} chunks for deadline question`);
-      // Use semantic answer with focused context
-      const answer = await generateSemanticAnswer(question, chunks);
-      return { answer };
+      answer = await generateSemanticAnswer(question, chunks);
     }
 
     // ✅ Requirement questions - top 4 chunks
-    if (intent === "requirement") {
-      const chunks = await retrieveSemanticChunks(embedding, 4);
+    else if (intent === "requirement") {
+      chunks = await retrieveSemanticChunks(embedding, 4);
 
       if (!chunks || chunks.length === 0) {
         return {
           answer: "No requirement information found in the documents.",
+          cached: false,
         };
       }
 
       console.log(
         `📝 Retrieved ${chunks.length} chunks for requirement question`
       );
-      const answer = await generateSemanticAnswer(question, chunks);
-      return { answer };
+      answer = await generateSemanticAnswer(question, chunks);
     }
 
-    // 🔓 General semantic questions - top 5 chunks
-    const chunks = await retrieveSemanticChunks(embedding, 5);
+    // 📖 General semantic questions - top 5 chunks
+    else {
+      chunks = await retrieveSemanticChunks(embedding, 5);
 
-    console.log(`📚 Retrieved ${chunks.length} chunks for general question`);
-    console.log(
-      `📊 Chunk scores: ${chunks.map((c) => c.score.toFixed(3)).join(", ")}`
-    );
+      console.log(`📚 Retrieved ${chunks.length} chunks for general question`);
+      console.log(
+        `📊 Chunk scores: ${chunks.map((c) => c.score.toFixed(3)).join(", ")}`
+      );
 
-    const answer = await generateSemanticAnswer(question, chunks);
+      answer = await generateSemanticAnswer(question, chunks);
+    }
 
-    return { answer };
+    // 🆕 Store the new question and answer in cache
+    const questionId = await storeQuestion(question, embedding, answer, intent);
+
+    // Store in user history
+    await storeUserQuestion(userId, questionId, question);
+
+    console.log(`✅ Answer generated and cached`);
+
+    return {
+      answer,
+      cached: false,
+    };
   } catch (error) {
     console.error("❌ Error in handleChat:", error);
     throw error;
