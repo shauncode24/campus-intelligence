@@ -36,7 +36,27 @@ export default function HistoryPage() {
   };
 
   const formatDate = (timestamp) => {
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    if (!timestamp) return "Unknown date";
+
+    // Handle Firestore Timestamp object
+    let date;
+    if (timestamp.toDate && typeof timestamp.toDate === "function") {
+      date = timestamp.toDate();
+    } else if (timestamp._seconds) {
+      // Firestore Timestamp has _seconds property
+      date = new Date(timestamp._seconds * 1000);
+    } else if (timestamp.seconds) {
+      // Alternative Timestamp format
+      date = new Date(timestamp.seconds * 1000);
+    } else {
+      date = new Date(timestamp);
+    }
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return "Unknown date";
+    }
+
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));

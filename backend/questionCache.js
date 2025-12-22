@@ -1,5 +1,6 @@
 import { db } from "./firebaseAdmin.js";
 import { getEmbedding } from "./embedding.js";
+import admin from "firebase-admin";
 
 /**
  * Calculate cosine similarity between two vectors
@@ -88,8 +89,8 @@ export async function storeQuestion(question, embedding, answer, intent) {
       answer,
       intent,
       count: 1,
-      createdAt: new Date(),
-      lastAskedAt: new Date(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastAskedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     console.log(`💾 Stored new question: ${docRef.id}`);
@@ -109,13 +110,11 @@ export async function incrementQuestionCount(questionId) {
     const docRef = db.collection("questions").doc(questionId);
 
     await docRef.update({
-      count: db.FieldValue + 1,
-      lastAskedAt: new Date(),
+      count: admin.firestore.FieldValue.increment(1),
+      lastAskedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    console.log(
-      `📈 Incremented count for question: ${questionId} ${docRef.count}`
-    );
+    console.log(`📈 Incremented count for question: ${questionId}`);
   } catch (error) {
     console.error("Error incrementing question count:", error);
   }
@@ -133,7 +132,7 @@ export async function storeUserQuestion(userId, questionId, questionText) {
       userId,
       questionId,
       questionText,
-      askedAt: new Date(),
+      askedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     console.log(`📝 Stored user question history for user: ${userId}`);
@@ -197,11 +196,15 @@ export async function getUserHistory(userId, limit = 20) {
       // Fetch the full question details
       let questionData = null;
       if (data.questionId) {
-        const questionDoc = await db
-          .collection("questions")
-          .doc(data.questionId)
-          .get();
-        questionData = questionDoc.exists ? questionDoc.data() : null;
+        try {
+          const questionDoc = await db
+            .collection("questions")
+            .doc(data.questionId)
+            .get();
+          questionData = questionDoc.exists ? questionDoc.data() : null;
+        } catch (err) {
+          console.error("Error fetching question details:", err);
+        }
       }
 
       history.push({
@@ -212,7 +215,15 @@ export async function getUserHistory(userId, limit = 20) {
       });
     }
 
-    return history;
+    // Sort in JavaScript instead of Firebase (temporary workaround)
+    history.sort((a, b) => {
+      const timeA = a.askedAt?._seconds || 0;
+      const timeB = b.askedAt?._seconds || 0;
+      return timeB - timeA; // Descending (newest first)
+    });
+
+    // Limit after sorting
+    return history.slice(0, limit);
   } catch (error) {
     console.error("Error fetching user history:", error);
     return [];
