@@ -5,6 +5,7 @@
   border: 1px solid #dadce0;
   border-radius: 40px;
   gap: 20px;
+  margin-bottom: 20px;
 }
 
 .chat-input {
@@ -29,4 +30,76 @@
 .active {
   background-color: #4285f4;
   cursor: pointer;
+}
+
+.response-main-div {
+  width: 70vw;
+  height: fit-content;
+  padding: 10px;
+  max-height: 80vh;
+  overflow-y: scroll;
+  justify-content: flex-start;
+  transition: all 2s ease;
+}
+
+.messages {
+  transform: translateX(100px);
+  opacity: 0;
+  display: none;
+  transition: all 2s ease;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+.response {
+  max-width: 85%;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.response b {
+  font-weight: 500;
+  padding: 5px 10px;
+  font-weight: 400;
+  border-radius: 10px;
+}
+
+.response span {
+  padding: 10px 15px;
+  font-weight: 400;
+  border-radius: 10px;
+}
+
+.response-you {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.response-ai {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.role-you {
+  color: rgb(0, 0, 0);
+  background-color: #f2f0f0;
+}
+
+.role-ai {
+  color: rgb(0, 0, 0);
+  background-color: rgb(226, 226, 226);
+}
+
+.message-you {
+  background-color: #e8f4ff;
+  color: #000000;
+  line-height: 24px;
+}
+
+.message-ai {
+  background-color: #4285f4;
+  color: #ffffff;
+  line-height: 24px;
 }

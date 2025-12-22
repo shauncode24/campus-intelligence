@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "../styles/Chat.css";
 
-export default function Chat() {
+export default function Chat({ onMessagesChange }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (onMessagesChange) {
+      onMessagesChange(messages.length > 0);
+    }
+  }, [messages, onMessagesChange]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -33,14 +39,35 @@ export default function Chat() {
 
   return (
     <>
-      <div>
+      <div
+        className={`default response-main-div ${!messages ? "messages" : ""}`}
+      >
         {messages.map((m, i) => (
-          <p key={i}>
-            <b>{m.role === "user" ? "You" : "AI"}:</b> {m.text}
+          <p
+            key={i}
+            className={`default response ${
+              m.role === "user" ? "response-you" : "response-ai"
+            }`}
+          >
+            <b
+              className={`default ${
+                m.role === "user" ? "role-you" : "role-ai"
+              }`}
+            >
+              {m.role === "user" ? "You" : "AI"}:
+            </b>{" "}
+            <span
+              className={`default ${
+                m.role === "user" ? "message-you" : "message-ai"
+              }`}
+            >
+              {m.text}
+            </span>
           </p>
         ))}
-        {loading && <p>Thinking...</p>}hi
+        {loading && <p>Thinking...</p>}
       </div>
+
       <div className="default chat-main-div">
         <svg
           xmlns="http://www.w3.org/2000/svg"
