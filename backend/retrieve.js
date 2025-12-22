@@ -15,7 +15,7 @@ function cosineSimilarity(a, b) {
 }
 
 /**
- * 🔑 Definition retrieval
+ * 🔒 Definition retrieval
  * Finds chunks that contain the key terms from the question
  */
 export async function retrieveDefinitionChunk(question) {
@@ -28,7 +28,7 @@ export async function retrieveDefinitionChunk(question) {
     .replace(/[?.,!]/g, "")
     .trim()
     .split(/\s+/)
-    .filter((word) => word.length > 3); // Ignore short words like "the", "is"
+    .filter((word) => word.length > 3);
 
   let bestMatch = null;
   let highestScore = 0;
@@ -59,23 +59,48 @@ export async function retrieveDefinitionChunk(question) {
 }
 
 /**
- * 🔍 Semantic retrieval
+ * 🔍 Semantic retrieval with document metadata
  */
 export async function retrieveSemanticChunks(queryEmbedding, k = 5) {
-  const snapshot = await db.collection("chunks").get();
+  const chunksSnapshot = await db.collection("chunks").get();
   const scored = [];
 
-  snapshot.forEach((doc) => {
+  // Get all document metadata once
+  const documentsSnapshot = await db.collection("documents").get();
+  const documentsMap = {};
+
+  documentsSnapshot.forEach((doc) => {
+    documentsMap[doc.id] = doc.data();
+  });
+
+  chunksSnapshot.forEach((doc) => {
     const data = doc.data();
     if (!data.embedding) return;
 
     const score = cosineSimilarity(queryEmbedding, data.embedding);
 
+    // Get document metadata
+    const docMetadata = documentsMap[data.documentId] || {};
+
     scored.push({
       content: data.content,
       score,
+      documentId: data.documentId,
+      index: data.index,
+      documentName: docMetadata.name || "Unknown Document",
+      department: docMetadata.department || "Unknown Department",
+      fileUrl: docMetadata.fileUrl || null,
+      uploadedAt: docMetadata.uploadedAt || null,
     });
   });
 
-  return scored.sort((a, b) => b.score - a.score).slice(0, k);
+  // Sort by score and return top k
+  const topChunks = scored.sort((a, b) => b.score - a.score).slice(0, k);
+
+  console.log(`🔍 Retrieved ${topChunks.length} chunks with document metadata`);
+  console.log(
+    `📊 Top scores: ${topChunks.map((c) => c.score.toFixed(3)).join(", ")}`
+  );
+
+  return topChunks;
 }

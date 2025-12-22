@@ -136,6 +136,100 @@
   animation-delay: -0.16s;
 }
 
+.confidence-badge-main {
+  border-radius: 8px;
+  background-color: white;
+  font-size: 0.85rem;
+  width: fit-content;
+  flex-direction: row;
+}
+
+.confidence-reasoning-main {
+  padding: 8px 0px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  font-size: 0.8rem;
+  color: #5f6368;
+  font-style: italic;
+  max-width: 400px;
+}
+
+.sources-main {
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  align-items: flex-start;
+}
+
+.sources-main-svg-div {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #202124;
+  gap: 6px;
+  flex-direction: row;
+}
+
+.source-level-1 {
+  padding: 12px;
+  border-radius: 8px;
+  background-color: white;
+  border: 1px solid #dadce0;
+  gap: 8px;
+}
+
+.source-level-2 {
+  justify-content: space-between;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.source-level-3 {
+  flex: 1;
+  align-items: flex-start;
+}
+
+.source-level-4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #202124;
+  margin-bottom: 4px;
+}
+.source-level-5 {
+  font-size: 0.75rem;
+  color: #5f6368;
+  margin-bottom: 8px;
+}
+
+.source-level-6 {
+  font-size: 0.8rem;
+  color: #3c4043;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.source-level-7 {
+  padding: 8px 16px;
+  background-color: #4285f4;
+  color: white;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 500;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  flex-direction: row;
+}
+
+.source-level-7:hover {
+  background-color: #1a73e8;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+}
+
 @keyframes bounce {
   0%,
   80%,

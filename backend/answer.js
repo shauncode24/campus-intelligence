@@ -1,5 +1,69 @@
 import fetch from "node-fetch";
 
+function calculateConfidence(chunks, intent) {
+  if (!chunks || chunks.length === 0) {
+    return { level: "Low", score: 0, reasoning: "No relevant sources found" };
+  }
+
+  const topScore = chunks[0].score;
+  const avgScore = chunks.reduce((sum, c) => sum + c.score, 0) / chunks.length;
+  const chunkCount = chunks.length;
+
+  // Check for agreement among top chunks
+  const highQualityChunks = chunks.filter((c) => c.score > 0.75).length;
+
+  let level, score, reasoning;
+
+  // High confidence criteria
+  if (topScore > 0.9 && avgScore > 0.8 && highQualityChunks >= 2) {
+    level = "High";
+    score = Math.round(topScore * 100);
+    reasoning = `Strong match found across ${highQualityChunks} high-quality sources`;
+  }
+  // Medium confidence criteria
+  else if (topScore > 0.8 && avgScore > 0.7) {
+    level = "Medium";
+    score = Math.round(topScore * 100);
+    reasoning = `Good match found, but sources show some variation`;
+  }
+  // Low confidence criteria
+  else {
+    level = "Low";
+    score = Math.round(topScore * 100);
+    reasoning = `Limited or inconsistent source information`;
+  }
+
+  return { level, score, reasoning };
+}
+
+/**
+ * Extract source information from chunks
+ */
+function extractSourceInfo(chunks) {
+  const sources = [];
+  const seenDocs = new Set();
+
+  chunks.forEach((chunk, index) => {
+    const docId = chunk.documentId;
+
+    // Only add unique documents
+    if (!seenDocs.has(docId)) {
+      seenDocs.add(docId);
+
+      sources.push({
+        documentId: docId,
+        chunkIndex: chunk.index,
+        similarity: Math.round(chunk.score * 100),
+        excerpt: chunk.content.slice(0, 150) + "...",
+        documentName: chunk.documentName || "Unknown Document",
+        fileUrl: chunk.fileUrl || null,
+      });
+    }
+  });
+
+  return sources;
+}
+
 export async function generateDefinitionAnswer(question, chunks) {
   return generateAnswer(question, chunks, true);
 }
@@ -20,7 +84,15 @@ async function generateAnswer(question, chunks, strict) {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_API_KEY missing");
 
-  // Back to reasonable chunk limits
+  // Calculate confidence
+  const confidence = calculateConfidence(
+    chunks,
+    strict ? "definition" : "general"
+  );
+
+  // Extract source information
+  const sources = extractSourceInfo(chunks);
+
   const maxChunks = strict ? 3 : 5;
   const maxCharsPerChunk = 1200;
 
@@ -38,7 +110,7 @@ async function generateAnswer(question, chunks, strict) {
 
   const estimatedInputTokens = (context.length + question.length + 200) / 4;
   console.log(
-    `🔢 Estimated input tokens: ~${Math.round(estimatedInputTokens)}`
+    `📢 Estimated input tokens: ~${Math.round(estimatedInputTokens)}`
   );
 
   const prompt = strict
@@ -58,7 +130,6 @@ Q: ${question}
 
 CRITICAL: Your answer must be 200 words or less. Be direct and concise. Cite [1], [2].`;
 
-  // Use gemini-2.5-flash for faster responses
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
@@ -98,14 +169,24 @@ CRITICAL: Your answer must be 200 words or less. Be direct and concise. Cite [1]
     console.warn(`⚠️ Finish reason: ${finishReason}`);
   }
 
-  return response;
+  // Return enhanced response with confidence and sources
+  return {
+    answer: response,
+    confidence,
+    sources,
+  };
 }
 
 async function generateStructuredAnswer(question, chunks) {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_API_KEY missing");
 
-  // Limit chunks for procedure questions
+  // Calculate confidence
+  const confidence = calculateConfidence(chunks, "procedure");
+
+  // Extract source information
+  const sources = extractSourceInfo(chunks);
+
   const maxChunks = 5;
   const maxCharsPerChunk = 1500;
 
@@ -123,7 +204,7 @@ async function generateStructuredAnswer(question, chunks) {
 
   const estimatedInputTokens = (context.length + question.length + 300) / 4;
   console.log(
-    `🔢 Estimated input tokens: ~${Math.round(estimatedInputTokens)}`
+    `📢 Estimated input tokens: ~${Math.round(estimatedInputTokens)}`
   );
 
   const prompt = `You are a campus assistant helping students understand official procedures.
@@ -159,7 +240,7 @@ Provide your answer as a numbered step-by-step procedure:`;
           },
         ],
         generationConfig: {
-          temperature: 0.2, // Lower temperature for more consistent procedures
+          temperature: 0.2,
           maxOutputTokens: 2048,
           topP: 0.9,
           topK: 40,
@@ -184,11 +265,21 @@ Provide your answer as a numbered step-by-step procedure:`;
     console.warn(`⚠️ Procedure finish reason: ${finishReason}`);
   }
 
-  return response;
+  return {
+    answer: response,
+    confidence,
+    sources,
+  };
 }
 
 async function generateTimelineAnswer(question, chunks) {
   const apiKey = process.env.GOOGLE_API_KEY;
+
+  // Calculate confidence
+  const confidence = calculateConfidence(chunks, "deadline");
+
+  // Extract source information
+  const sources = extractSourceInfo(chunks);
 
   const context = chunks.map((c, i) => `[${i + 1}] ${c.content}`).join("\n");
 
@@ -224,5 +315,11 @@ Respond clearly and concisely.
   );
 
   const data = await res.json();
-  return data.candidates[0].content.parts[0].text;
+  const response = data.candidates[0].content.parts[0].text;
+
+  return {
+    answer: response,
+    confidence,
+    sources,
+  };
 }

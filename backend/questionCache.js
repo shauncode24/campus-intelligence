@@ -74,26 +74,39 @@ export async function findSimilarQuestion(
 }
 
 /**
- * Store a new question and answer in cache
+ * Store a new question and answer in cache with confidence and sources
  * @param {string} question - The question text
  * @param {Array} embedding - Question embedding
  * @param {string} answer - Generated answer
  * @param {string} intent - Question intent
+ * @param {Object} confidence - Confidence object with level, score, reasoning
+ * @param {Array} sources - Array of source objects
  * @returns {string} - Document ID of stored question
  */
-export async function storeQuestion(question, embedding, answer, intent) {
+export async function storeQuestion(
+  question,
+  embedding,
+  answer,
+  intent,
+  confidence = null,
+  sources = []
+) {
   try {
     const docRef = await db.collection("questions").add({
       question,
       embedding,
       answer,
       intent,
+      confidence,
+      sources,
       count: 1,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastAskedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    console.log(`💾 Stored new question: ${docRef.id}`);
+    console.log(
+      `💾 Stored new question with confidence and sources: ${docRef.id}`
+    );
     return docRef.id;
   } catch (error) {
     console.error("Error storing question:", error);
@@ -142,7 +155,7 @@ export async function storeUserQuestion(userId, questionId, questionText) {
 }
 
 /**
- * Get FAQ - most frequently asked questions
+ * Get FAQ - most frequently asked questions with confidence and sources
  * @param {number} limit - Number of FAQs to retrieve
  * @returns {Array} - Array of FAQ objects
  */
@@ -163,6 +176,8 @@ export async function getFAQ(limit = 10) {
         answer: data.answer,
         count: data.count,
         intent: data.intent,
+        confidence: data.confidence || null,
+        sources: data.sources || [],
       });
     });
 
@@ -174,7 +189,7 @@ export async function getFAQ(limit = 10) {
 }
 
 /**
- * Get user's question history
+ * Get user's question history with confidence and sources
  * @param {string} userId - User identifier
  * @param {number} limit - Number of history items to retrieve
  * @returns {Array} - Array of user question history
@@ -211,6 +226,8 @@ export async function getUserHistory(userId, limit = 20) {
         id: doc.id,
         questionText: data.questionText,
         answer: questionData?.answer || "Answer not found",
+        confidence: questionData?.confidence || null,
+        sources: questionData?.sources || [],
         askedAt: data.askedAt,
       });
     }

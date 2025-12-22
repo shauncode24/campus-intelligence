@@ -21,7 +21,7 @@ export async function handleChat(question, userId = "anonymous") {
 
     // Get embedding for the question
     const embedding = await getEmbedding(question);
-    console.log(`🔢 Generated question embedding`);
+    console.log(`📢 Generated question embedding`);
 
     // 🆕 PHASE 5.5: Check question cache first
     const cachedQuestion = await findSimilarQuestion(embedding, intent);
@@ -39,13 +39,16 @@ export async function handleChat(question, userId = "anonymous") {
         answer: cachedQuestion.answer,
         cached: true,
         similarity: cachedQuestion.similarity,
+        // Include confidence and sources from cache if available
+        confidence: cachedQuestion.confidence || null,
+        sources: cachedQuestion.sources || [],
       };
     }
 
     // No cache hit - proceed with normal RAG flow
     console.log(`🤖 Generating new answer via RAG`);
 
-    let answer;
+    let result;
     let chunks;
 
     // 📚 Definition questions - top 3 chunks
@@ -56,13 +59,19 @@ export async function handleChat(question, userId = "anonymous") {
         return {
           answer: "Not explicitly defined in the document.",
           cached: false,
+          confidence: {
+            level: "Low",
+            score: 0,
+            reasoning: "No relevant sources found",
+          },
+          sources: [],
         };
       }
 
       console.log(
         `📚 Retrieved ${chunks.length} chunks for definition question`
       );
-      answer = await generateDefinitionAnswer(question, chunks);
+      result = await generateDefinitionAnswer(question, chunks);
     }
 
     // 🧭 Procedure questions - top 5 chunks
@@ -73,13 +82,19 @@ export async function handleChat(question, userId = "anonymous") {
         return {
           answer: "No relevant information found in the documents.",
           cached: false,
+          confidence: {
+            level: "Low",
+            score: 0,
+            reasoning: "No relevant sources found",
+          },
+          sources: [],
         };
       }
 
       console.log(
         `📋 Retrieved ${chunks.length} chunks for procedure question`
       );
-      answer = await generateProcedureAnswer(question, chunks);
+      result = await generateProcedureAnswer(question, chunks);
     }
 
     // 📅 Deadline questions - top 3 chunks
@@ -90,11 +105,17 @@ export async function handleChat(question, userId = "anonymous") {
         return {
           answer: "No deadline information found in the documents.",
           cached: false,
+          confidence: {
+            level: "Low",
+            score: 0,
+            reasoning: "No relevant sources found",
+          },
+          sources: [],
         };
       }
 
       console.log(`⏰ Retrieved ${chunks.length} chunks for deadline question`);
-      answer = await generateSemanticAnswer(question, chunks);
+      result = await generateSemanticAnswer(question, chunks);
     }
 
     // ✅ Requirement questions - top 4 chunks
@@ -105,13 +126,19 @@ export async function handleChat(question, userId = "anonymous") {
         return {
           answer: "No requirement information found in the documents.",
           cached: false,
+          confidence: {
+            level: "Low",
+            score: 0,
+            reasoning: "No relevant sources found",
+          },
+          sources: [],
         };
       }
 
       console.log(
         `📝 Retrieved ${chunks.length} chunks for requirement question`
       );
-      answer = await generateSemanticAnswer(question, chunks);
+      result = await generateSemanticAnswer(question, chunks);
     }
 
     // 📖 General semantic questions - top 5 chunks
@@ -123,20 +150,34 @@ export async function handleChat(question, userId = "anonymous") {
         `📊 Chunk scores: ${chunks.map((c) => c.score.toFixed(3)).join(", ")}`
       );
 
-      answer = await generateSemanticAnswer(question, chunks);
+      result = await generateSemanticAnswer(question, chunks);
     }
 
-    // 🆕 Store the new question and answer in cache
-    const questionId = await storeQuestion(question, embedding, answer, intent);
+    // Extract answer from result (could be string or object)
+    const answer = typeof result === "string" ? result : result.answer;
+    const confidence = typeof result === "object" ? result.confidence : null;
+    const sources = typeof result === "object" ? result.sources : [];
+
+    // 🆕 Store the new question and answer in cache with confidence and sources
+    const questionId = await storeQuestion(
+      question,
+      embedding,
+      answer,
+      intent,
+      confidence,
+      sources
+    );
 
     // Store in user history
     await storeUserQuestion(userId, questionId, question);
 
-    console.log(`✅ Answer generated and cached`);
+    console.log(`✅ Answer generated and cached with confidence and sources`);
 
     return {
       answer,
       cached: false,
+      confidence,
+      sources,
     };
   } catch (error) {
     console.error("❌ Error in handleChat:", error);
