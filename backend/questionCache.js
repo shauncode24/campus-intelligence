@@ -74,13 +74,14 @@ export async function findSimilarQuestion(
 }
 
 /**
- * Store a new question and answer in cache with confidence and sources
+ * Store a new question and answer in cache with confidence, sources, and deadline
  * @param {string} question - The question text
  * @param {Array} embedding - Question embedding
  * @param {string} answer - Generated answer
  * @param {string} intent - Question intent
  * @param {Object} confidence - Confidence object with level, score, reasoning
  * @param {Array} sources - Array of source objects
+ * @param {Object} deadline - Deadline object (optional)
  * @returns {string} - Document ID of stored question
  */
 export async function storeQuestion(
@@ -89,7 +90,8 @@ export async function storeQuestion(
   answer,
   intent,
   confidence = null,
-  sources = []
+  sources = [],
+  deadline = null
 ) {
   try {
     const docRef = await db.collection("questions").add({
@@ -99,13 +101,14 @@ export async function storeQuestion(
       intent,
       confidence,
       sources,
+      deadline,
       count: 1,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastAskedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     console.log(
-      `💾 Stored new question with confidence and sources: ${docRef.id}`
+      `💾 Stored new question with confidence, sources, and deadline: ${docRef.id}`
     );
     return docRef.id;
   } catch (error) {
@@ -155,7 +158,7 @@ export async function storeUserQuestion(userId, questionId, questionText) {
 }
 
 /**
- * Get FAQ - most frequently asked questions with confidence and sources
+ * Get FAQ - most frequently asked questions
  * @param {number} limit - Number of FAQs to retrieve
  * @returns {Array} - Array of FAQ objects
  */
@@ -176,8 +179,6 @@ export async function getFAQ(limit = 10) {
         answer: data.answer,
         count: data.count,
         intent: data.intent,
-        confidence: data.confidence || null,
-        sources: data.sources || [],
       });
     });
 
@@ -189,18 +190,18 @@ export async function getFAQ(limit = 10) {
 }
 
 /**
- * Get user's question history with confidence and sources
+ * Get user's question history
  * @param {string} userId - User identifier
  * @param {number} limit - Number of history items to retrieve
  * @returns {Array} - Array of user question history
  */
 export async function getUserHistory(userId, limit = 20) {
   try {
+    // Temporary: Get without orderBy to avoid index requirement
+    // After creating the Firebase index, you can add .orderBy("askedAt", "desc")
     const snapshot = await db
       .collection("user_questions")
       .where("userId", "==", userId)
-      .orderBy("askedAt", "desc")
-      .limit(limit)
       .get();
 
     const history = [];
@@ -226,8 +227,6 @@ export async function getUserHistory(userId, limit = 20) {
         id: doc.id,
         questionText: data.questionText,
         answer: questionData?.answer || "Answer not found",
-        confidence: questionData?.confidence || null,
-        sources: questionData?.sources || [],
         askedAt: data.askedAt,
       });
     }

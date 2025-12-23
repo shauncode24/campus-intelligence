@@ -6,6 +6,7 @@ import {
   generateProcedureAnswer,
   generateDeadlineAnswer,
   generateSemanticAnswer,
+  enhanceAnswerWithDeadline,
 } from "./answer.js";
 import {
   findSimilarQuestion,
@@ -21,7 +22,7 @@ export async function handleChat(question, userId = "anonymous") {
 
     // Get embedding for the question
     const embedding = await getEmbedding(question);
-    console.log(`📢 Generated question embedding`);
+    console.log(`🔢 Generated question embedding`);
 
     // 🆕 PHASE 5.5: Check question cache first
     const cachedQuestion = await findSimilarQuestion(embedding, intent);
@@ -42,6 +43,7 @@ export async function handleChat(question, userId = "anonymous") {
         // Include confidence and sources from cache if available
         confidence: cachedQuestion.confidence || null,
         sources: cachedQuestion.sources || [],
+        deadline: cachedQuestion.deadline || null,
       };
     }
 
@@ -158,26 +160,34 @@ export async function handleChat(question, userId = "anonymous") {
     const confidence = typeof result === "object" ? result.confidence : null;
     const sources = typeof result === "object" ? result.sources : [];
 
-    // 🆕 Store the new question and answer in cache with confidence and sources
+    // ✨ Extract deadline information
+    const enhancedResult = enhanceAnswerWithDeadline(answer, intent, sources);
+
+    console.log(
+      `✅ Answer generated and cached with confidence and sources. Deadline:`,
+      enhancedResult.deadline ? "Yes" : "No"
+    );
+
+    // 🆕 Store the new question and answer in cache with confidence, sources, AND deadline
     const questionId = await storeQuestion(
       question,
       embedding,
       answer,
       intent,
       confidence,
-      sources
+      sources,
+      enhancedResult.deadline // ← Add deadline to cache
     );
 
     // Store in user history
     await storeUserQuestion(userId, questionId, question);
-
-    console.log(`✅ Answer generated and cached with confidence and sources`);
 
     return {
       answer,
       cached: false,
       confidence,
       sources,
+      deadline: enhancedResult.deadline, // ← Return deadline to frontend
     };
   } catch (error) {
     console.error("❌ Error in handleChat:", error);

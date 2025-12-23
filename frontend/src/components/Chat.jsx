@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import "../styles/Chat.css";
+import CalendarButton from "./CalendarButton";
 
 export default function Chat({ onMessagesChange }) {
   const [messages, setMessages] = useState([]);
@@ -43,6 +44,8 @@ export default function Chat({ onMessagesChange }) {
       });
 
       const data = await res.json();
+      console.log("🔍 API Response:", data);
+      console.log("📅 Deadline:", data.deadline);
 
       const botMessage = {
         role: "bot",
@@ -51,6 +54,7 @@ export default function Chat({ onMessagesChange }) {
         similarity: data.similarity,
         confidence: data.confidence,
         sources: data.sources || [],
+        deadline: data.deadline || null,
       };
 
       setMessages((prev) => [...prev, botMessage]);
@@ -240,10 +244,21 @@ export default function Chat({ onMessagesChange }) {
                 ))}
               </div>
             )}
+            {/* Calendar Button - Shows if deadline exists */}
+            {m.role === "bot" && m.deadline && (
+              <CalendarButton
+                deadline={m.deadline}
+                userId={userId}
+                onSuccess={(event) => {
+                  console.log("Event created:", event);
+                }}
+              />
+            )}
             {/* Cache indicator */}
             {m.cached && (
               <p className="default cache-indicator">
-                Cached response (similarity: {(m.similarity * 100).toFixed(1)}%)
+                ⚡ Cached response (similarity:{" "}
+                {(m.similarity * 100).toFixed(1)}%)
               </p>
             )}
           </p>

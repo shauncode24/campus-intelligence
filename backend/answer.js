@@ -323,3 +323,144 @@ Respond clearly and concisely.
     sources,
   };
 }
+
+/**
+ * Extract deadline information from answer text
+ * @param {string} answerText - The generated answer
+ * @param {string} intent - Question intent
+ * @returns {Object|null} Deadline object or null
+ */
+// In answer.js, update extractDeadline function
+export function extractDeadline(answerText, intent) {
+  console.log("🔍 Full answer being checked:", answerText);
+
+  // Only process deadline-related intents
+  if (intent !== "deadline" && !answerText.toLowerCase().includes("deadline")) {
+    return null;
+  }
+
+  // Common date patterns
+  const datePatterns = [
+    // March 31, 2025
+    /([A-Z][a-z]+ \d{1,2},? \d{4})/g,
+    // 2025-03-31
+    /(\d{4}-\d{2}-\d{2})/g,
+    // 31/03/2025 or 03/31/2025
+    /(\d{1,2}\/\d{1,2}\/\d{4})/g,
+    // March 31st, 2025
+    /([A-Z][a-z]+ \d{1,2}(?:st|nd|rd|th),? \d{4})/g,
+    // 31st March 2025
+    /(\d{1,2}(?:st|nd|rd|th) [A-Z][a-z]+ \d{4})/g,
+    // 5 January 2026
+    /(\d{1,2} [A-Z][a-z]+ \d{4})/g,
+  ];
+
+  let foundDate = null;
+  let dateString = null;
+
+  console.log("🔍 Testing patterns against answer...");
+
+  // Try each pattern
+  for (const pattern of datePatterns) {
+    const matches = answerText.match(pattern);
+    if (matches && matches.length > 0) {
+      dateString = matches[0];
+      console.log("✅ Found date string:", dateString);
+
+      try {
+        foundDate = new Date(dateString);
+
+        // Validate it's a real date
+        if (!isNaN(foundDate.getTime())) {
+          console.log("✅ Valid date object created:", foundDate);
+          break;
+        }
+      } catch (e) {
+        console.log("❌ Failed to parse:", dateString);
+        continue;
+      }
+    }
+  }
+
+  if (!foundDate || isNaN(foundDate.getTime())) {
+    console.log("❌ No valid date found in answer");
+    return null;
+  }
+
+  // Check if date is in the future
+  const now = new Date();
+  if (foundDate <= now) {
+    console.log("❌ Date is in the past:", foundDate);
+    return null;
+  }
+
+  console.log("✅ Found future deadline!", foundDate);
+
+  // Extract context around the date
+  const dateIndex = answerText.indexOf(dateString);
+  const contextStart = Math.max(0, dateIndex - 50);
+  const contextEnd = Math.min(answerText.length, dateIndex + 100);
+  const context = answerText.slice(contextStart, contextEnd).trim();
+
+  // Try to extract deadline title
+  let title = "Campus Deadline";
+  const titlePatterns = [
+    /(?:deadline for|deadline is for|submission deadline for|due date for)\s+([^.]+)/i,
+    /([^.]+)\s+(?:deadline|due date)/i,
+  ];
+
+  for (const pattern of titlePatterns) {
+    const match = answerText.match(pattern);
+    if (match && match[1]) {
+      title = match[1].trim();
+      // Limit title length
+      if (title.length > 60) {
+        title = title.slice(0, 60) + "...";
+      }
+      break;
+    }
+  }
+
+  // Format date as YYYY-MM-DD for calendar API
+  const formattedDate = foundDate.toISOString().split("T")[0];
+
+  return {
+    title,
+    date: formattedDate,
+    originalDateString: dateString,
+    context,
+    fullAnswer: answerText,
+  };
+}
+
+/**
+ * Add deadline extraction to answer generation
+ */
+export function enhanceAnswerWithDeadline(answer, intent, sources = []) {
+  const deadline = extractDeadline(answer, intent);
+
+  // Add this console log to debug:
+  console.log("🔍 Deadline extraction:", {
+    intent,
+    foundDeadline: !!deadline,
+    answer: answer.substring(0, 100),
+  });
+
+  if (!deadline) {
+    return { answer, deadline: null };
+  }
+
+  // Add source document if available
+  if (sources && sources.length > 0) {
+    deadline.sourceDocument = sources[0].documentName;
+  }
+
+  return {
+    answer,
+    deadline: {
+      ...deadline,
+      description: `Deadline extracted from campus documents`,
+      canAddToCalendar: true,
+    },
+  };
+}

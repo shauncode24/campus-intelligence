@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { handleChat } from "./chat.js";
 import { getFAQ, getUserHistory } from "./questionCache.js";
+import calendarRoutes from "./calendarRoutes.js";
 
 dotenv.config();
 
@@ -57,10 +58,14 @@ app.get("/history/:userId", async (req, res) => {
   }
 });
 
+app.use("/calendar", calendarRoutes);
+
 app.listen(5000, () => {
   console.log("RAG backend running on http://localhost:5000");
   console.log("Endpoints available:");
   console.log("  POST /ask - Ask a question");
   console.log("  GET /faq - Get frequently asked questions");
   console.log("  GET /history/:userId - Get user question history");
+  console.log("  GET /calendar/auth - Google Calendar OAuth"); // ← Should show this
+  console.log("  GET /calendar/callback - OAuth callback");
 });
