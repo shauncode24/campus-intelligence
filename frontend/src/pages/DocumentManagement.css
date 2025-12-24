@@ -1,0 +1,160 @@
+.document-management {
+  background-color: #f8f9fa;
+  padding: 0px 100px;
+  margin-top: 100px;
+}
+
+.management-header {
+  margin-bottom: 2rem;
+}
+
+.management-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 0.25rem 0;
+}
+
+.management-subtitle {
+  font-size: 0.9375rem;
+  color: #6c757d;
+  margin: 0;
+}
+
+.documents-table-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.documents-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.documents-table thead {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.documents-table th {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.documents-table tbody tr {
+  border-bottom: 1px solid #f1f3f5;
+  transition: background-color 0.2s;
+}
+
+.documents-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.documents-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.documents-table td {
+  padding: 1.25rem 1.5rem;
+  font-size: 0.9375rem;
+  color: #495057;
+}
+
+.document-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.document-icon {
+  color: #495057;
+  flex-shrink: 0;
+}
+
+.document-name {
+  color: #1a1a1a;
+  font-weight: 500;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  background-color: #f1f3f5;
+  color: #495057;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.status-processed {
+  background-color: #d3f9d8;
+  color: #2b8a3e;
+}
+
+.status-pending {
+  background-color: #fff3bf;
+  color: #f08c00;
+}
+
+.actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6c757d;
+  transition: color 0.2s;
+  display: flex;
+  padding: 0;
+}
+
+.action-btn svg {
+  padding: 0;
+  margin: 0;
+}
+
+.action-btn:hover {
+  color: #0080ff;
+}
+
+.action-btn.delete:hover {
+  color: #dc3545;
+}
+
+.file-size {
+  color: #868e96;
+}
+
+.upload-date {
+  color: #868e96;
+}
+
+@media (max-width: 1200px) {
+  .documents-table {
+    font-size: 0.875rem;
+  }
+
+  .documents-table th,
+  .documents-table td {
+    padding: 1rem;
+  }
+}

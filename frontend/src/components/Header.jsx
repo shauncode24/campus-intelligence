@@ -2,7 +2,7 @@ import "../styles/Header.css";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function Header() {
+export default function Header(props) {
   const navigate = useNavigate();
 
   const handleNavigation = (path) => {
@@ -30,38 +30,73 @@ export default function Header() {
           </div>
           <div className="default header-left-header">Campus Intelligence</div>
         </div>
-        <div className="default header-right">
-          <span
-            className="default header-right-options"
-            onClick={() => handleNavigation("/student")}
-          >
-            Dashboard
-          </span>
-          <span
-            className="default header-right-options"
-            onClick={() => handleNavigation("/history")}
-          >
-            History
-          </span>
-          <span
-            className="default header-right-options"
-            onClick={() => handleNavigation("/faq")}
-          >
-            FAQs
-          </span>
-          <span
-            className="default header-right-options"
-            onClick={() => handleNavigation("/")}
-          >
-            Documents
-          </span>
-          <span
-            className="default admin-option"
-            onClick={() => handleNavigation("/login")}
-          >
-            Admin Login
-          </span>
-        </div>
+        {props.role == "admin" ? (
+          <div className="default header-right">
+            <span
+              className="default header-right-options"
+              onClick={() => handleNavigation("/admin/documents")}
+            >
+              Documents
+            </span>
+            <span
+              className="default header-right-options"
+              onClick={() => handleNavigation("/admin/add-document")}
+            >
+              Add Documents
+            </span>
+            {/* <span
+              className="default header-right-options"
+              onClick={() => handleNavigation("/faq")}
+            >
+              FAQs
+            </span>
+            <span
+              className="default header-right-options"
+              onClick={() => handleNavigation("/")}
+            >
+              Documents
+            </span> */}
+            <span
+              className="default admin-option"
+              onClick={() => handleNavigation("/login")}
+            >
+              Exit Admin
+            </span>
+          </div>
+        ) : (
+          <div className="default header-right">
+            <span
+              className="default header-right-options"
+              onClick={() => handleNavigation("/student")}
+            >
+              Dashboard
+            </span>
+            <span
+              className="default header-right-options"
+              onClick={() => handleNavigation("/history")}
+            >
+              History
+            </span>
+            <span
+              className="default header-right-options"
+              onClick={() => handleNavigation("/faq")}
+            >
+              FAQs
+            </span>
+            <span
+              className="default header-right-options"
+              onClick={() => handleNavigation("/")}
+            >
+              Documents
+            </span>
+            <span
+              className="default admin-option"
+              onClick={() => handleNavigation("/login")}
+            >
+              Admin Login
+            </span>
+          </div>
+        )}
       </div>
     </>
   );

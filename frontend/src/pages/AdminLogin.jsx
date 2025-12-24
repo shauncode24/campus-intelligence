@@ -17,7 +17,7 @@ export default function AdminLogin() {
 
       // TEMP ROLE LOGIC (PHASE 2 ONLY)
       if (email === "admin@test.com") {
-        navigate("/admin");
+        navigate("/admin/add-document");
       } else {
         navigate("/student");
       }
