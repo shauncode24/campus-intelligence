@@ -29,6 +29,10 @@ export async function handleChat(question, userId = "anonymous") {
 
     if (cachedQuestion) {
       console.log(`♻️ Reusing cached answer`);
+      console.log(
+        `📅 Cached deadline:`,
+        cachedQuestion.deadline ? "Yes" : "No"
+      );
 
       // Increment count for this question
       await incrementQuestionCount(cachedQuestion.id);
@@ -43,7 +47,7 @@ export async function handleChat(question, userId = "anonymous") {
         // Include confidence and sources from cache if available
         confidence: cachedQuestion.confidence || null,
         sources: cachedQuestion.sources || [],
-        deadline: cachedQuestion.deadline || null,
+        deadline: cachedQuestion.deadline || null, // ← This should now work!
       };
     }
 
