@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { handleChat } from "./chat.js";
 import { getFAQ, getUserHistory } from "./questionCache.js";
 import calendarRoutes from "./calendarRoutes.js";
+import documentRoutes from "./documentRoutes.js";
 
 dotenv.config();
 
@@ -58,14 +59,26 @@ app.get("/history/:userId", async (req, res) => {
   }
 });
 
+// Calendar routes
 app.use("/calendar", calendarRoutes);
 
+// Document processing routes
+app.use("/documents", documentRoutes);
+
 app.listen(5000, () => {
-  console.log("RAG backend running on http://localhost:5000");
-  console.log("Endpoints available:");
-  console.log("  POST /ask - Ask a question");
-  console.log("  GET /faq - Get frequently asked questions");
-  console.log("  GET /history/:userId - Get user question history");
-  console.log("  GET /calendar/auth - Google Calendar OAuth"); // ← Should show this
-  console.log("  GET /calendar/callback - OAuth callback");
+  console.log("🚀 RAG backend running on http://localhost:5000");
+  console.log("\n📋 Available endpoints:");
+  console.log("  POST   /ask                        - Ask a question");
+  console.log("  GET    /faq                        - Get FAQs");
+  console.log("  GET    /history/:userId            - Get user history");
+  console.log("  GET    /calendar/auth              - Google Calendar OAuth");
+  console.log("  GET    /calendar/callback          - OAuth callback");
+  console.log("  POST   /calendar/create-event      - Create calendar event");
+  console.log("  GET    /calendar/status            - Check calendar status");
+  console.log("  DELETE /calendar/disconnect        - Disconnect calendar");
+  console.log("  POST   /documents/process          - Process new document");
+  console.log(
+    "  POST   /documents/reprocess        - Reprocess existing document"
+  );
+  console.log("\n✅ Server ready!");
 });

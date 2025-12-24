@@ -36,8 +36,51 @@ export default function DocumentManagement() {
     }
   };
 
+  // Replace the handleReprocess function in DocumentManagement.jsx with this:
+
   const handleReprocess = async (id) => {
-    alert("Reprocess functionality coming soon");
+    if (
+      !window.confirm(
+        "Are you sure you want to reprocess this document? This will delete existing chunks and embeddings."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      // Show loading state
+      const updatedDocs = documents.map((doc) =>
+        doc.id === id ? { ...doc, status: "Processing" } : doc
+      );
+      setDocuments(updatedDocs);
+
+      const response = await fetch(
+        "http://localhost:5000/documents/reprocess",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ documentId: id }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(
+          `✅ Document reprocessed successfully!\n\n` +
+            `📊 Chunks created: ${result.chunksCount}\n` +
+            `🔢 Embeddings generated: ${result.embeddedCount}`
+        );
+        // Refresh documents list
+        fetchDocuments();
+      } else {
+        alert(`Error: ${result.message}`);
+        fetchDocuments();
+      }
+    } catch (err) {
+      alert("Error reprocessing document: " + err.message);
+      fetchDocuments();
+    }
   };
 
   const formatFileSize = (bytes) => {
