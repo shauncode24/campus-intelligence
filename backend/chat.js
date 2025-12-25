@@ -2,11 +2,9 @@ import { detectIntent } from "./intent.js";
 import { getEmbedding } from "./embedding.js";
 import { retrieveSemanticChunks } from "./retrieve.js";
 import {
-  generateDefinitionAnswer,
-  generateProcedureAnswer,
-  generateDeadlineAnswer,
-  generateSemanticAnswer,
-  enhanceAnswerWithDeadline,
+  generateDefinitionAnswerStream,
+  generateProcedureAnswerStream,
+  generateSemanticAnswerStream,
 } from "./answer.js";
 import {
   findSimilarQuestion,
@@ -14,187 +12,168 @@ import {
   incrementQuestionCount,
   storeUserQuestion,
 } from "./questionCache.js";
+import { enhanceAnswerWithDeadline } from "./answer.js";
 
+// Original non-streaming function (keep as is)
 export async function handleChat(question, userId = "anonymous") {
+  // ... keep existing implementation exactly as is
+}
+
+// NEW: Streaming version
+export async function handleChatStream(question, userId, res) {
   try {
     const intent = detectIntent(question);
     console.log(`🎯 Detected intent: ${intent}`);
 
-    // Get embedding for the question
+    // Send intent info
+    res.write(`data: ${JSON.stringify({ type: "intent", data: intent })}\n\n`);
+
+    // Get embedding
     const embedding = await getEmbedding(question);
     console.log(`🔢 Generated question embedding`);
 
-    // 🆕 PHASE 5.5: Check question cache first
+    // Check cache
     const cachedQuestion = await findSimilarQuestion(embedding, intent);
 
     if (cachedQuestion) {
       console.log(`♻️ Reusing cached answer`);
-      console.log(
-        `📅 Cached deadline:`,
-        cachedQuestion.deadline ? "Yes" : "No"
+
+      // Send metadata
+      res.write(
+        `data: ${JSON.stringify({
+          type: "metadata",
+          data: {
+            cached: true,
+            similarity: cachedQuestion.similarity,
+            confidence: cachedQuestion.confidence,
+            sources: cachedQuestion.sources,
+            deadline: cachedQuestion.deadline,
+          },
+        })}\n\n`
       );
 
-      // Increment count for this question
-      await incrementQuestionCount(cachedQuestion.id);
+      // Stream cached answer word by word
+      const words = cachedQuestion.answer.split(" ");
+      for (let i = 0; i < words.length; i++) {
+        const chunk = i === words.length - 1 ? words[i] : words[i] + " ";
+        res.write(`data: ${JSON.stringify({ type: "text", data: chunk })}\n\n`);
+        await new Promise((resolve) => setTimeout(resolve, 30)); // 30ms delay between words
+      }
 
-      // Store in user history
+      // Increment cache count
+      await incrementQuestionCount(cachedQuestion.id);
       await storeUserQuestion(userId, cachedQuestion.id, question);
 
-      return {
-        answer: cachedQuestion.answer,
-        cached: true,
-        similarity: cachedQuestion.similarity,
-        // Include confidence and sources from cache if available
-        confidence: cachedQuestion.confidence || null,
-        sources: cachedQuestion.sources || [],
-        deadline: cachedQuestion.deadline || null, // ← This should now work!
-      };
+      // Send completion
+      res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+      res.end();
+      return;
     }
 
-    // No cache hit - proceed with normal RAG flow
-    console.log(`🤖 Generating new answer via RAG`);
+    // No cache hit - generate new answer with streaming
+    console.log(`🤖 Generating new answer via RAG with streaming`);
 
-    let result;
     let chunks;
+    let chunkCount = 5;
 
-    // 📚 Definition questions - top 3 chunks
+    // Get appropriate number of chunks based on intent
     if (intent === "definition") {
-      chunks = await retrieveSemanticChunks(embedding, 3);
+      chunkCount = 3;
+    } else if (intent === "procedure") {
+      chunkCount = 5;
+    } else if (intent === "deadline") {
+      chunkCount = 3;
+    } else if (intent === "requirement") {
+      chunkCount = 4;
+    }
 
-      if (!chunks || chunks.length === 0) {
-        return {
-          answer: "Not explicitly defined in the document.",
-          cached: false,
-          confidence: {
-            level: "Low",
-            score: 0,
-            reasoning: "No relevant sources found",
-          },
-          sources: [],
-        };
-      }
+    chunks = await retrieveSemanticChunks(embedding, chunkCount);
 
-      console.log(
-        `📚 Retrieved ${chunks.length} chunks for definition question`
+    if (!chunks || chunks.length === 0) {
+      res.write(
+        `data: ${JSON.stringify({
+          type: "text",
+          data: "No relevant information found in the documents.",
+        })}\n\n`
       );
-      result = await generateDefinitionAnswer(question, chunks);
+      res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+      res.end();
+      return;
     }
 
-    // 🧭 Procedure questions - top 5 chunks
-    else if (intent === "procedure") {
-      chunks = await retrieveSemanticChunks(embedding, 5);
+    console.log(`📚 Retrieved ${chunks.length} chunks`);
 
-      if (!chunks || chunks.length === 0) {
-        return {
-          answer: "No relevant information found in the documents.",
-          cached: false,
-          confidence: {
-            level: "Low",
-            score: 0,
-            reasoning: "No relevant sources found",
-          },
-          sources: [],
-        };
-      }
+    // Generate answer with streaming
+    let fullAnswer = "";
+    let confidence = null;
+    let sources = [];
 
-      console.log(
-        `📋 Retrieved ${chunks.length} chunks for procedure question`
+    // Choose appropriate generator based on intent
+    if (intent === "definition") {
+      const result = await generateDefinitionAnswerStream(
+        question,
+        chunks,
+        res
       );
-      result = await generateProcedureAnswer(question, chunks);
+      fullAnswer = result.answer;
+      confidence = result.confidence;
+      sources = result.sources;
+    } else if (intent === "procedure") {
+      const result = await generateProcedureAnswerStream(question, chunks, res);
+      fullAnswer = result.answer;
+      confidence = result.confidence;
+      sources = result.sources;
+    } else {
+      const result = await generateSemanticAnswerStream(question, chunks, res);
+      fullAnswer = result.answer;
+      confidence = result.confidence;
+      sources = result.sources;
     }
 
-    // 📅 Deadline questions - top 3 chunks
-    else if (intent === "deadline") {
-      chunks = await retrieveSemanticChunks(embedding, 3);
-
-      if (!chunks || chunks.length === 0) {
-        return {
-          answer: "No deadline information found in the documents.",
-          cached: false,
-          confidence: {
-            level: "Low",
-            score: 0,
-            reasoning: "No relevant sources found",
-          },
-          sources: [],
-        };
-      }
-
-      console.log(`⏰ Retrieved ${chunks.length} chunks for deadline question`);
-      result = await generateSemanticAnswer(question, chunks);
-    }
-
-    // ✅ Requirement questions - top 4 chunks
-    else if (intent === "requirement") {
-      chunks = await retrieveSemanticChunks(embedding, 4);
-
-      if (!chunks || chunks.length === 0) {
-        return {
-          answer: "No requirement information found in the documents.",
-          cached: false,
-          confidence: {
-            level: "Low",
-            score: 0,
-            reasoning: "No relevant sources found",
-          },
-          sources: [],
-        };
-      }
-
-      console.log(
-        `📝 Retrieved ${chunks.length} chunks for requirement question`
-      );
-      result = await generateSemanticAnswer(question, chunks);
-    }
-
-    // 📖 General semantic questions - top 5 chunks
-    else {
-      chunks = await retrieveSemanticChunks(embedding, 5);
-
-      console.log(`📚 Retrieved ${chunks.length} chunks for general question`);
-      console.log(
-        `📊 Chunk scores: ${chunks.map((c) => c.score.toFixed(3)).join(", ")}`
-      );
-
-      result = await generateSemanticAnswer(question, chunks);
-    }
-
-    // Extract answer from result (could be string or object)
-    const answer = typeof result === "string" ? result : result.answer;
-    const confidence = typeof result === "object" ? result.confidence : null;
-    const sources = typeof result === "object" ? result.sources : [];
-
-    // ✨ Extract deadline information
-    const enhancedResult = enhanceAnswerWithDeadline(answer, intent, sources);
-
-    console.log(
-      `✅ Answer generated and cached with confidence and sources. Deadline:`,
-      enhancedResult.deadline ? "Yes" : "No"
+    // Extract deadline
+    const enhancedResult = enhanceAnswerWithDeadline(
+      fullAnswer,
+      intent,
+      sources
     );
 
-    // 🆕 Store the new question and answer in cache with confidence, sources, AND deadline
+    // Send metadata after text is done
+    res.write(
+      `data: ${JSON.stringify({
+        type: "metadata",
+        data: {
+          cached: false,
+          confidence,
+          sources,
+          deadline: enhancedResult.deadline,
+        },
+      })}\n\n`
+    );
+
+    // Store in cache
     const questionId = await storeQuestion(
       question,
       embedding,
-      answer,
+      fullAnswer,
       intent,
       confidence,
       sources,
-      enhancedResult.deadline // ← Add deadline to cache
+      enhancedResult.deadline
     );
 
-    // Store in user history
     await storeUserQuestion(userId, questionId, question);
 
-    return {
-      answer,
-      cached: false,
-      confidence,
-      sources,
-      deadline: enhancedResult.deadline, // ← Return deadline to frontend
-    };
+    // Send completion
+    res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+    res.end();
   } catch (error) {
-    console.error("❌ Error in handleChat:", error);
-    throw error;
+    console.error("❌ Error in handleChatStream:", error);
+    res.write(
+      `data: ${JSON.stringify({
+        type: "error",
+        data: "Sorry, I encountered an error. Please try again.",
+      })}\n\n`
+    );
+    res.end();
   }
 }

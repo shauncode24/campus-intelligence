@@ -1,4 +1,4 @@
-import UploadDocument from "../admin/UploadDocument";
+import UploadDocument from "../components/UploadDocument";
 import Header from "../components/Header";
 import "./AddDocument.css";
 
