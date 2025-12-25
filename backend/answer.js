@@ -1,57 +1,57 @@
 import fetch from "node-fetch";
 
-function calculateConfidence(chunks, intent) {
-  if (!chunks || chunks.length === 0) {
-    return { level: "Low", score: 0, reasoning: "No relevant sources found" };
-  }
+// function calculateConfidence(chunks, intent) {
+//   if (!chunks || chunks.length === 0) {
+//     return { level: "Low", score: 0, reasoning: "No relevant sources found" };
+//   }
 
-  const topScore = chunks[0].score;
-  const avgScore = chunks.reduce((sum, c) => sum + c.score, 0) / chunks.length;
+//   const topScore = chunks[0].score;
+//   const avgScore = chunks.reduce((sum, c) => sum + c.score, 0) / chunks.length;
 
-  const highQualityChunks = chunks.filter((c) => c.score > 0.75).length;
+//   const highQualityChunks = chunks.filter((c) => c.score > 0.75).length;
 
-  let level, score, reasoning;
+//   let level, score, reasoning;
 
-  if (topScore > 0.9 && avgScore > 0.8 && highQualityChunks >= 2) {
-    level = "High";
-    score = Math.round(topScore * 100);
-    reasoning = `Strong match found across ${highQualityChunks} high-quality sources`;
-  } else if (topScore > 0.8 && avgScore > 0.7) {
-    level = "Medium";
-    score = Math.round(topScore * 100);
-    reasoning = `Good match found, but sources show some variation`;
-  } else {
-    level = "Low";
-    score = Math.round(topScore * 100);
-    reasoning = `Limited or inconsistent source information`;
-  }
+//   if (topScore > 0.9 && avgScore > 0.8 && highQualityChunks >= 2) {
+//     level = "High";
+//     score = Math.round(topScore * 100);
+//     reasoning = `Strong match found across ${highQualityChunks} high-quality sources`;
+//   } else if (topScore > 0.8 && avgScore > 0.7) {
+//     level = "Medium";
+//     score = Math.round(topScore * 100);
+//     reasoning = `Good match found, but sources show some variation`;
+//   } else {
+//     level = "Low";
+//     score = Math.round(topScore * 100);
+//     reasoning = `Limited or inconsistent source information`;
+//   }
 
-  return { level, score, reasoning };
-}
+//   return { level, score, reasoning };
+// }
 
-function extractSourceInfo(chunks) {
-  const sources = [];
-  const seenDocs = new Set();
+// function extractSourceInfo(chunks) {
+//   const sources = [];
+//   const seenDocs = new Set();
 
-  chunks.forEach((chunk, index) => {
-    const docId = chunk.documentId;
+//   chunks.forEach((chunk, index) => {
+//     const docId = chunk.documentId;
 
-    if (!seenDocs.has(docId)) {
-      seenDocs.add(docId);
+//     if (!seenDocs.has(docId)) {
+//       seenDocs.add(docId);
 
-      sources.push({
-        documentId: docId,
-        chunkIndex: chunk.index,
-        similarity: Math.round(chunk.score * 100),
-        excerpt: chunk.content.slice(0, 150) + "...",
-        documentName: chunk.documentName || "Unknown Document",
-        fileUrl: chunk.fileUrl || null,
-      });
-    }
-  });
+//       sources.push({
+//         documentId: docId,
+//         chunkIndex: chunk.index,
+//         similarity: Math.round(chunk.score * 100),
+//         excerpt: chunk.content.slice(0, 150) + "...",
+//         documentName: chunk.documentName || "Unknown Document",
+//         fileUrl: chunk.fileUrl || null,
+//       });
+//     }
+//   });
 
-  return sources;
-}
+//   return sources;
+// }
 
 export function extractDeadline(answerText, intent) {
   console.log("🔍 Full answer being checked:", answerText);
@@ -600,4 +600,164 @@ Respond clearly and concisely.
     confidence,
     sources,
   };
+}
+
+export async function generateEnhancedAnswer(question, chunks) {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_API_KEY missing");
+
+  // Separate text and visual chunks
+  const textChunks = chunks.filter((c) => c.type === "text" || !c.type);
+  const visualChunks = chunks.filter((c) => c.type === "visual");
+
+  // Calculate confidence
+  const confidence = calculateConfidence(chunks, "general");
+
+  // Extract source information
+  const sources = extractSourceInfo(chunks);
+
+  // Build context from both text and visual chunks
+  let context = "";
+
+  if (textChunks.length > 0) {
+    context += "TEXT CONTENT:\n";
+    textChunks.forEach((c, i) => {
+      const content =
+        c.content.length > 1200 ? c.content.slice(0, 1200) + "..." : c.content;
+      context += `[T${i + 1}] ${content}\n\n`;
+    });
+  }
+
+  if (visualChunks.length > 0) {
+    context += "\nVISUAL CONTENT (forms, tables, diagrams, maps):\n";
+    visualChunks.forEach((c, i) => {
+      const pageNum = c.metadata?.pageNumber || "?";
+      context += `[V${i + 1}] Page ${pageNum}: ${c.content}\n\n`;
+    });
+  }
+
+  // Build prompt based on content type
+  let prompt;
+  if (visualChunks.length > 0) {
+    prompt = `You are a campus information assistant with access to both text and visual content from official documents.
+
+${context}
+
+Question: ${question}
+
+IMPORTANT INSTRUCTIONS:
+- If the question asks about visual content (forms, maps, tables), prioritize and describe the visual chunks in detail
+- Be specific about page numbers when referencing visual content
+- If showing a form, list all the fields clearly and explain how to fill it out
+- If describing a map or diagram, be spatially specific (e.g., "located on the north side", "third floor")
+- Cite sources: [T1], [T2] for text and [V1], [V2] for visual content
+- Keep answer under 250 words but be thorough
+- If visual content exists, make sure to describe it clearly
+
+Answer:`;
+  } else {
+    prompt = `Answer using ONLY these documents:
+
+${context}
+
+Question: ${question}
+
+CRITICAL: Your answer must be 200 words or less. Be direct and concise. Cite [T1], [T2] for sources.`;
+  }
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+          topP: 0.95,
+          topK: 40,
+        },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error("Generation API error: " + err);
+  }
+
+  const data = await res.json();
+  const response = data.candidates[0].content.parts[0].text;
+
+  return {
+    answer: response,
+    confidence,
+    sources,
+    hasVisualContent: visualChunks.length > 0,
+  };
+}
+
+/**
+ * Calculate confidence score
+ */
+function calculateConfidence(chunks, intent) {
+  if (!chunks || chunks.length === 0) {
+    return { level: "Low", score: 0, reasoning: "No relevant sources found" };
+  }
+
+  const topScore = chunks[0].score;
+  const avgScore = chunks.reduce((sum, c) => sum + c.score, 0) / chunks.length;
+  const highQualityChunks = chunks.filter((c) => c.score > 0.75).length;
+
+  let level, score, reasoning;
+
+  if (topScore > 0.9 && avgScore > 0.8 && highQualityChunks >= 2) {
+    level = "High";
+    score = Math.round(topScore * 100);
+    reasoning = `Strong match found across ${highQualityChunks} high-quality sources`;
+  } else if (topScore > 0.8 && avgScore > 0.7) {
+    level = "Medium";
+    score = Math.round(topScore * 100);
+    reasoning = `Good match found, but sources show some variation`;
+  } else {
+    level = "Low";
+    score = Math.round(topScore * 100);
+    reasoning = `Limited or inconsistent source information`;
+  }
+
+  return { level, score, reasoning };
+}
+
+/**
+ * Extract source information
+ */
+function extractSourceInfo(chunks) {
+  const sources = [];
+  const seenDocs = new Set();
+
+  chunks.forEach((chunk, index) => {
+    const docId = chunk.documentId;
+
+    if (!seenDocs.has(docId)) {
+      seenDocs.add(docId);
+
+      sources.push({
+        documentId: docId,
+        chunkIndex: chunk.index,
+        similarity: Math.round(chunk.score * 100),
+        excerpt: chunk.content.slice(0, 150) + "...",
+        documentName: chunk.documentName || "Unknown Document",
+        fileUrl: chunk.fileUrl || null,
+        type: chunk.type || "text",
+        pageNumber: chunk.metadata?.pageNumber || null,
+      });
+    }
+  });
+
+  return sources;
 }

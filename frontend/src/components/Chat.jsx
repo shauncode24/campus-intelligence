@@ -312,6 +312,36 @@ export default function Chat({ onMessagesChange }) {
                       </span>
                     </div>
                   )}
+
+                  {m.role === "bot" && m.hasVisualContent && (
+                    <div
+                      className="default confidence-badge-main"
+                      style={{
+                        border: "1px solid #E0E7FF",
+                        backgroundColor: "#EEF2FF",
+                      }}
+                    >
+                      <span className="default" style={{ color: "#6366F1" }}>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="12"
+                          height="12"
+                          fill="currentColor"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0" />
+                          <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1z" />
+                        </svg>
+                      </span>
+                      <span
+                        className="default"
+                        style={{ fontWeight: 600, color: "#6366F1" }}
+                      >
+                        Visual Content
+                      </span>
+                    </div>
+                  )}
+
                   {m.cached && (
                     <div className="default cache-indicator">
                       <svg
@@ -406,25 +436,53 @@ export default function Chat({ onMessagesChange }) {
 
                 {m.sources.map((source, idx) => (
                   <div
-                    key={idx}
                     className={`default sources-container-main ${
                       sourceSelect ? "open" : ""
                     }`}
+                    key={idx}
                   >
                     <div className="default sources-container-main-top">
                       <div className="default sources-container-main-top-left">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          fill="#0EA5E9"
-                          className="bi bi-file-earmark"
-                          viewBox="0 0 16 16"
-                        >
-                          <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z" />
-                        </svg>
+                        {source.type === "visual" ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            fill="#8B5CF6"
+                            viewBox="0 0 16 16"
+                          >
+                            <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0" />
+                            <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1z" />
+                          </svg>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            fill="#0EA5E9"
+                            viewBox="0 0 16 16"
+                          >
+                            <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z" />
+                          </svg>
+                        )}
                         {source.documentName}.pdf
+                        {source.pageNumber && (
+                          <span>Page {source.pageNumber}</span>
+                        )}
                         <span>{source.similarity}% Match</span>
+                        {source.type === "visual" && (
+                          <span
+                            style={{
+                              backgroundColor: "#F3E8FF",
+                              color: "#7C3AED",
+                              padding: "2px 6px",
+                              borderRadius: "4px",
+                              fontSize: "0.7rem",
+                            }}
+                          >
+                            Visual
+                          </span>
+                        )}
                       </div>
                       <div className="default sources-container-main-top-right">
                         {source.fileUrl && (

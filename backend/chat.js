@@ -2,9 +2,10 @@ import { detectIntent } from "./intent.js";
 import { getEmbedding } from "./embedding.js";
 import { retrieveSemanticChunks } from "./retrieve.js";
 import {
-  generateDefinitionAnswerStream,
-  generateProcedureAnswerStream,
-  generateSemanticAnswerStream,
+  generateDefinitionAnswer,
+  generateProcedureAnswer,
+  generateSemanticAnswer,
+  enhanceAnswerWithDeadline,
 } from "./answer.js";
 import {
   findSimilarQuestion,
@@ -12,168 +13,117 @@ import {
   incrementQuestionCount,
   storeUserQuestion,
 } from "./questionCache.js";
-import { enhanceAnswerWithDeadline } from "./answer.js";
+import { retrieveMultiModalChunks } from "./multiModalRetrieval.js";
 
-// Original non-streaming function (keep as is)
 export async function handleChat(question, userId = "anonymous") {
-  // ... keep existing implementation exactly as is
-}
-
-// NEW: Streaming version
-export async function handleChatStream(question, userId, res) {
   try {
+    // Detect intent
     const intent = detectIntent(question);
     console.log(`🎯 Detected intent: ${intent}`);
-
-    // Send intent info
-    res.write(`data: ${JSON.stringify({ type: "intent", data: intent })}\n\n`);
 
     // Get embedding
     const embedding = await getEmbedding(question);
     console.log(`🔢 Generated question embedding`);
 
-    // Check cache
+    // Check cache first
     const cachedQuestion = await findSimilarQuestion(embedding, intent);
 
     if (cachedQuestion) {
-      console.log(`♻️ Reusing cached answer`);
-
-      // Send metadata
-      res.write(
-        `data: ${JSON.stringify({
-          type: "metadata",
-          data: {
-            cached: true,
-            similarity: cachedQuestion.similarity,
-            confidence: cachedQuestion.confidence,
-            sources: cachedQuestion.sources,
-            deadline: cachedQuestion.deadline,
-          },
-        })}\n\n`
+      console.log(
+        `♻️ Reusing cached answer (similarity: ${cachedQuestion.similarity.toFixed(
+          3
+        )})`
       );
 
-      // Stream cached answer word by word
-      const words = cachedQuestion.answer.split(" ");
-      for (let i = 0; i < words.length; i++) {
-        const chunk = i === words.length - 1 ? words[i] : words[i] + " ";
-        res.write(`data: ${JSON.stringify({ type: "text", data: chunk })}\n\n`);
-        await new Promise((resolve) => setTimeout(resolve, 30)); // 30ms delay between words
-      }
-
-      // Increment cache count
+      // Increment count and store user question
       await incrementQuestionCount(cachedQuestion.id);
       await storeUserQuestion(userId, cachedQuestion.id, question);
 
-      // Send completion
-      res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
-      res.end();
-      return;
+      return {
+        answer: cachedQuestion.answer,
+        cached: true,
+        similarity: cachedQuestion.similarity,
+        confidence: cachedQuestion.confidence,
+        sources: cachedQuestion.sources,
+        deadline: cachedQuestion.deadline,
+      };
     }
 
-    // No cache hit - generate new answer with streaming
-    console.log(`🤖 Generating new answer via RAG with streaming`);
+    // No cache hit - generate new answer
+    console.log(`🤖 Generating new answer via multi-modal RAG`);
 
-    let chunks;
+    // Determine chunk count based on intent
     let chunkCount = 5;
+    if (intent === "definition") chunkCount = 3;
+    else if (intent === "procedure") chunkCount = 5;
+    else if (intent === "deadline") chunkCount = 3;
+    else if (intent === "requirement") chunkCount = 4;
 
-    // Get appropriate number of chunks based on intent
-    if (intent === "definition") {
-      chunkCount = 3;
-    } else if (intent === "procedure") {
-      chunkCount = 5;
-    } else if (intent === "deadline") {
-      chunkCount = 3;
-    } else if (intent === "requirement") {
-      chunkCount = 4;
-    }
-
-    chunks = await retrieveSemanticChunks(embedding, chunkCount);
+    // Use multi-modal retrieval - this gets both text AND visual chunks
+    const chunks = await retrieveMultiModalChunks(embedding, chunkCount);
 
     if (!chunks || chunks.length === 0) {
-      res.write(
-        `data: ${JSON.stringify({
-          type: "text",
-          data: "No relevant information found in the documents.",
-        })}\n\n`
-      );
-      res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
-      res.end();
-      return;
+      return {
+        answer:
+          "I couldn't find any relevant information in the documents. Please try rephrasing your question.",
+        cached: false,
+        confidence: null,
+        sources: [],
+        deadline: null,
+      };
     }
 
-    console.log(`📚 Retrieved ${chunks.length} chunks`);
+    console.log(
+      `📚 Retrieved ${chunks.length} chunks (${
+        chunks.filter((c) => c.type === "visual").length
+      } visual)`
+    );
 
-    // Generate answer with streaming
-    let fullAnswer = "";
-    let confidence = null;
-    let sources = [];
+    // Check if we have visual content
+    const hasVisualContent = chunks.some((c) => c.type === "visual");
+    if (hasVisualContent) {
+      console.log(`🎨 Visual content detected - enhanced answer generation`);
+    }
 
-    // Choose appropriate generator based on intent
+    // Generate answer based on intent
+    let result;
     if (intent === "definition") {
-      const result = await generateDefinitionAnswerStream(
-        question,
-        chunks,
-        res
-      );
-      fullAnswer = result.answer;
-      confidence = result.confidence;
-      sources = result.sources;
+      result = await generateDefinitionAnswer(question, chunks);
     } else if (intent === "procedure") {
-      const result = await generateProcedureAnswerStream(question, chunks, res);
-      fullAnswer = result.answer;
-      confidence = result.confidence;
-      sources = result.sources;
+      result = await generateProcedureAnswer(question, chunks);
     } else {
-      const result = await generateSemanticAnswerStream(question, chunks, res);
-      fullAnswer = result.answer;
-      confidence = result.confidence;
-      sources = result.sources;
+      result = await generateSemanticAnswer(question, chunks);
     }
 
-    // Extract deadline
-    const enhancedResult = enhanceAnswerWithDeadline(
-      fullAnswer,
-      intent,
-      sources
-    );
+    const { answer, confidence, sources } = result;
 
-    // Send metadata after text is done
-    res.write(
-      `data: ${JSON.stringify({
-        type: "metadata",
-        data: {
-          cached: false,
-          confidence,
-          sources,
-          deadline: enhancedResult.deadline,
-        },
-      })}\n\n`
-    );
+    // Extract deadline if present
+    const enhancedResult = enhanceAnswerWithDeadline(answer, intent, sources);
 
     // Store in cache
     const questionId = await storeQuestion(
       question,
       embedding,
-      fullAnswer,
+      answer,
       intent,
       confidence,
       sources,
       enhancedResult.deadline
     );
 
+    // Store user question
     await storeUserQuestion(userId, questionId, question);
 
-    // Send completion
-    res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
-    res.end();
+    return {
+      answer: enhancedResult.answer,
+      cached: false,
+      confidence,
+      sources,
+      deadline: enhancedResult.deadline,
+      hasVisualContent, // Flag to indicate visual content was used
+    };
   } catch (error) {
-    console.error("❌ Error in handleChatStream:", error);
-    res.write(
-      `data: ${JSON.stringify({
-        type: "error",
-        data: "Sorry, I encountered an error. Please try again.",
-      })}\n\n`
-    );
-    res.end();
+    console.error("❌ Error in handleChat:", error);
+    throw error;
   }
 }

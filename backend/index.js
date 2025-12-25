@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { handleChat, handleChatStream } from "./chat.js";
+import { handleChatStream } from "./chatStream.js";
+import { handleChat } from "./chat.js";
 import { getFAQ, getUserHistory } from "./questionCache.js";
 import calendarRoutes from "./calendarRoutes.js";
 import documentRoutes from "./documentRoutes.js";
@@ -32,7 +33,7 @@ app.post("/ask", async (req, res) => {
   }
 });
 
-// NEW: Streaming endpoint
+// Streaming endpoint
 app.post("/ask-stream", async (req, res) => {
   try {
     const { question, userId } = req.body;
@@ -48,12 +49,21 @@ app.post("/ask-stream", async (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
 
-    // Handle streaming
+    // Handle streaming - pass res so we can write to it
     await handleChatStream(question, effectiveUserId, res);
+
+    // End the response
+    res.end();
   } catch (err) {
     console.error("Streaming error:", err);
-    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({
+        type: "error",
+        data: err.message,
+      })}\n\n`
+    );
     res.end();
   }
 });
