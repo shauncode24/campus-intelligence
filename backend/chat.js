@@ -5,6 +5,7 @@ import {
   generateDefinitionAnswer,
   generateProcedureAnswer,
   generateSemanticAnswer,
+  generateEnhancedAnswer,
   enhanceAnswerWithDeadline,
 } from "./answer.js";
 import {
@@ -15,17 +16,37 @@ import {
 } from "./questionCache.js";
 import { retrieveMultiModalChunks } from "./multiModalRetrieval.js";
 
+/**
+ * Detect if query is asking for specific data from tables/forms
+ */
+function isSpecificDataQuery(question) {
+  const specificPatterns = [
+    /what is .+ (ip address|subnet mask|gateway|address|mask|value|number)/i,
+    /what's .+ (ip address|subnet mask|gateway|address|mask|value|number)/i,
+    /tell me .+ (ip address|subnet mask|gateway|address|mask|value|number)/i,
+    /show me .+ (ip address|subnet mask|gateway|address|mask|value|number)/i,
+    /(ip address|subnet mask|gateway|address|mask) (of|for) .+/i,
+  ];
+
+  return specificPatterns.some((pattern) => pattern.test(question));
+}
+
 export async function handleChat(question, userId = "anonymous") {
   try {
-    // Detect intent
     const intent = detectIntent(question);
     console.log(`🎯 Detected intent: ${intent}`);
 
-    // Get embedding
+    // Detect if this is a specific data query
+    const isSpecificQuery = isSpecificDataQuery(question);
+    if (isSpecificQuery) {
+      console.log(
+        `🔍 Detected specific data query - will prioritize visual content`
+      );
+    }
+
     const embedding = await getEmbedding(question);
     console.log(`🔢 Generated question embedding`);
 
-    // Check cache first
     const cachedQuestion = await findSimilarQuestion(embedding, intent);
 
     if (cachedQuestion) {
@@ -35,7 +56,6 @@ export async function handleChat(question, userId = "anonymous") {
         )})`
       );
 
-      // Increment count and store user question
       await incrementQuestionCount(cachedQuestion.id);
       await storeUserQuestion(userId, cachedQuestion.id, question);
 
@@ -49,17 +69,17 @@ export async function handleChat(question, userId = "anonymous") {
       };
     }
 
-    // No cache hit - generate new answer
     console.log(`🤖 Generating new answer via multi-modal RAG`);
 
-    // Determine chunk count based on intent
+    // IMPROVED: More chunks for specific queries
     let chunkCount = 5;
-    if (intent === "definition") chunkCount = 3;
+    if (isSpecificQuery)
+      chunkCount = 7; // More chunks to ensure we find the data
+    else if (intent === "definition") chunkCount = 5; // Increased from 3
     else if (intent === "procedure") chunkCount = 5;
     else if (intent === "deadline") chunkCount = 3;
     else if (intent === "requirement") chunkCount = 4;
 
-    // Use multi-modal retrieval - this gets both text AND visual chunks
     const chunks = await retrieveMultiModalChunks(embedding, chunkCount);
 
     if (!chunks || chunks.length === 0) {
@@ -73,34 +93,44 @@ export async function handleChat(question, userId = "anonymous") {
       };
     }
 
+    // Boost visual chunks if it's a specific query
+    let processedChunks = chunks;
+    if (isSpecificQuery) {
+      processedChunks = chunks.sort((a, b) => {
+        const aBoost = a.type === "visual" ? 0.2 : 0;
+        const bBoost = b.type === "visual" ? 0.2 : 0;
+        return b.score + bBoost - (a.score + aBoost);
+      });
+      console.log(`🚀 Boosted visual chunks for specific query`);
+    }
+
     console.log(
-      `📚 Retrieved ${chunks.length} chunks (${
-        chunks.filter((c) => c.type === "visual").length
+      `📚 Retrieved ${processedChunks.length} chunks (${
+        processedChunks.filter((c) => c.type === "visual").length
       } visual)`
     );
 
-    // Check if we have visual content
-    const hasVisualContent = chunks.some((c) => c.type === "visual");
+    const hasVisualContent = processedChunks.some((c) => c.type === "visual");
     if (hasVisualContent) {
       console.log(`🎨 Visual content detected - enhanced answer generation`);
     }
 
-    // Generate answer based on intent
+    // IMPROVED: Use generateEnhancedAnswer for all types when visual content exists
     let result;
-    if (intent === "definition") {
-      result = await generateDefinitionAnswer(question, chunks);
+    if (hasVisualContent || isSpecificQuery) {
+      result = await generateEnhancedAnswer(question, processedChunks);
+    } else if (intent === "definition") {
+      result = await generateDefinitionAnswer(question, processedChunks);
     } else if (intent === "procedure") {
-      result = await generateProcedureAnswer(question, chunks);
+      result = await generateProcedureAnswer(question, processedChunks);
     } else {
-      result = await generateSemanticAnswer(question, chunks);
+      result = await generateSemanticAnswer(question, processedChunks);
     }
 
     const { answer, confidence, sources } = result;
 
-    // Extract deadline if present
     const enhancedResult = enhanceAnswerWithDeadline(answer, intent, sources);
 
-    // Store in cache
     const questionId = await storeQuestion(
       question,
       embedding,
@@ -111,7 +141,6 @@ export async function handleChat(question, userId = "anonymous") {
       enhancedResult.deadline
     );
 
-    // Store user question
     await storeUserQuestion(userId, questionId, question);
 
     return {
@@ -120,7 +149,7 @@ export async function handleChat(question, userId = "anonymous") {
       confidence,
       sources,
       deadline: enhancedResult.deadline,
-      hasVisualContent, // Flag to indicate visual content was used
+      hasVisualContent,
     };
   } catch (error) {
     console.error("❌ Error in handleChat:", error);

@@ -379,9 +379,9 @@ Provide your answer as a numbered step-by-step procedure:`;
 }
 
 // Keep the original non-streaming functions for backward compatibility
-export async function generateDefinitionAnswer(question, chunks) {
-  return generateAnswer(question, chunks, true);
-}
+// export async function generateDefinitionAnswer(question, chunks) {
+//   return generateAnswer(question, chunks, true);
+// }
 
 export async function generateSemanticAnswer(question, chunks) {
   return generateAnswer(question, chunks, false);
@@ -606,18 +606,22 @@ export async function generateEnhancedAnswer(question, chunks) {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_API_KEY missing");
 
-  // Separate text and visual chunks
   const textChunks = chunks.filter((c) => c.type === "text" || !c.type);
   const visualChunks = chunks.filter((c) => c.type === "visual");
 
-  // Calculate confidence
   const confidence = calculateConfidence(chunks, "general");
-
-  // Extract source information
   const sources = extractSourceInfo(chunks);
 
-  // Build context from both text and visual chunks
+  // Build context with better formatting
   let context = "";
+
+  if (visualChunks.length > 0) {
+    context += "VISUAL CONTENT (tables, forms, diagrams from pages):\n";
+    visualChunks.forEach((c, i) => {
+      const pageNum = c.metadata?.pageNumber || "?";
+      context += `[V${i + 1}] Page ${pageNum}:\n${c.content}\n\n`;
+    });
+  }
 
   if (textChunks.length > 0) {
     context += "TEXT CONTENT:\n";
@@ -628,42 +632,22 @@ export async function generateEnhancedAnswer(question, chunks) {
     });
   }
 
-  if (visualChunks.length > 0) {
-    context += "\nVISUAL CONTENT (forms, tables, diagrams, maps):\n";
-    visualChunks.forEach((c, i) => {
-      const pageNum = c.metadata?.pageNumber || "?";
-      context += `[V${i + 1}] Page ${pageNum}: ${c.content}\n\n`;
-    });
-  }
-
-  // Build prompt based on content type
-  let prompt;
-  if (visualChunks.length > 0) {
-    prompt = `You are a campus information assistant with access to both text and visual content from official documents.
+  // IMPROVED PROMPT - handles both specific and general queries
+  const prompt = `You are a precise campus information assistant. Answer the question using ONLY the provided documents.
 
 ${context}
 
 Question: ${question}
 
-IMPORTANT INSTRUCTIONS:
-- If the question asks about visual content (forms, maps, tables), prioritize and describe the visual chunks in detail
-- Be specific about page numbers when referencing visual content
-- If showing a form, list all the fields clearly and explain how to fill it out
-- If describing a map or diagram, be spatially specific (e.g., "located on the north side", "third floor")
-- Cite sources: [T1], [T2] for text and [V1], [V2] for visual content
-- Keep answer under 250 words but be thorough
-- If visual content exists, make sure to describe it clearly
+**CRITICAL INSTRUCTIONS:**
+1. For specific queries (e.g., "what is X's Y"), search ALL content carefully and provide the EXACT answer
+2. If the answer exists in the documents, state it directly - never say "not found" if it's there
+3. For tables: Search through ALL entries to find the specific value requested
+4. Cite sources: [V1], [V2] for visual content, [T1], [T2] for text
+5. Keep answer under 250 words
+6. If the information truly doesn't exist, only then say "not found"
 
-Answer:`;
-  } else {
-    prompt = `Answer using ONLY these documents:
-
-${context}
-
-Question: ${question}
-
-CRITICAL: Your answer must be 200 words or less. Be direct and concise. Cite [T1], [T2] for sources.`;
-  }
+Answer the question directly and precisely:`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -677,7 +661,7 @@ CRITICAL: Your answer must be 200 words or less. Be direct and concise. Cite [T1
           },
         ],
         generationConfig: {
-          temperature: 0.3,
+          temperature: 0.2, // Lower temperature for more precise answers
           maxOutputTokens: 2048,
           topP: 0.95,
           topK: 40,
@@ -705,6 +689,96 @@ CRITICAL: Your answer must be 200 words or less. Be direct and concise. Cite [T1
 /**
  * Calculate confidence score
  */
+export async function generateDefinitionAnswer(question, chunks) {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_API_KEY missing");
+
+  const confidence = calculateConfidence(chunks, "definition");
+  const sources = extractSourceInfo(chunks);
+
+  const textChunks = chunks.filter((c) => c.type === "text" || !c.type);
+  const visualChunks = chunks.filter((c) => c.type === "visual");
+
+  let context = "";
+
+  // Prioritize visual content for specific queries
+  if (visualChunks.length > 0) {
+    context += "VISUAL CONTENT:\n";
+    visualChunks.forEach((c, i) => {
+      context += `[V${i + 1}] ${c.content}\n\n`;
+    });
+  }
+
+  if (textChunks.length > 0) {
+    context += "TEXT CONTENT:\n";
+    const limitedTextChunks = textChunks.slice(0, 3).map((chunk) => ({
+      ...chunk,
+      content:
+        chunk.content.length > 1200
+          ? chunk.content.slice(0, 1200) + "..."
+          : chunk.content,
+    }));
+
+    limitedTextChunks.forEach((c, i) => {
+      context += `[T${i + 1}] ${c.content}\n\n`;
+    });
+  }
+
+  // IMPROVED PROMPT for specific queries
+  const prompt = `Answer this specific question using the provided documents.
+
+${context}
+
+Question: ${question}
+
+**CRITICAL RULES:**
+1. Search ALL content (both visual and text) for the answer
+2. For questions like "what is X's Y", find X in the content and report Y's value
+3. Look in tables, lists, and structured data carefully
+4. If the value exists, provide it precisely
+5. Only say "not found" if you've checked everywhere and it truly doesn't exist
+6. Cite sources: [V1], [V2] or [T1], [T2]
+7. Keep answer under 150 words
+
+Provide the precise answer:`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.1, // Very low for precise extraction
+          maxOutputTokens: 1024,
+          topP: 0.95,
+          topK: 40,
+        },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error("Generation API error: " + err);
+  }
+
+  const data = await res.json();
+  const response = data.candidates[0].content.parts[0].text;
+
+  return {
+    answer: response,
+    confidence,
+    sources,
+  };
+}
+
+// Keep all other existing functions...
 function calculateConfidence(chunks, intent) {
   if (!chunks || chunks.length === 0) {
     return { level: "Low", score: 0, reasoning: "No relevant sources found" };
@@ -733,14 +807,11 @@ function calculateConfidence(chunks, intent) {
   return { level, score, reasoning };
 }
 
-/**
- * Extract source information
- */
 function extractSourceInfo(chunks) {
   const sources = [];
   const seenDocs = new Set();
 
-  chunks.forEach((chunk, index) => {
+  chunks.forEach((chunk) => {
     const docId = chunk.documentId;
 
     if (!seenDocs.has(docId)) {
@@ -761,3 +832,32 @@ function extractSourceInfo(chunks) {
 
   return sources;
 }
+
+/**
+ * Extract source information
+ */
+// function extractSourceInfo(chunks) {
+//   const sources = [];
+//   const seenDocs = new Set();
+
+//   chunks.forEach((chunk, index) => {
+//     const docId = chunk.documentId;
+
+//     if (!seenDocs.has(docId)) {
+//       seenDocs.add(docId);
+
+//       sources.push({
+//         documentId: docId,
+//         chunkIndex: chunk.index,
+//         similarity: Math.round(chunk.score * 100),
+//         excerpt: chunk.content.slice(0, 150) + "...",
+//         documentName: chunk.documentName || "Unknown Document",
+//         fileUrl: chunk.fileUrl || null,
+//         type: chunk.type || "text",
+//         pageNumber: chunk.metadata?.pageNumber || null,
+//       });
+//     }
+//   });
+
+//   return sources;
+// }
