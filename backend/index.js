@@ -21,13 +21,6 @@ app.use(
 );
 
 app.use(express.json());
-app.options("*", cors());
-
-res.cookie("token", value, {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-});
 
 app.set("trust proxy", 1);
 
