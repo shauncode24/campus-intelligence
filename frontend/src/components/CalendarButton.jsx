@@ -1,6 +1,7 @@
 import { useState } from "react";
 import "./CalendarButton.css";
 import { FcGoogle } from "react-icons/fc";
+const { VITE_API_BASE_URL } = import.meta.env;
 
 export default function CalendarButton({ deadline, userId, onSuccess }) {
   const [loading, setLoading] = useState(false);
