@@ -24,7 +24,7 @@ export default function HistoryPage() {
   const fetchHistory = async (uid) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/history/${uid}?limit=50`
+        `${VITE_API_BASE_URL}/history/${uid}?limit=50`
       );
       const data = await response.json();
       setHistory(data.history);

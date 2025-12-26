@@ -101,7 +101,7 @@ app.use("/calendar", calendarRoutes);
 app.use("/documents", documentRoutes);
 
 app.listen(5000, () => {
-  console.log("🚀 RAG backend running on http://localhost:5000");
+  console.log("🚀 RAG backend running on ${VITE_API_BASE_URL}");
   console.log("\n📋 Available endpoints:");
   console.log("  POST   /ask                        - Ask a question");
   console.log("  POST   /ask-stream                 - Ask with streaming");

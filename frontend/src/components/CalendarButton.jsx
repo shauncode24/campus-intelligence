@@ -19,7 +19,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
     try {
       // Get auth URL from backend
       const response = await fetch(
-        `http://localhost:5000/calendar/auth?userId=${userId}`
+        `${VITE_API_BASE_URL}/calendar/auth?userId=${userId}`
       );
       const data = await response.json();
 
@@ -56,7 +56,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
   const checkConnectionStatus = async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/calendar/status?userId=${userId}`
+        `${VITE_API_BASE_URL}/calendar/status?userId=${userId}`
       );
       const data = await response.json();
       setConnected(data.connected);
@@ -71,7 +71,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/calendar/create-event",
+        "${VITE_API_BASE_URL}/calendar/create-event",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

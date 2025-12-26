@@ -50,7 +50,7 @@ export default function Chat({ onMessagesChange }) {
     setInput("");
 
     try {
-      const response = await fetch("http://localhost:5000/ask-stream", {
+      const response = await fetch("${VITE_API_BASE_URL}/ask-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

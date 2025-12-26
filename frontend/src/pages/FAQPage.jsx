@@ -14,7 +14,7 @@ export default function FAQPage() {
 
   const fetchFAQs = async () => {
     try {
-      const response = await fetch("http://localhost:5000/faq?limit=15");
+      const response = await fetch("${VITE_API_BASE_URL}/faq?limit=15");
       const data = await response.json();
       setFaqs(data.faqs);
       setLoading(false);

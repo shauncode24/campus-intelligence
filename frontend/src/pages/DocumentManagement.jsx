@@ -54,14 +54,11 @@ export default function DocumentManagement() {
       );
       setDocuments(updatedDocs);
 
-      const response = await fetch(
-        "http://localhost:5000/documents/reprocess",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ documentId: id }),
-        }
-      );
+      const response = await fetch("${VITE_API_BASE_URL}/documents/reprocess", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: id }),
+      });
 
       const result = await response.json();
 

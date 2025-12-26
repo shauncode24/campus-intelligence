@@ -53,7 +53,7 @@ export default function UploadDocument() {
 
       // 4️⃣ Trigger processing (chunking and embedding)
       const processResponse = await fetch(
-        "http://localhost:5000/documents/process-multimodal",
+        "${VITE_API_BASE_URL}/documents/process-multimodal",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
