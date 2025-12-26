@@ -72,7 +72,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
 
     try {
       const response = await fetch(
-        "${VITE_API_BASE_URL}/calendar/create-event",
+        `${VITE_API_BASE_URL}/calendar/create-event`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

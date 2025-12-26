@@ -3,6 +3,7 @@ import { supabase } from "../app/supabase";
 import { db } from "../app/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import "../styles/UploadDocument.css";
+const { VITE_API_BASE_URL } = import.meta.env;
 
 export default function UploadDocument() {
   const [file, setFile] = useState(null);
@@ -53,7 +54,7 @@ export default function UploadDocument() {
 
       // 4️⃣ Trigger processing (chunking and embedding)
       const processResponse = await fetch(
-        "${VITE_API_BASE_URL}/documents/process-multimodal",
+        `${VITE_API_BASE_URL}/documents/process-multimodal`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

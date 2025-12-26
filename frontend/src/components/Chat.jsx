@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import "../styles/Chat.css";
 import CalendarButton from "./CalendarButton";
+const { VITE_API_BASE_URL } = import.meta.env;
 
 export default function Chat({ onMessagesChange }) {
   const [messages, setMessages] = useState([]);
@@ -50,7 +51,7 @@ export default function Chat({ onMessagesChange }) {
     setInput("");
 
     try {
-      const response = await fetch("${VITE_API_BASE_URL}/ask-stream", {
+      const response = await fetch(`${VITE_API_BASE_URL}/ask-stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

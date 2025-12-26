@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./FAQPage.css";
+const { VITE_API_BASE_URL } = import.meta.env;
 
 export default function FAQPage() {
   const [faqs, setFaqs] = useState([]);
@@ -14,7 +15,7 @@ export default function FAQPage() {
 
   const fetchFAQs = async () => {
     try {
-      const response = await fetch("${VITE_API_BASE_URL}/faq?limit=15");
+      const response = await fetch(`${VITE_API_BASE_URL}/faq?limit=5`);
       const data = await response.json();
       setFaqs(data.faqs);
       setLoading(false);

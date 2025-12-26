@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./HistoryPage.css";
+const { VITE_API_BASE_URL } = import.meta.env;
 
 export default function HistoryPage() {
   const [history, setHistory] = useState([]);

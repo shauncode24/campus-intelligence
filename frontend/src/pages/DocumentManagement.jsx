@@ -3,6 +3,7 @@ import { db } from "../app/firebase";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import "./DocumentManagement.css";
 import Header from "../components/Header";
+const { VITE_API_BASE_URL } = import.meta.env;
 
 export default function DocumentManagement() {
   const [documents, setDocuments] = useState([]);
@@ -54,7 +55,7 @@ export default function DocumentManagement() {
       );
       setDocuments(updatedDocs);
 
-      const response = await fetch("${VITE_API_BASE_URL}/documents/reprocess", {
+      const response = await fetch(`${VITE_API_BASE_URL}/documents/reprocess`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ documentId: id }),
