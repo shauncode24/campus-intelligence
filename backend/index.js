@@ -10,8 +10,24 @@ import documentRoutes from "./documentRoutes.js";
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+app.use(
+  cors({
+    origin: ["https://your-frontend.vercel.app"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
+app.options("*", cors());
+
+res.cookie("token", value, {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+});
 
 // Original non-streaming endpoint (keep for backward compatibility)
 app.post("/ask", async (req, res) => {
@@ -100,7 +116,8 @@ app.use("/calendar", calendarRoutes);
 // Document processing routes
 app.use("/documents", documentRoutes);
 
-app.listen(5000, () => {
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
   console.log("🚀 RAG backend running on ${VITE_API_BASE_URL}");
   console.log("\n📋 Available endpoints:");
   console.log("  POST   /ask                        - Ask a question");
