@@ -60,10 +60,10 @@ router.get("/callback", async (req, res) => {
     }
 
     // Redirect to frontend with success
-    res.redirect("http://localhost:5173/calendar/success");
+    res.redirect(`https://campus-intelligence.vercel.app/calendar/success`);
   } catch (error) {
     console.error("OAuth callback error:", error);
-    res.redirect("http://localhost:5173/calendar/error");
+    res.redirect(`https://campus-intelligence.vercel.app/calendar/error`);
   }
 });
 

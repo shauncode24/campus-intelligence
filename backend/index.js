@@ -13,7 +13,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["https://your-frontend.vercel.app"],
+    origin: ["https://campus-intelligence.vercel.app"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -28,6 +28,8 @@ res.cookie("token", value, {
   secure: true,
   sameSite: "none",
 });
+
+app.set("trust proxy", 1);
 
 // Original non-streaming endpoint (keep for backward compatibility)
 app.post("/ask", async (req, res) => {
