@@ -1,14 +1,14 @@
 import express from "express";
 import { db } from "./firebaseAdmin.js";
-import { processDocument } from "./processDocuments.js";
-import { getEmbedding } from "./embedding.js";
 import admin from "firebase-admin";
+import fetch from "node-fetch";
 
 const router = express.Router();
+const PYTHON_RAG_URL = process.env.PYTHON_RAG_URL || "http://localhost:8000";
 
 /**
  * POST /documents/process
- * Process a newly uploaded document - chunk and embed it
+ * Process a newly uploaded document via Python RAG service
  */
 router.post("/process", async (req, res) => {
   try {
@@ -23,52 +23,36 @@ router.post("/process", async (req, res) => {
 
     console.log(`📄 Starting processing for document: ${documentId}`);
 
-    // Step 1: Process and chunk the document
-    const chunkResult = await processDocument(documentId, fileUrl);
-    console.log(`✅ Created ${chunkResult.chunksCount} chunks`);
+    // Update status to processing
+    await db.collection("documents").doc(documentId).update({
+      status: "Processing",
+      processingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
-    // Step 2: Generate embeddings for all chunks
-    const chunksSnapshot = await db
-      .collection("chunks")
-      .where("documentId", "==", documentId)
-      .get();
+    // Call Python RAG service
+    const response = await fetch(`${PYTHON_RAG_URL}/process-document`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        documentId: documentId,
+        fileUrl: fileUrl,
+      }),
+    });
 
-    let embeddedCount = 0;
-    const batch = db.batch();
-
-    for (const doc of chunksSnapshot.docs) {
-      const data = doc.data();
-
-      // Skip if already has embedding
-      if (data.embedding) {
-        console.log(`⏭️  Chunk ${doc.id} already has embedding`);
-        continue;
-      }
-
-      console.log(`🔢 Generating embedding for chunk ${doc.id}`);
-      const embedding = await getEmbedding(data.content);
-
-      batch.update(doc.ref, { embedding });
-      embeddedCount++;
+    if (!response.ok) {
+      throw new Error(`Python RAG service error: ${response.statusText}`);
     }
 
-    await batch.commit();
-    console.log(`✅ Generated ${embeddedCount} embeddings`);
+    const result = await response.json();
 
-    // Step 3: Update document status
-    await db.collection("documents").doc(documentId).update({
-      status: "Processed",
-      processedAt: admin.firestore.FieldValue.serverTimestamp(),
-      chunksCount: chunkResult.chunksCount,
-      embeddedCount: embeddedCount,
-    });
+    console.log(`✅ Processing complete:`, result);
 
     res.json({
       success: true,
       message: "Document processed successfully",
-      documentId,
-      chunksCount: chunkResult.chunksCount,
-      embeddedCount: embeddedCount,
+      ...result,
     });
   } catch (error) {
     console.error("❌ Error processing document:", error);
@@ -114,64 +98,38 @@ router.post("/reprocess", async (req, res) => {
 
     const docData = docSnapshot.data();
 
-    // Delete old chunks
-    const oldChunks = await db
-      .collection("chunks")
-      .where("documentId", "==", documentId)
-      .get();
+    console.log(`🔄 Reprocessing document: ${documentId}`);
 
-    const deleteBatch = db.batch();
-    oldChunks.docs.forEach((doc) => {
-      deleteBatch.delete(doc.ref);
-    });
-    await deleteBatch.commit();
-
-    console.log(`🗑️  Deleted ${oldChunks.size} old chunks`);
-
-    // Update status to pending
+    // Update status to processing
     await db.collection("documents").doc(documentId).update({
       status: "Processing",
-      reprocessedAt: admin.firestore.FieldValue.serverTimestamp(),
+      reprocessingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Process the document
-    const chunkResult = await processDocument(documentId, docData.fileUrl);
-    console.log(`✅ Created ${chunkResult.chunksCount} new chunks`);
+    // Call Python RAG service
+    const response = await fetch(`${PYTHON_RAG_URL}/process-document`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        documentId: documentId,
+        fileUrl: docData.fileUrl,
+      }),
+    });
 
-    // Generate embeddings
-    const chunksSnapshot = await db
-      .collection("chunks")
-      .where("documentId", "==", documentId)
-      .get();
-
-    let embeddedCount = 0;
-    const embedBatch = db.batch();
-
-    for (const doc of chunksSnapshot.docs) {
-      const data = doc.data();
-      console.log(`🔢 Generating embedding for chunk ${doc.id}`);
-      const embedding = await getEmbedding(data.content);
-      embedBatch.update(doc.ref, { embedding });
-      embeddedCount++;
+    if (!response.ok) {
+      throw new Error(`Python RAG service error: ${response.statusText}`);
     }
 
-    await embedBatch.commit();
-    console.log(`✅ Generated ${embeddedCount} embeddings`);
+    const result = await response.json();
 
-    // Update document status
-    await db.collection("documents").doc(documentId).update({
-      status: "Processed",
-      processedAt: admin.firestore.FieldValue.serverTimestamp(),
-      chunksCount: chunkResult.chunksCount,
-      embeddedCount: embeddedCount,
-    });
+    console.log(`✅ Reprocessing complete:`, result);
 
     res.json({
       success: true,
       message: "Document reprocessed successfully",
-      documentId,
-      chunksCount: chunkResult.chunksCount,
-      embeddedCount: embeddedCount,
+      ...result,
     });
   } catch (error) {
     console.error("❌ Error reprocessing document:", error);
@@ -182,145 +140,26 @@ router.post("/reprocess", async (req, res) => {
   }
 });
 
-export default router;
-
-// Add to index.js:
-// import documentRoutes from "./documentRoutes.js";
-// app.use("/documents", documentRoutes);
-
-// ============================================
-// FILE: Updated documentRoutes.js endpoint
-// Add multi-modal processing option
-// ============================================
-
-// Add this to your existing documentRoutes.js
-
-router.post("/process-multimodal", async (req, res) => {
+/**
+ * GET /documents/rag-status
+ * Check Python RAG service status
+ */
+router.get("/rag-status", async (req, res) => {
   try {
-    const { documentId, fileUrl } = req.body;
+    const response = await fetch(`${PYTHON_RAG_URL}/health`);
 
-    if (!documentId || !fileUrl) {
-      return res.status(400).json({
-        error: "Missing required fields",
-        message: "documentId and fileUrl are required",
-      });
+    if (!response.ok) {
+      throw new Error("RAG service unhealthy");
     }
 
-    console.log(`🎨 Starting multi-modal processing for: ${documentId}`);
-
-    // Import the multi-modal processor
-    const { processDocumentMultiModal } = await import(
-      "./multiModalProcessor.js"
-    );
-
-    // Process with vision capabilities
-    const result = await processDocumentMultiModal(documentId, fileUrl);
-
-    console.log(`✅ Multi-modal processing complete:`, result);
-
-    // Generate embeddings for ALL chunks (text + visual)
-    const chunksSnapshot = await db
-      .collection("chunks")
-      .where("documentId", "==", documentId)
-      .get();
-
-    let embeddedCount = 0;
-    const batch = db.batch();
-
-    for (const doc of chunksSnapshot.docs) {
-      const data = doc.data();
-
-      if (data.embedding) {
-        console.log(`⏭️  Chunk ${doc.id} already has embedding`);
-        continue;
-      }
-
-      console.log(`🔢 Generating embedding for ${data.type} chunk ${doc.id}`);
-      const embedding = await getEmbedding(data.content);
-
-      batch.update(doc.ref, { embedding });
-      embeddedCount++;
-    }
-
-    await batch.commit();
-    console.log(`✅ Generated ${embeddedCount} embeddings`);
-
-    // Update document status
-    await db.collection("documents").doc(documentId).update({
-      status: "Processed",
-      processedAt: admin.firestore.FieldValue.serverTimestamp(),
-      chunksCount: result.totalChunks,
-      textChunks: result.textChunks,
-      visualChunks: result.visualChunks,
-      embeddedCount: embeddedCount,
-      isMultiModal: true,
-    });
-
-    res.json({
-      success: true,
-      message: "Document processed with multi-modal analysis",
-      documentId,
-      textChunks: result.textChunks,
-      visualChunks: result.visualChunks,
-      totalChunks: result.totalChunks,
-      embeddedCount: embeddedCount,
-    });
+    const status = await response.json();
+    res.json(status);
   } catch (error) {
-    console.error("❌ Multi-modal processing error:", error);
-
-    if (req.body.documentId) {
-      try {
-        await db.collection("documents").doc(req.body.documentId).update({
-          status: "Error",
-          errorMessage: error.message,
-          errorAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch (updateError) {
-        console.error("Failed to update error status:", updateError);
-      }
-    }
-
-    res.status(500).json({
-      error: "Failed to process document with multi-modal analysis",
-      message: error.message,
+    res.status(503).json({
+      status: "unhealthy",
+      error: error.message,
     });
   }
 });
 
-// ============================================
-// INSTALLATION & SETUP INSTRUCTIONS
-// ============================================
-
-/*
-
-1. Install required packages:
-   npm install pdf-lib pdf2pic
-
-2. For pdf2pic, you also need GraphicsMagick or ImageMagick:
-   - macOS: brew install graphicsmagick
-   - Ubuntu: sudo apt-get install graphicsmagick
-   - Windows: Download from http://www.graphicsmagick.org/
-
-3. Update your existing files:
-   - Add multiModalProcessor.js (this file)
-   - Add multiModalRetrieval.js (included above)
-   - Add multiModalAnswer.js (included above)
-   - Update documentRoutes.js with new endpoint
-   - Update chat.js to use retrieveMultiModalChunks
-
-4. Update UploadDocument.jsx to use new endpoint:
-   - Change fetch URL to /documents/process-multimodal
-   - Show visual chunks count in success message
-
-5. Testing:
-   - Upload a document with forms, tables, or maps
-   - Ask: "Show me the scholarship application form"
-   - Ask: "What does the campus map show?"
-   - Check console logs to see vision analysis working
-
-6. Cost considerations:
-   - Gemini Vision API calls cost more than text
-   - Limit to 10 pages per document (already configured)
-   - Consider caching vision results
-
-*/
+export default router;

@@ -1,34 +1,58 @@
 import { detectIntent } from "./intent.js";
-import { getEmbedding } from "./embedding.js";
-import { retrieveSemanticChunks } from "./retrieve.js";
-import {
-  generateDefinitionAnswer,
-  generateProcedureAnswer,
-  generateSemanticAnswer,
-  generateEnhancedAnswer,
-  enhanceAnswerWithDeadline,
-} from "./answer.js";
 import {
   findSimilarQuestion,
   storeQuestion,
   incrementQuestionCount,
   storeUserQuestion,
 } from "./questionCache.js";
-import { retrieveMultiModalChunks } from "./multiModalRetrieval.js";
+import { enhanceAnswerWithDeadline } from "./answer.js";
+import fetch from "node-fetch";
+
+const PYTHON_RAG_URL = process.env.PYTHON_RAG_URL || "http://localhost:8000";
 
 /**
- * Detect if query is asking for specific data from tables/forms
+ * Call Python RAG service
  */
-function isSpecificDataQuery(question) {
-  const specificPatterns = [
-    /what is .+ (ip address|subnet mask|gateway|address|mask|value|number)/i,
-    /what's .+ (ip address|subnet mask|gateway|address|mask|value|number)/i,
-    /tell me .+ (ip address|subnet mask|gateway|address|mask|value|number)/i,
-    /show me .+ (ip address|subnet mask|gateway|address|mask|value|number)/i,
-    /(ip address|subnet mask|gateway|address|mask) (of|for) .+/i,
-  ];
+async function queryPythonRAG(question) {
+  try {
+    const response = await fetch(`${PYTHON_RAG_URL}/query`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        question: question,
+        documentIds: null, // Query all documents
+      }),
+    });
 
-  return specificPatterns.some((pattern) => pattern.test(question));
+    if (!response.ok) {
+      throw new Error(`Python RAG service error: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("❌ Error calling Python RAG service:", error);
+    throw error;
+  }
+}
+
+/**
+ * Generate a simple embedding for cache lookup (using question text)
+ * Since we're using CLIP in Python, we'll create a simple hash-based embedding
+ */
+function createSimpleEmbedding(text) {
+  // Simple character-based embedding for cache lookup
+  const embedding = new Array(512).fill(0);
+  for (let i = 0; i < text.length; i++) {
+    const charCode = text.charCodeAt(i);
+    embedding[i % 512] += charCode;
+  }
+  // Normalize
+  const magnitude = Math.sqrt(
+    embedding.reduce((sum, val) => sum + val * val, 0)
+  );
+  return embedding.map((val) => val / magnitude);
 }
 
 export async function handleChat(question, userId = "anonymous") {
@@ -36,17 +60,11 @@ export async function handleChat(question, userId = "anonymous") {
     const intent = detectIntent(question);
     console.log(`🎯 Detected intent: ${intent}`);
 
-    // Detect if this is a specific data query
-    const isSpecificQuery = isSpecificDataQuery(question);
-    if (isSpecificQuery) {
-      console.log(
-        `🔍 Detected specific data query - will prioritize visual content`
-      );
-    }
+    // Create embedding for cache lookup
+    const embedding = createSimpleEmbedding(question);
+    console.log(`🔢 Generated question embedding for cache`);
 
-    const embedding = await getEmbedding(question);
-    console.log(`🔢 Generated question embedding`);
-
+    // Check cache first
     const cachedQuestion = await findSimilarQuestion(embedding, intent);
 
     if (cachedQuestion) {
@@ -69,68 +87,25 @@ export async function handleChat(question, userId = "anonymous") {
       };
     }
 
-    console.log(`🤖 Generating new answer via multi-modal RAG`);
+    console.log(`🤖 Generating new answer via Python RAG service`);
 
-    // IMPROVED: More chunks for specific queries
-    let chunkCount = 5;
-    if (isSpecificQuery)
-      chunkCount = 7; // More chunks to ensure we find the data
-    else if (intent === "definition") chunkCount = 5; // Increased from 3
-    else if (intent === "procedure") chunkCount = 5;
-    else if (intent === "deadline") chunkCount = 3;
-    else if (intent === "requirement") chunkCount = 4;
+    // Call Python RAG service
+    const result = await queryPythonRAG(question);
 
-    const chunks = await retrieveMultiModalChunks(embedding, chunkCount);
+    const { answer, sources, hasVisualContent } = result;
 
-    if (!chunks || chunks.length === 0) {
-      return {
-        answer:
-          "I couldn't find any relevant information in the documents. Please try rephrasing your question.",
-        cached: false,
-        confidence: null,
-        sources: [],
-        deadline: null,
-      };
-    }
+    // Create confidence based on sources
+    const confidence = {
+      level:
+        sources.length >= 3 ? "High" : sources.length >= 2 ? "Medium" : "Low",
+      score: Math.min(90, sources.length * 30),
+      reasoning: `Found ${sources.length} relevant sources`,
+    };
 
-    // Boost visual chunks if it's a specific query
-    let processedChunks = chunks;
-    if (isSpecificQuery) {
-      processedChunks = chunks.sort((a, b) => {
-        const aBoost = a.type === "visual" ? 0.2 : 0;
-        const bBoost = b.type === "visual" ? 0.2 : 0;
-        return b.score + bBoost - (a.score + aBoost);
-      });
-      console.log(`🚀 Boosted visual chunks for specific query`);
-    }
-
-    console.log(
-      `📚 Retrieved ${processedChunks.length} chunks (${
-        processedChunks.filter((c) => c.type === "visual").length
-      } visual)`
-    );
-
-    const hasVisualContent = processedChunks.some((c) => c.type === "visual");
-    if (hasVisualContent) {
-      console.log(`🎨 Visual content detected - enhanced answer generation`);
-    }
-
-    // IMPROVED: Use generateEnhancedAnswer for all types when visual content exists
-    let result;
-    if (hasVisualContent || isSpecificQuery) {
-      result = await generateEnhancedAnswer(question, processedChunks);
-    } else if (intent === "definition") {
-      result = await generateDefinitionAnswer(question, processedChunks);
-    } else if (intent === "procedure") {
-      result = await generateProcedureAnswer(question, processedChunks);
-    } else {
-      result = await generateSemanticAnswer(question, processedChunks);
-    }
-
-    const { answer, confidence, sources } = result;
-
+    // Extract deadline if present
     const enhancedResult = enhanceAnswerWithDeadline(answer, intent, sources);
 
+    // Store in cache
     const questionId = await storeQuestion(
       question,
       embedding,
@@ -153,6 +128,15 @@ export async function handleChat(question, userId = "anonymous") {
     };
   } catch (error) {
     console.error("❌ Error in handleChat:", error);
-    throw error;
+
+    // Fallback error response
+    return {
+      answer:
+        "I'm having trouble processing your question right now. Please try again in a moment.",
+      cached: false,
+      confidence: { level: "Low", score: 0, reasoning: "Error occurred" },
+      sources: [],
+      deadline: null,
+    };
   }
 }
