@@ -10,6 +10,7 @@ node_modules/
 # Firebase Admin SDK credentials
 serviceAccountKey.json
 *.firebase.json
+supabaseClient.js
 
 # Supabase secrets
 supabase.env

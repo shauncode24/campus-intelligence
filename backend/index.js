@@ -1,9 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import fetch from "node-fetch"; // ADD THIS IMPORT
-// import { handleChatStream } from "./chatStream.js";
-// import { handleChat } from "./chat.js";
+import fetch from "node-fetch";
 import { getFAQ, getUserHistory } from "./questionCache.js";
 import calendarRoutes from "./calendarRoutes.js";
 import documentRoutes from "./documentRoutes.js";
@@ -27,62 +25,6 @@ app.use(
 app.use(express.json());
 app.set("trust proxy", 1);
 
-// Original non-streaming endpoint (keep for backward compatibility)
-// app.post("/ask", async (req, res) => {
-//   try {
-//     const { question, userId } = req.body;
-
-//     if (!question) {
-//       return res.status(400).json({ error: "Question required" });
-//     }
-
-//     const effectiveUserId =
-//       userId || req.headers["x-session-id"] || "anonymous";
-
-//     const result = await handleChat(question, effectiveUserId);
-//     res.json(result);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: err.message });
-//   }
-// });
-
-// Streaming endpoint
-// app.post("/ask-stream", async (req, res) => {
-//   try {
-//     const { question, userId } = req.body;
-
-//     if (!question) {
-//       return res.status(400).json({ error: "Question required" });
-//     }
-
-//     const effectiveUserId =
-//       userId || req.headers["x-session-id"] || "anonymous";
-
-//     // Set headers for SSE
-//     res.setHeader("Content-Type", "text/event-stream");
-//     res.setHeader("Cache-Control", "no-cache");
-//     res.setHeader("Connection", "keep-alive");
-//     res.flushHeaders();
-
-//     // Handle streaming - pass res so we can write to it
-//     await handleChatStream(question, effectiveUserId, res);
-
-//     // End the response
-//     res.end();
-//   } catch (err) {
-//     console.error("Streaming error:", err);
-//     res.write(
-//       `data: ${JSON.stringify({
-//         type: "error",
-//         data: err.message,
-//       })}\n\n`
-//     );
-//     res.end();
-//   }
-// });
-
-// FIXED: Single /document/query endpoint with proper error handling
 app.post("/document/query", async (req, res) => {
   try {
     const { question, userId } = req.body;
