@@ -4,8 +4,8 @@ import {
   getTokensFromCode,
   createCalendarEvent,
   isValidFutureDate,
-} from "./calendarService.js";
-import { db } from "./firebaseAdmin.js";
+} from "../services/calendarService.js";
+import { db } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
 import dotenv from "dotenv";
 

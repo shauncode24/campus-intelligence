@@ -1,5 +1,5 @@
 import express from "express";
-import { db } from "./firebaseAdmin.js";
+import { db } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
 import fetch from "node-fetch";
 

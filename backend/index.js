@@ -2,9 +2,9 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
-import { getFAQ, getUserHistory } from "./questionCache.js";
-import calendarRoutes from "./calendarRoutes.js";
-import documentRoutes from "./documentRoutes.js";
+import { getFAQ, getUserHistory } from "./services/questionCache.js";
+import calendarRoutes from "./routes/calendarRoutes.js";
+import documentRoutes from "./routes/documentRoutes.js";
 
 dotenv.config();
 

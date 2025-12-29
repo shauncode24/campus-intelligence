@@ -36,3 +36,10 @@ tmp/
 temp/
 
 backend/serviceAccountKey.json
+
+# Python cache & bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
