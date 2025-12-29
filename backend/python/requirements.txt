@@ -32,15 +32,17 @@
 fastapi==0.104.1
 uvicorn==0.24.0
 
-# PDF processing (Linux-safe)
+# PDF processing
 PyMuPDF>=1.24.0
 
-# ML & embeddings (Linux + CPU only)
-torch==2.1.2
+# Embeddings & Vector DB
 sentence-transformers==2.2.2
 faiss-cpu==1.13.2
 
-# LLM integration (Gemini)
+# Torch (Render-compatible)
+torch>=2.5.0
+
+# LLM integration
 langchain==0.1.0
 langchain-google-genai==0.0.6
 langchain-community==0.0.13
