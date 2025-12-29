@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./FAQPage.css";
+import "../styles/Skeleton.css";
 const { VITE_API_BASE_URL } = import.meta.env;
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -46,7 +47,25 @@ export default function FAQPage() {
       <>
         <Header />
         <div className="faq-loading">
-          <div className="loading-spinner"></div>
+          {loading && (
+            <div className="faq-list">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="faq-item">
+                  <div style={{ padding: "20px" }}>
+                    <div className="skeleton skeleton-title"></div>
+                    <div
+                      className="skeleton skeleton-text"
+                      style={{ width: "80%" }}
+                    ></div>
+                    <div
+                      className="skeleton skeleton-text"
+                      style={{ width: "40%" }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <p>Loading frequently asked questions...</p>
         </div>
         <Footer />

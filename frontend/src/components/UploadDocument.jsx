@@ -3,6 +3,7 @@ import { supabase } from "../app/supabase";
 import { db } from "../app/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import "../styles/UploadDocument.css";
+import toast from "react-hot-toast";
 const { VITE_API_BASE_URL } = import.meta.env;
 
 export default function UploadDocument() {
@@ -14,7 +15,7 @@ export default function UploadDocument() {
 
   const upload = async () => {
     if (!file) {
-      alert("Please select a PDF");
+      toast.error("Please select a PDF");
       return;
     }
 
@@ -68,14 +69,14 @@ export default function UploadDocument() {
       const processResult = await processResponse.json();
 
       if (processResponse.ok) {
-        alert(
-          `✅ Document uploaded and processed successfully!\n\n` +
-            `📊 Chunks created: ${processResult.chunksCount}\n` +
-            `🔢 Embeddings generated: ${processResult.embeddedCount}`
+        toast.success(
+          `Document uploaded and processed successfully!\n\n` +
+            `Chunks created: ${processResult.chunksCount}\n` +
+            `Embeddings generated: ${processResult.embeddedCount}`
         );
       } else {
-        alert(
-          `⚠️ Document uploaded but processing failed:\n${processResult.message}\n\n` +
+        toast.error(
+          `Document uploaded but processing failed:\n${processResult.message}\n\n` +
             `Please try reprocessing from the Documents page.`
         );
       }
@@ -86,7 +87,7 @@ export default function UploadDocument() {
       setDepartment("");
     } catch (err) {
       console.error("Upload error:", err);
-      alert(`Error: ${err.message}`);
+      toast.error(err.message);
     } finally {
       setUploading(false);
       setProcessing(false);

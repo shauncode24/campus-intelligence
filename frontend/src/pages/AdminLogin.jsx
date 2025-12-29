@@ -3,6 +3,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../app/firebase";
 import { useNavigate } from "react-router-dom";
 import "./AdminLogin.css";
+import toast from "react-hot-toast";
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -22,7 +23,7 @@ export default function AdminLogin() {
         navigate("/student");
       }
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }

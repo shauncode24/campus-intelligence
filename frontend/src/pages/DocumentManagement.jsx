@@ -4,9 +4,13 @@ import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import "./DocumentManagement.css";
 import Header from "../components/Header";
 const { VITE_API_BASE_URL } = import.meta.env;
+import toast from "react-hot-toast";
+import ConfirmModal from "../components/ConfirmModal";
 
 export default function DocumentManagement() {
   const [documents, setDocuments] = useState([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -30,9 +34,9 @@ export default function DocumentManagement() {
       try {
         await deleteDoc(doc(db, "documents", id));
         setDocuments(documents.filter((d) => d.id !== id));
-        alert("Document deleted successfully");
+        toast.success("Document deleted successfully");
       } catch (err) {
-        alert("Error deleting document: " + err.message);
+        toast.error("Error deleting document: " + err.message);
       }
     }
   };
@@ -125,13 +129,46 @@ export default function DocumentManagement() {
                 <tr>
                   <td
                     colSpan="6"
-                    style={{
-                      textAlign: "center",
-                      padding: "2rem",
-                      color: "#6c757d",
-                    }}
+                    style={{ padding: "60px 20px", textAlign: "center" }}
                   >
-                    No documents uploaded yet
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="64"
+                      height="64"
+                      fill="#dadce0"
+                      viewBox="0 0 16 16"
+                      style={{ marginBottom: "16px" }}
+                    >
+                      <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z" />
+                    </svg>
+                    <h3
+                      style={{
+                        fontSize: "1.25rem",
+                        color: "#202124",
+                        margin: "0 0 8px 0",
+                      }}
+                    >
+                      No documents uploaded yet
+                    </h3>
+                    <p style={{ color: "#5f6368", margin: "0 0 24px 0" }}>
+                      Upload your first document to start building the knowledge
+                      base
+                    </p>
+                    <button
+                      onClick={() => navigate("/admin/add-document")}
+                      style={{
+                        padding: "12px 24px",
+                        background: "#4285f4",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "1rem",
+                        fontWeight: "500",
+                      }}
+                    >
+                      Upload Document
+                    </button>
                   </td>
                 </tr>
               ) : (

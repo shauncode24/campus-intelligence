@@ -2,6 +2,7 @@ import { useState } from "react";
 import "./CalendarButton.css";
 import { FcGoogle } from "react-icons/fc";
 const { VITE_API_BASE_URL } = import.meta.env;
+import toast from "react-hot-toast";
 
 export default function CalendarButton({ deadline, userId, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -94,7 +95,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
         if (onSuccess) {
           onSuccess(data.event);
         }
-        alert("✅ Event added to your Google Calendar!");
+        toast.success("Event added to your Google Calendar!");
       } else {
         if (data.error === "Not authorized" || data.error === "Token expired") {
           setConnected(false);

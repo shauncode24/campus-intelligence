@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./HistoryPage.css";
+import "../styles/Skeleton.css";
 const { VITE_API_BASE_URL } = import.meta.env;
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -9,6 +10,13 @@ export default function HistoryPage() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredHistory = history.filter(
+    (item) =>
+      item.questionText.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.answer.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   useEffect(() => {
     // Get or create user ID from localStorage
@@ -89,7 +97,25 @@ export default function HistoryPage() {
       <>
         <Header />
         <div className="history-loading">
-          <div className="loading-spinner"></div>
+          {loading && (
+            <div className="faq-list">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="faq-item">
+                  <div style={{ padding: "20px" }}>
+                    <div className="skeleton skeleton-title"></div>
+                    <div
+                      className="skeleton skeleton-text"
+                      style={{ width: "80%" }}
+                    ></div>
+                    <div
+                      className="skeleton skeleton-text"
+                      style={{ width: "40%" }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <p>Loading your question history...</p>
         </div>
         <Footer />
@@ -108,6 +134,23 @@ export default function HistoryPage() {
           </p>
         </div>
 
+        <div style={{ maxWidth: "500px", margin: "24px auto" }}>
+          <input
+            type="text"
+            placeholder="Search your questions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              fontSize: "1rem",
+              border: "1px solid #dadce0",
+              borderRadius: "24px",
+              outline: "none",
+            }}
+          />
+        </div>
+
         {history.length === 0 ? (
           <div className="history-empty">
             <svg
@@ -124,7 +167,7 @@ export default function HistoryPage() {
           </div>
         ) : (
           <div className="history-timeline">
-            {history.map((item, index) => (
+            {filteredHistory.map((item, index) => (
               <div key={item.id} className="history-item">
                 <div className="history-timestamp">
                   {formatDate(item.askedAt)}
@@ -158,6 +201,11 @@ export default function HistoryPage() {
                 </div>
               </div>
             ))}
+            {filteredHistory.length === 0 && searchTerm && (
+              <div className="history-empty">
+                <p>No questions found matching "{searchTerm}"</p>
+              </div>
+            )}
           </div>
         )}
       </div>
