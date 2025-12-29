@@ -3,6 +3,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./FAQPage.css";
 const { VITE_API_BASE_URL } = import.meta.env;
+const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
 export default function FAQPage() {
   const [faqs, setFaqs] = useState([]);
@@ -15,7 +16,7 @@ export default function FAQPage() {
 
   const fetchFAQs = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/faq?limit=5`);
+      const response = await fetch(`${VITE_PYTHON_RAG_URL}/faq?limit=5`);
       const data = await response.json();
       setFaqs(data.faqs);
       setLoading(false);

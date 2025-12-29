@@ -7,9 +7,13 @@ import {
 } from "./calendarService.js";
 import { db } from "./firebaseAdmin.js";
 import admin from "firebase-admin";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const router = express.Router();
 
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 /**
  * Step 1: Initiate OAuth flow
  * GET /calendar/auth
@@ -60,10 +64,10 @@ router.get("/callback", async (req, res) => {
     }
 
     // Redirect to frontend with success
-    res.redirect(`https://campus-intelligence.vercel.app/calendar/success`);
+    res.redirect(`${frontendUrl}/calendar/success`);
   } catch (error) {
     console.error("OAuth callback error:", error);
-    res.redirect(`https://campus-intelligence.vercel.app/calendar/error`);
+    res.redirect(`${frontendUrl}/calendar/error`);
   }
 });
 

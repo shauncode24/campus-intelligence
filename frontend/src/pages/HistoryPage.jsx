@@ -3,6 +3,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./HistoryPage.css";
 const { VITE_API_BASE_URL } = import.meta.env;
+const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
 export default function HistoryPage() {
   const [history, setHistory] = useState([]);
@@ -25,7 +26,7 @@ export default function HistoryPage() {
   const fetchHistory = async (uid) => {
     try {
       const response = await fetch(
-        `http://localhost:8000/history/${uid}?limit=50`
+        `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=50`
       );
       const data = await response.json();
       setHistory(data.history);

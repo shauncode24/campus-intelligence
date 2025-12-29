@@ -1,23 +1,23 @@
 import { db } from "./firebaseAdmin.js";
-import { getEmbedding } from "./embedding.js";
+// import { getEmbedding } from "./embedding.js";
 import admin from "firebase-admin";
 
 /**
  * Calculate cosine similarity between two vectors
  */
-function cosineSimilarity(a, b) {
-  let dot = 0,
-    magA = 0,
-    magB = 0;
+// function cosineSimilarity(a, b) {
+//   let dot = 0,
+//     magA = 0,
+//     magB = 0;
 
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    magA += a[i] * a[i];
-    magB += b[i] * b[i];
-  }
+//   for (let i = 0; i < a.length; i++) {
+//     dot += a[i] * b[i];
+//     magA += a[i] * a[i];
+//     magB += b[i] * b[i];
+//   }
 
-  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
-}
+//   return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+// }
 
 /**
  * Search for similar questions in cache
@@ -26,52 +26,52 @@ function cosineSimilarity(a, b) {
  * @param {number} threshold - Similarity threshold (default 0.90)
  * @returns {Object|null} - Cached question data or null
  */
-export async function findSimilarQuestion(
-  questionEmbedding,
-  intent,
-  threshold = 0.9
-) {
-  try {
-    const snapshot = await db
-      .collection("questions")
-      .where("intent", "==", intent)
-      .get();
+// export async function findSimilarQuestion(
+//   questionEmbedding,
+//   intent,
+//   threshold = 0.9
+// ) {
+//   try {
+//     const snapshot = await db
+//       .collection("questions")
+//       .where("intent", "==", intent)
+//       .get();
 
-    let bestMatch = null;
-    let highestSimilarity = threshold;
+//     let bestMatch = null;
+//     let highestSimilarity = threshold;
 
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      if (!data.embedding) return;
+//     snapshot.forEach((doc) => {
+//       const data = doc.data();
+//       if (!data.embedding) return;
 
-      const similarity = cosineSimilarity(questionEmbedding, data.embedding);
+//       const similarity = cosineSimilarity(questionEmbedding, data.embedding);
 
-      if (similarity > highestSimilarity) {
-        highestSimilarity = similarity;
-        bestMatch = {
-          id: doc.id,
-          ...data,
-          similarity,
-        };
-      }
-    });
+//       if (similarity > highestSimilarity) {
+//         highestSimilarity = similarity;
+//         bestMatch = {
+//           id: doc.id,
+//           ...data,
+//           similarity,
+//         };
+//       }
+//     });
 
-    if (bestMatch) {
-      console.log(
-        `✅ Found similar question (similarity: ${bestMatch.similarity.toFixed(
-          3
-        )})`
-      );
-      return bestMatch;
-    }
+//     if (bestMatch) {
+//       console.log(
+//         `✅ Found similar question (similarity: ${bestMatch.similarity.toFixed(
+//           3
+//         )})`
+//       );
+//       return bestMatch;
+//     }
 
-    console.log("🔍 No similar question found, will generate new answer");
-    return null;
-  } catch (error) {
-    console.error("Error finding similar question:", error);
-    return null;
-  }
-}
+//     console.log("🔍 No similar question found, will generate new answer");
+//     return null;
+//   } catch (error) {
+//     console.error("Error finding similar question:", error);
+//     return null;
+//   }
+// }
 
 /**
  * Store a new question and answer in cache with confidence, sources, and deadline
@@ -84,57 +84,57 @@ export async function findSimilarQuestion(
  * @param {Object} deadline - Deadline object (optional)
  * @returns {string} - Document ID of stored question
  */
-export async function storeQuestion(
-  question,
-  embedding,
-  answer,
-  intent,
-  confidence = null,
-  sources = [],
-  deadline = null
-) {
-  try {
-    const docRef = await db.collection("questions").add({
-      question,
-      embedding,
-      answer,
-      intent,
-      confidence,
-      sources,
-      deadline,
-      count: 1,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastAskedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+// export async function storeQuestion(
+//   question,
+//   embedding,
+//   answer,
+//   intent,
+//   confidence = null,
+//   sources = [],
+//   deadline = null
+// ) {
+//   try {
+//     const docRef = await db.collection("questions").add({
+//       question,
+//       embedding,
+//       answer,
+//       intent,
+//       confidence,
+//       sources,
+//       deadline,
+//       count: 1,
+//       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+//       lastAskedAt: admin.firestore.FieldValue.serverTimestamp(),
+//     });
 
-    console.log(
-      `💾 Stored new question with confidence, sources, and deadline: ${docRef.id}`
-    );
-    return docRef.id;
-  } catch (error) {
-    console.error("Error storing question:", error);
-    throw error;
-  }
-}
+//     console.log(
+//       `💾 Stored new question with confidence, sources, and deadline: ${docRef.id}`
+//     );
+//     return docRef.id;
+//   } catch (error) {
+//     console.error("Error storing question:", error);
+//     throw error;
+//   }
+// }
 
 /**
  * Update count and timestamp for existing question
  * @param {string} questionId - Document ID of the question
  */
-export async function incrementQuestionCount(questionId) {
-  try {
-    const docRef = db.collection("questions").doc(questionId);
+// export async function incrementQuestionCount(questionId) {
+//   try {
+//     const docRef = db.collection("questions").doc(questionId);
 
-    await docRef.update({
-      count: admin.firestore.FieldValue.increment(1),
-      lastAskedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+//     await docRef.update({
+//       count: admin.firestore.FieldValue.increment(1),
+//       lastAskedAt: admin.firestore.FieldValue.serverTimestamp(),
+//     });
 
-    console.log(`📈 Incremented count for question: ${questionId}`);
-  } catch (error) {
-    console.error("Error incrementing question count:", error);
-  }
-}
+//     console.log(`📈 Incremented count for question: ${questionId}`);
+//   } catch (error) {
+//     console.error("Error incrementing question count:", error);
+//   }
+// }
 
 /**
  * Store user question history
@@ -142,20 +142,20 @@ export async function incrementQuestionCount(questionId) {
  * @param {string} questionId - Reference to question document
  * @param {string} questionText - Original question text
  */
-export async function storeUserQuestion(userId, questionId, questionText) {
-  try {
-    await db.collection("user_questions").add({
-      userId,
-      questionId,
-      questionText,
-      askedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+// export async function storeUserQuestion(userId, questionId, questionText) {
+//   try {
+//     await db.collection("user_questions").add({
+//       userId,
+//       questionId,
+//       questionText,
+//       askedAt: admin.firestore.FieldValue.serverTimestamp(),
+//     });
 
-    console.log(`📝 Stored user question history for user: ${userId}`);
-  } catch (error) {
-    console.error("Error storing user question:", error);
-  }
-}
+//     console.log(`📝 Stored user question history for user: ${userId}`);
+//   } catch (error) {
+//     console.error("Error storing user question:", error);
+//   }
+// }
 
 /**
  * Get FAQ - most frequently asked questions
