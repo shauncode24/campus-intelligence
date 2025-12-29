@@ -18,6 +18,10 @@ export default function Chat({ onMessagesChange }) {
   };
 
   useEffect(() => {
+    console.log("Messages: ", messages);
+  }, [messages]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingMessage]);
 
@@ -435,16 +439,15 @@ export default function Chat({ onMessagesChange }) {
                   )}
                 </div>
 
-                {m.sources.map((source, idx) => (
+                {m.sources[0] && (
                   <div
                     className={`default sources-container-main ${
                       sourceSelect ? "open" : ""
                     }`}
-                    key={idx}
                   >
                     <div className="default sources-container-main-top">
                       <div className="default sources-container-main-top-left">
-                        {source.type === "visual" ? (
+                        {m.sources[0].type === "image" ? (
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="16"
@@ -466,12 +469,10 @@ export default function Chat({ onMessagesChange }) {
                             <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z" />
                           </svg>
                         )}
-                        {source.documentName}.pdf
-                        {source.pageNumber && (
-                          <span>Page {source.pageNumber}</span>
-                        )}
-                        <span>{source.similarity}% Match</span>
-                        {source.type === "visual" && (
+                        {m.sources[0].documentName}.pdf
+                        <span>Page {m.sources[0].pageNumber + 1}</span>
+                        <span>{m.sources[0].similarity}% Match</span>
+                        {m.sources[0].type === "visual" && (
                           <span
                             style={{
                               backgroundColor: "#F3E8FF",
@@ -486,10 +487,10 @@ export default function Chat({ onMessagesChange }) {
                         )}
                       </div>
                       <div className="default sources-container-main-top-right">
-                        {source.fileUrl && (
+                        {m.sources[0].fileUrl && (
                           <a
                             className="default source-level-7"
-                            href={source.fileUrl}
+                            href={m.sources[0].fileUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             download
@@ -510,10 +511,10 @@ export default function Chat({ onMessagesChange }) {
                       </div>
                     </div>
                     <div className="default sources-container-main-bottom">
-                      "{source.excerpt}"
+                      "{m.sources[0].excerpt}"
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
         </div>

@@ -113,13 +113,15 @@ app.post("/document/query", async (req, res) => {
           },
           sources: result.sources.map((s) => ({
             documentId: s.documentId,
-            documentName: "Document",
+            documentName: s.documentName || "Document",
             pageNumber: s.page,
             type: s.type,
             excerpt: s.content,
-            similarity: 85,
+            similarity: Math.round((s.similarity || 0) * 100),
+            fileUrl: s.fileUrl, // ADD
           })),
           hasVisualContent: result.hasVisualContent,
+          deadline: result.deadline, // ADD THIS
         },
       })}\n\n`
     );

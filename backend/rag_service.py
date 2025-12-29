@@ -71,17 +71,18 @@ class ProcessDocumentRequest(BaseModel):
     documentId: str
     fileUrl: str
 
-class QueryRequest(BaseModel):
-    question: str
-    documentIds: Optional[List[str]] = None
-    userId: Optional[str] = "anonymous"  # Add userId
-
 class QueryResponse(BaseModel):
     answer: str
     sources: List[Dict[str, Any]]
     hasVisualContent: bool
     cached: bool = False
     similarity: Optional[float] = None
+    deadline: Optional[Dict[str, Any]] = None  # ADD THIS LINE
+
+class QueryRequest(BaseModel):
+    question: str
+    documentIds: Optional[List[str]] = None
+    userId: Optional[str] = "anonymous"
 
 # Embedding functions (exactly like your notebook)
 def embed_image(image_data):
@@ -285,6 +286,7 @@ def retrieve_multimodal(query_embedding, document_ids=None, k=5):
         similarity = cosine_similarity(query_embedding, chunk_embedding)
         
         # Create Document object (like your notebook)
+        # Create Document object (like your notebook)
         doc = Document(
             page_content=chunk_data.get('content', ''),
             metadata={
@@ -292,8 +294,8 @@ def retrieve_multimodal(query_embedding, document_ids=None, k=5):
                 'type': chunk_data.get('type', 'text'),
                 'image_id': chunk_data.get('metadata', {}).get('imageId'),
                 'documentId': chunk_data.get('documentId'),
-                'similarity': float(similarity),
-                'imageData': chunk_data.get('imageData')  # Include base64 image
+                'similarity': float(similarity),  # MAKE SURE THIS IS HERE
+                'imageData': chunk_data.get('imageData')
             }
         )
         
@@ -421,7 +423,7 @@ async def store_question(question, embedding, answer, intent, confidence, source
             'intent': intent,
             'confidence': confidence,
             'sources': sources,
-            'deadline': deadline,
+            'deadline': deadline,  # THIS ALREADY EXISTS
             'count': 1,
             'createdAt': firestore.SERVER_TIMESTAMP,
             'lastAskedAt': firestore.SERVER_TIMESTAMP,
@@ -476,7 +478,7 @@ async def store_user_question(user_id, question_id, question_text):
 
 def calculate_confidence(sources):
     """
-    Calculate confidence based on sources (like Node.js calculateConfidence)
+    Calculate confidence based on sources with better scoring
     """
     if not sources or len(sources) == 0:
         return {
@@ -485,27 +487,36 @@ def calculate_confidence(sources):
             "reasoning": "No relevant sources found"
         }
     
-    # Simple confidence based on number of sources
-    num_sources = len(sources)
+    # Calculate average similarity from sources
+    similarities = []
+    for source in sources:
+        # If similarity is stored in metadata from retrieval
+        if 'similarity' in source:
+            similarities.append(source['similarity'])
     
-    if num_sources >= 3:
-        return {
-            "level": "High",
-            "score": min(90, num_sources * 30),
-            "reasoning": f"Found {num_sources} relevant sources"
-        }
-    elif num_sources >= 2:
-        return {
-            "level": "Medium",
-            "score": min(90, num_sources * 30),
-            "reasoning": f"Found {num_sources} relevant sources"
-        }
+    # If we have similarity scores, use them
+    if similarities:
+        avg_similarity = sum(similarities) / len(similarities)
+        score = int(avg_similarity * 100)
     else:
-        return {
-            "level": "Low",
-            "score": min(90, num_sources * 30),
-            "reasoning": f"Found {num_sources} relevant source"
-        }
+        # Fallback to count-based scoring
+        num_sources = len(sources)
+        base_score = min(60, num_sources * 20)  # Max 60 from count
+        score = base_score
+    
+    # Determine level based on score
+    if score >= 70:
+        level = "High"
+    elif score >= 50:
+        level = "Medium"
+    else:
+        level = "Low"
+    
+    return {
+        "level": level,
+        "score": score,
+        "reasoning": f"Found {len(sources)} relevant sources with average confidence {score}%"
+    }
 
 def detect_intent(question):
     """
@@ -527,6 +538,40 @@ def detect_intent(question):
     
     return "general"
 
+def extract_deadline_info(answer, sources):
+    import re
+    from datetime import datetime
+    
+    # Remove markdown
+    clean_answer = re.sub(r'\*\*', '', answer)
+    
+    # Pattern that captures JUST the date parts
+    patterns = [
+        (r'(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})', '%d %B %Y'),
+        (r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})', '%B %d %Y'),
+        (r'(\d{1,2})[-/](\d{1,2})[-/](\d{4})', '%d-%m-%Y'),
+        (r'(\d{4})[-/](\d{1,2})[-/](\d{1,2})', '%Y-%m-%d'),
+    ]
+    
+    for pattern, fmt in patterns:
+        match = re.search(pattern, clean_answer, re.IGNORECASE)
+        if match:
+            date_str = match.group(0)
+            try:
+                deadline_date = datetime.strptime(date_str, fmt)
+                if deadline_date > datetime.now():
+                    return {
+                        'canAddToCalendar': True,
+                        'date': deadline_date.strftime('%Y-%m-%d'),
+                        'title': 'Deadline',
+                        'description': answer[:200],
+                        'context': answer,
+                        'sourceDocument': sources[0].get('documentId') if sources else 'Unknown'
+                    }
+            except ValueError:
+                continue
+    
+    return None
 @app.post("/query", response_model=QueryResponse)
 async def query_documents(request: QueryRequest):
     """
@@ -561,12 +606,19 @@ async def query_documents(request: QueryRequest):
                 request.question
             )
             
+            # ADD THIS: Extract deadline info for cached response
+            deadline = extract_deadline_info(
+                cached_question['answer'], 
+                cached_question.get('sources', [])
+            )
+            
             return QueryResponse(
-                answer=cached_question['answer'],
+                answer=cached_question['answer'],  # NOT 'answer'
                 sources=cached_question.get('sources', []),
                 hasVisualContent=any(s.get('type') == 'image' for s in cached_question.get('sources', [])),
                 cached=True,
-                similarity=cached_question['similarity']
+                similarity=cached_question['similarity'],
+                deadline=deadline
             )
         
         # No cache hit - generate new answer
@@ -600,19 +652,41 @@ async def query_documents(request: QueryRequest):
         # Prepare sources
         sources = []
         for doc in context_docs:
+            # Get document metadata from Firebase
+            doc_id = doc.metadata.get('documentId')
+            doc_name = "Document"
+            file_url = None
+            
+            if doc_id and db:
+                try:
+                    doc_ref = db.collection('documents').document(doc_id).get()
+                    if doc_ref.exists:
+                        doc_data = doc_ref.to_dict()
+                        doc_name = doc_data.get('name', 'Document')
+                        file_url = doc_data.get('fileUrl')
+                except:
+                    pass
+            
             sources.append({
                 "page": doc.metadata.get('page'),
                 "type": doc.metadata.get('type'),
-                "documentId": doc.metadata.get('documentId'),
-                "content": doc.page_content[:150] + "..." if len(doc.page_content) > 150 else doc.page_content
+                "documentId": doc_id,
+                "documentName": doc_name,  # ADD
+                "fileUrl": file_url,  # ADD
+                "content": doc.page_content[:150] + "..." if len(doc.page_content) > 150 else doc.page_content,
+                "similarity": doc.metadata.get('similarity', 0)
             })
         
         has_visual = any(doc.metadata.get('type') == 'image' for doc in context_docs)
         
         # Calculate confidence
         confidence = calculate_confidence(sources)
-        
-        # Store in cache
+
+        # ADD THIS: Extract deadline info
+        deadline = extract_deadline_info(answer, sources)
+        print(f"🔍 DEBUG - Answer: {answer[:100]}...")  # ADD
+        print(f"🔍 DEBUG - Deadline result: {deadline}")  # ADD
+        # Store in cache - UPDATE THIS LINE to include deadline
         question_id = await store_question(
             request.question,
             query_embedding,
@@ -620,7 +694,7 @@ async def query_documents(request: QueryRequest):
             intent,
             confidence,
             sources,
-            deadline=None  # You can add deadline extraction logic if needed
+            deadline=deadline  # ADD THIS
         )
         
         # Store user question history
@@ -633,7 +707,8 @@ async def query_documents(request: QueryRequest):
             answer=answer,
             sources=sources,
             hasVisualContent=has_visual,
-            cached=False
+            cached=False,
+            deadline=deadline  # ADD THIS
         )
         
     except Exception as e:
