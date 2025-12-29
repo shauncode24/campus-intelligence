@@ -20,6 +20,8 @@ from firebase_admin import credentials, firestore
 from dotenv import load_dotenv
 import warnings
 warnings.filterwarnings('ignore')
+import re
+import hashlib
 
 load_dotenv()
 
@@ -83,6 +85,38 @@ class QueryRequest(BaseModel):
     question: str
     documentIds: Optional[List[str]] = None
     userId: Optional[str] = "anonymous"
+
+def normalize_question(question: str) -> str:
+    return re.sub(r'[^a-z0-9 ]+', '', question.lower()).strip()
+
+def question_fingerprint(question: str) -> str:
+    normalized = normalize_question(question)
+    return hashlib.sha256(normalized.encode()).hexdigest()
+
+def extract_entities(question: str):
+    q = question.lower()
+    entities = {}
+
+    # Academic year
+    if "fy" in q: entities["year"] = "FY"
+    if "sy" in q: entities["year"] = "SY"
+    if "ty" in q: entities["year"] = "TY"
+    if "ly" in q: entities["year"] = "LY"
+
+    # Program
+    if "btech" in q: entities["program"] = "BTech"
+    if "mtech" in q: entities["program"] = "MTech"
+
+    # Semester
+    if "sem 1" in q or "semester 1" in q: entities["semester"] = 1
+    if "sem 2" in q or "semester 2" in q: entities["semester"] = 2
+    if "sem 3" in q or "semester 3" in q: entities["semester"] = 3
+    if "sem 4" in q or "semester 4" in q: entities["semester"] = 4
+    return entities
+
+def entities_match(a: dict, b: dict) -> bool:
+    return a == b
+
 
 # Embedding functions (exactly like your notebook)
 def embed_image(image_data):
@@ -366,78 +400,99 @@ def create_multimodal_message(query, retrieved_docs):
 # Question Caching & History Functions
 # ============================================
 
-async def find_similar_question(question_embedding, intent="general", threshold=0.9):
-    """
-    Search for similar questions in cache (like Node.js findSimilarQuestion)
-    """
+async def find_similar_question(question, question_embedding, intent, threshold=0.90):
     if not db:
         return None
-    
+
     try:
-        questions_ref = db.collection('questions').where('intent', '==', intent).stream()
-        
+        fingerprint = question_fingerprint(question)
+        entities = extract_entities(question)
+
+        # 1️⃣ FAST PATH — exact fingerprint match
+        exact_match = db.collection("questions") \
+            .where("fingerprint", "==", fingerprint) \
+            .limit(1) \
+            .stream()
+
+        for doc in exact_match:
+            data = doc.to_dict()
+            print("♻️ Exact fingerprint cache hit")
+            return {
+                "id": doc.id,
+                **data,
+                "similarity": 1.0
+            }
+
+        # 2️⃣ ENTITY-AWARE SEMANTIC MATCH
+        candidates = db.collection("questions") \
+            .where("intent", "==", intent) \
+            .stream()
+
         best_match = None
         highest_similarity = threshold
-        
-        for doc in questions_ref:
+
+        for doc in candidates:
             data = doc.to_dict()
-            if 'embedding' not in data:
+            if "embedding" not in data:
                 continue
-            
-            stored_embedding = np.array(data['embedding'])
+
+            # 🚫 Entity mismatch = hard reject
+            if not entities_match(entities, data.get("entities", {})):
+                continue
+
+            stored_embedding = np.array(data["embedding"])
             similarity = cosine_similarity(question_embedding, stored_embedding)
-            
+
             if similarity > highest_similarity:
                 highest_similarity = similarity
                 best_match = {
-                    'id': doc.id,
-                    'question': data.get('question'),
-                    'answer': data.get('answer'),
-                    'confidence': data.get('confidence'),
-                    'sources': data.get('sources', []),
-                    'deadline': data.get('deadline'),
-                    'similarity': float(similarity)
+                    "id": doc.id,
+                    **data,
+                    "similarity": float(similarity)
                 }
-        
+
         if best_match:
-            print(f"✅ Found cached question (similarity: {best_match['similarity']:.3f})")
-        
-        return best_match
-        
+            print(f"✅ Entity-aware cache hit (similarity: {best_match['similarity']:.3f})")
+            return best_match
+
+        print("🔍 No suitable cache hit found")
+        return None
+
     except Exception as e:
         print(f"Error finding similar question: {e}")
         return None
 
+
 async def store_question(question, embedding, answer, intent, confidence, sources, deadline=None):
-    """
-    Store question and answer in cache (like Node.js storeQuestion)
-    """
     if not db:
         return None
-    
+
     try:
+        fingerprint = question_fingerprint(question)
+        entities = extract_entities(question)
+
         question_data = {
-            'question': question,
-            'embedding': embedding.tolist(),
-            'answer': answer,
-            'intent': intent,
-            'confidence': confidence,
-            'sources': sources,
-            'deadline': deadline,  # THIS ALREADY EXISTS
-            'count': 1,
-            'createdAt': firestore.SERVER_TIMESTAMP,
-            'lastAskedAt': firestore.SERVER_TIMESTAMP,
+            "question": question,
+            "fingerprint": fingerprint,
+            "entities": entities,
+            "embedding": embedding.tolist(),
+            "answer": answer,
+            "intent": intent,
+            "confidence": confidence,
+            "sources": sources,
+            "deadline": deadline,
+            "count": 1,
+            "createdAt": firestore.SERVER_TIMESTAMP,
+            "lastAskedAt": firestore.SERVER_TIMESTAMP,
         }
-        
-        doc_ref = db.collection('questions').add(question_data)
-        question_id = doc_ref[1].id
-        
-        print(f"💾 Stored new question: {question_id}")
-        return question_id
-        
+
+        doc_ref = db.collection("questions").add(question_data)
+        return doc_ref[1].id
+
     except Exception as e:
         print(f"Error storing question: {e}")
         return None
+
 
 async def increment_question_count(question_id):
     """
@@ -593,7 +648,11 @@ async def query_documents(request: QueryRequest):
         print("✅ Query embedded")
         
         # Check cache first
-        cached_question = await find_similar_question(query_embedding, intent)
+        cached_question = await find_similar_question(
+            request.question,
+            query_embedding,
+            intent
+        )
         
         if cached_question:
             print(f"♻️ Reusing cached answer")
