@@ -4,8 +4,10 @@ import { auth } from "../app/firebase";
 import { useNavigate } from "react-router-dom";
 import "./AdminLogin.css";
 import toast from "react-hot-toast";
+import { usePageTitle } from "../components/usePageTitle";
 
 export default function AdminLogin() {
+  usePageTitle("Admin Login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);

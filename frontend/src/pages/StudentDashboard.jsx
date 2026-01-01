@@ -3,8 +3,10 @@ import Header from "./../components/Header";
 import Footer from "./../components/Footer";
 import "./StudentDashboard.css";
 import { useState } from "react";
+import { usePageTitle } from "../components/usePageTitle";
 
 export default function StudentDashboard() {
+  usePageTitle("Ask Questions");
   const [hasMessages, setHasMessages] = useState(false);
 
   return (

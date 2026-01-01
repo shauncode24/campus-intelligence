@@ -12,6 +12,8 @@ export default function UploadDocument() {
   const [department, setDepartment] = useState("");
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingStage, setProcessingStage] = useState("");
 
   const upload = async () => {
     if (!file) {
@@ -20,25 +22,25 @@ export default function UploadDocument() {
     }
 
     setUploading(true);
+    updateProgress("uploading");
 
     try {
       const filePath = `${Date.now()}_${file.name}`;
 
-      // 1️⃣ Upload to Supabase
       const { error } = await supabase.storage
         .from("documents")
         .upload(filePath, file);
 
       if (error) throw error;
 
-      // 2️⃣ Get public URL
+      updateProgress("extracting");
+
       const { data } = supabase.storage
         .from("documents")
         .getPublicUrl(filePath);
 
       const fileUrl = data.publicUrl;
 
-      // 3️⃣ Store metadata in Firestore with "Processing" status
       const docRef = await addDoc(collection(db, "documents"), {
         name,
         department,
@@ -49,11 +51,10 @@ export default function UploadDocument() {
         fileSize: file.size,
       });
 
-      console.log("📄 Document uploaded with ID:", docRef.id);
       setUploading(false);
       setProcessing(true);
+      updateProgress("embedding");
 
-      // 4️⃣ Trigger processing (chunking and embedding)
       const processResponse = await fetch(
         `${VITE_API_BASE_URL}/documents/process`,
         {
@@ -66,32 +67,48 @@ export default function UploadDocument() {
         }
       );
 
+      updateProgress("storing");
+
       const processResult = await processResponse.json();
 
       if (processResponse.ok) {
-        toast.success(
-          `Document uploaded and processed successfully!\n\n` +
-            `Chunks created: ${processResult.chunksCount}\n` +
-            `Embeddings generated: ${processResult.embeddedCount}`
-        );
+        updateProgress("complete");
+        setTimeout(() => {
+          toast.success(
+            `Document processed: ${processResult.totalChunks} chunks created`
+          );
+          setFile(null);
+          setName("");
+          setDepartment("");
+          setUploadProgress(0);
+          setProcessingStage("");
+        }, 1000);
       } else {
-        toast.error(
-          `Document uploaded but processing failed:\n${processResult.message}\n\n` +
-            `Please try reprocessing from the Documents page.`
-        );
+        throw new Error(processResult.message);
       }
-
-      // Reset form
-      setFile(null);
-      setName("");
-      setDepartment("");
     } catch (err) {
       console.error("Upload error:", err);
       toast.error(err.message);
+      setUploadProgress(0);
+      setProcessingStage("");
     } finally {
       setUploading(false);
       setProcessing(false);
     }
+  };
+
+  const progressStages = {
+    uploading: { percent: 20, message: "Uploading to storage..." },
+    extracting: { percent: 40, message: "Extracting text and images..." },
+    embedding: { percent: 70, message: "Generating embeddings..." },
+    storing: { percent: 90, message: "Storing in database..." },
+    complete: { percent: 100, message: "Processing complete!" },
+  };
+
+  const updateProgress = (stage) => {
+    const stageInfo = progressStages[stage];
+    setUploadProgress(stageInfo.percent);
+    setProcessingStage(stageInfo.message);
   };
 
   const isDisabled = uploading || processing || !file || !name || !department;
@@ -168,14 +185,28 @@ export default function UploadDocument() {
 
         {(uploading || processing) && (
           <div className="processing-status">
-            <div className="spinner"></div>
-            <p>
-              {uploading
-                ? "📤 Uploading document..."
-                : "⚙️ Processing document (chunking and embedding)..."}
-            </p>
-            <p className="processing-note">
-              This may take a minute. Please don't close this page.
+            <div className="progress-bar-container">
+              <div
+                className="progress-bar-fill"
+                style={{ width: `${uploadProgress}%` }}
+              >
+                <span className="progress-percentage">{uploadProgress}%</span>
+              </div>
+            </div>
+            <p className="processing-message">
+              <span className="processing-icon">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  fill="currentColor"
+                  class="bi bi-gear-fill"
+                  viewBox="0 0 16 16"
+                >
+                  <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z" />
+                </svg>
+              </span>
+              {processingStage}
             </p>
           </div>
         )}

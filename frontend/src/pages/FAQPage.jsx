@@ -3,10 +3,12 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./FAQPage.css";
 import "../styles/Skeleton.css";
+import { usePageTitle } from "../components/usePageTitle";
 const { VITE_API_BASE_URL } = import.meta.env;
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
 export default function FAQPage() {
+  usePageTitle("Frequently Asked Questions");
   const [faqs, setFaqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);

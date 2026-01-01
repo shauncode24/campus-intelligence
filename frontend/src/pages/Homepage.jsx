@@ -2,8 +2,10 @@ import "./Homepage.css";
 import Header from "./../components/Header";
 import Footer from "../components/Footer";
 import { useNavigate } from "react-router-dom";
+import { usePageTitle } from "../components/usePageTitle";
 
 export default function Homepage() {
+  usePageTitle("Home");
   const navigate = useNavigate();
 
   const handleNavigation = (path) => {

@@ -3,12 +3,14 @@ import "./CalendarButton.css";
 import { FcGoogle } from "react-icons/fc";
 const { VITE_API_BASE_URL } = import.meta.env;
 import toast from "react-hot-toast";
+import CalendarPreviewModal from "./CalendarPreviewModal";
 
 export default function CalendarButton({ deadline, userId, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
   const [select, setSelect] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const handleSelect = () => {
     setSelect(!select);
@@ -68,6 +70,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
   };
 
   const handleAddToCalendar = async () => {
+    setShowPreview(false);
     setLoading(true);
     setError(null);
 
@@ -96,6 +99,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
           onSuccess(data.event);
         }
         toast.success("Event added to your Google Calendar!");
+        setSelect(false);
       } else {
         if (data.error === "Not authorized" || data.error === "Token expired") {
           setConnected(false);
@@ -106,6 +110,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
       }
     } catch (err) {
       console.error("Create event error:", err);
+      toast.error("Failed to add event to calendar");
       setError("Failed to add event to calendar");
     } finally {
       setLoading(false);
@@ -181,26 +186,41 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
                 {loading ? "Connecting..." : "Connect Google Calendar"}
               </button>
             ) : (
-              <button
-                className="default calendar-button add-button"
-                onClick={handleAddToCalendar}
-                disabled={loading}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  class="bi bi-plus-lg"
-                  viewBox="0 0 16 16"
+              <>
+                <button
+                  className="default calendar-button add-button"
+                  onClick={() => setShowPreview(true)}
+                  disabled={loading}
                 >
-                  <path
-                    fill-rule="evenodd"
-                    d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"
-                  />
-                </svg>
-                {loading ? "Adding..." : "Add to Google Calendar"}
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    class="bi bi-plus-lg"
+                    viewBox="0 0 16 16"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"
+                    />
+                  </svg>
+                  Preview & Add to Calendar
+                </button>
+                <CalendarPreviewModal
+                  isOpen={showPreview}
+                  onClose={() => setShowPreview(false)}
+                  onConfirm={handleAddToCalendar}
+                  eventData={{
+                    title: deadline.title,
+                    date: deadline.date,
+                    description: deadline.description || deadline.context,
+                    sourceDocument:
+                      deadline.sourceDocument || "Campus Documents",
+                  }}
+                  loading={loading}
+                />
+              </>
             )}
 
             {error && (

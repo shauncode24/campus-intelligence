@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import "../styles/Chat.css";
 import CalendarButton from "./CalendarButton";
+
 const { VITE_API_BASE_URL } = import.meta.env;
 
 export default function Chat({ onMessagesChange }) {

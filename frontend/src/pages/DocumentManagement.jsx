@@ -5,9 +5,11 @@ import "./DocumentManagement.css";
 import Header from "../components/Header";
 const { VITE_API_BASE_URL } = import.meta.env;
 import toast from "react-hot-toast";
+import { usePageTitle } from "../components/usePageTitle";
 import ConfirmModal from "../components/ConfirmModal";
 
 export default function DocumentManagement() {
+  usePageTitle("Manage Documents");
   const [documents, setDocuments] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);

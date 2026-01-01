@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./CalendarCallback.css";
+import { usePageTitle } from "../components/usePageTitle";
 
 export default function CalendarCallback() {
   const location = useLocation();
