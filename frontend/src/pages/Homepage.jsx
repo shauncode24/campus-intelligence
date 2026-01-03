@@ -6,6 +6,7 @@ import { usePageTitle } from "../components/usePageTitle";
 import CampusIntelComparison from "./../components/CampusIntelComparison";
 import Steps from "../components/Steps";
 import CampusAssistant from "../components/CampusAssistant";
+import CampusAssistantShowcase from "../components/CampusAssistantShowcase";
 
 export default function Homepage() {
   usePageTitle("Home");
@@ -76,6 +77,8 @@ export default function Homepage() {
         </div>
 
         <CampusIntelComparison />
+
+        <CampusAssistantShowcase />
       </div>
       <Footer />
     </>

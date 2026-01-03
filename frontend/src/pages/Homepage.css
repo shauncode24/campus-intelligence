@@ -66,8 +66,9 @@
 }
 
 .homepage-lvl-1 {
-  width: 95%;
+  width: 90vw;
   flex-direction: row;
+  justify-content: space-between;
   margin-bottom: 100px;
   gap: 50px;
 }
