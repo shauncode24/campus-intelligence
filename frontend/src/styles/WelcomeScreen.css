@@ -1,0 +1,97 @@
+.welcome-screen {
+  min-height: 100vh;
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.welcome-screen.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.welcome-screen.hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+  position: absolute;
+}
+
+.welcome-icon {
+  padding: 15px;
+  background-color: #dbeafe;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-title {
+  font-size: 3rem;
+  font-weight: 600;
+  width: 65%;
+  text-align: center;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.welcome-subtitle {
+  font-size: 1.2rem;
+  font-weight: 500;
+  width: 65%;
+  color: #757575;
+  text-align: center;
+}
+
+.chat-cards-grid {
+  display: flex;
+  flex-direction: row;
+  width: 85%;
+  justify-content: space-between;
+  align-items: stretch;
+  margin-top: 30px;
+}
+
+.tip-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #e8f1fd;
+  border: 1px solid #84b8fd;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    sans-serif;
+  margin-top: 30px;
+}
+
+.tip-icon {
+  color: #6366f1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tip-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  line-height: 1.5;
+}
+
+.tip-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #02035f;
+}
+
+.tip-text {
+  font-size: 14px;
+  color: #02035f;
+  font-weight: 400;
+}
