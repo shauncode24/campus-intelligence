@@ -26,7 +26,7 @@ export default function StudentDashboard() {
     <>
       <Header />
 
-      <div className="dashboard-content">
+      <div className="default dashboard-content">
         <WelcomeScreen isVisible={!hasMessages} />
 
         {hasMessages && (
