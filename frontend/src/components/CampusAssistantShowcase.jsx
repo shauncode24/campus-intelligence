@@ -44,9 +44,8 @@ const CampusAssistantShowcase = () => {
 
   return (
     <div className="default showcase-grid">
-      {" "}
       {/* Right Side - Stats Section */}
-      <div className="stats-section">
+      <div className="default stats-section">
         <Steps title="10000+" subtitle="Questions Answered" />
         <Steps title="500+" subtitle="Documents Indexed" />
         <Steps title="99%" subtitle="Accuracy Rate" />

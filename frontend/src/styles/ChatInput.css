@@ -8,6 +8,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 25px 0px;
 }
 
 .chat-input-wrapper {
@@ -18,22 +19,73 @@
   border: 1px solid #dadce0;
   border-radius: 15px;
   gap: 20px;
-  margin-bottom: 20px;
   align-items: center;
   position: relative;
+  transition: all 0.2s ease;
 }
 
 .search-icon {
   flex-shrink: 0;
+  /* align-self: flex-start; */
 }
 
 .chat-textarea {
   width: 100%;
-  background-color: transparent;
   border: none;
   font-size: 1rem;
   outline: none;
   font-family: "Google Sans Flex", sans-serif;
+  resize: none;
+  overflow-y: auto;
+  max-height: 200px;
+  min-height: 24px;
+  line-height: 1.5;
+  padding: 8px 0;
+  box-sizing: border-box;
+}
+
+.chat-textarea::placeholder {
+  color: #9aa0a6;
+}
+
+.chat-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-textarea::-webkit-scrollbar-thumb {
+  background: #dadce0;
+  border-radius: 3px;
+}
+
+.chat-textarea::-webkit-scrollbar-thumb:hover {
+  background: #bdc1c6;
+}
+
+.chat-clear-button {
+  background: none;
+  border: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #5f6368;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.chat-clear-button:hover {
+  background-color: #f1f3f4;
+  color: #202124;
+}
+
+.chat-clear-button:active {
+  background-color: #e8eaed;
 }
 
 .chat-submit-button {
@@ -45,6 +97,7 @@
   border-radius: 50px;
   color: white;
   flex-shrink: 0;
+  transition: background-color 0.2s ease;
 }
 
 .chat-submit-button.active {
@@ -52,6 +105,17 @@
   cursor: pointer;
 }
 
+.chat-submit-button.active:hover {
+  background-color: #1a73e8;
+}
+
 .chat-submit-button:disabled {
   cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .chat-input-wrapper {
+    width: 90%;
+  }
 }

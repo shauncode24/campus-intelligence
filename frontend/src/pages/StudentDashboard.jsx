@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import Chat from "../components/Chat";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import Sidebar from "../components/Sidebar";
 import WelcomeScreen from "../components/WelcomeScreen";
 import MessageList from "../components/MessageList";
 import { usePageTitle } from "../components/usePageTitle";
@@ -10,6 +11,7 @@ import "./StudentDashboard.css";
 export default function StudentDashboard() {
   usePageTitle("Ask Questions");
   const [hasMessages, setHasMessages] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [chatState, setChatState] = useState({
     messages: [],
     streamingMessage: "",
@@ -22,30 +24,38 @@ export default function StudentDashboard() {
     setChatState(state);
   }, []);
 
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
   return (
     <>
-      <Header />
+      <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
 
-      <div className="default dashboard-content">
-        <WelcomeScreen isVisible={!hasMessages} />
+      <div className={`main-content ${sidebarOpen ? "sidebar-open" : ""}`}>
+        <Header />
 
-        {hasMessages && (
-          <MessageList
-            messages={chatState.messages}
-            streamingMessage={chatState.streamingMessage}
-            streamingMetadata={chatState.streamingMetadata}
-            loading={chatState.loading}
-            userId={chatState.userId}
-          />
-        )}
+        <div className="default dashboard-content">
+          <WelcomeScreen isVisible={!hasMessages} />
+
+          {hasMessages && (
+            <MessageList
+              messages={chatState.messages}
+              streamingMessage={chatState.streamingMessage}
+              streamingMetadata={chatState.streamingMetadata}
+              loading={chatState.loading}
+              userId={chatState.userId}
+            />
+          )}
+        </div>
+
+        <Footer />
+
+        <Chat
+          onMessagesChange={setHasMessages}
+          onStreamingUpdate={handleStreamingUpdate}
+        />
       </div>
-
-      <Footer />
-
-      <Chat
-        onMessagesChange={setHasMessages}
-        onStreamingUpdate={handleStreamingUpdate}
-      />
     </>
   );
 }

@@ -2,9 +2,12 @@
 .showcase-grid {
   width: 90vw;
   margin-top: 100px;
+  flex-direction: row;
+  gap: 50px;
+  justify-content: space-between;
 }
 
-@media (min-width: 1024px) {
+/* @media (min-width: 1024px) {
   .showcase-grid {
     flex-direction: row;
     align-items: center;
@@ -17,17 +20,13 @@
   .stats-section {
     flex: 1;
   }
-}
+} */
 
 /* Right Side - Stats Section */
 .stats-section {
-  display: flex;
+  justify-content: space-between;
+  width: 40%;
   flex-direction: row;
-  flex-wrap: wrap;
-  gap: 1rem;
-  width: 80%;
-  justify-content: center;
-  align-content: center;
 }
 
 .stat-box {
@@ -98,7 +97,7 @@
 .rotating-card {
   /* width: calc(50% - 30px); */
   background-color: white;
-  border-radius: 1.5rem;
+  border-radius: 15px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
     0 2px 4px -1px rgba(0, 0, 0, 0.03);
   padding: 20px 15px;
@@ -106,8 +105,9 @@
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.05);
   transition: box-shadow 0.3s ease;
-  perspective: 1000px;
+  /* perspective: 1000px; */
   border-top: 4px solid #3b82f6;
+  width: 45%;
 }
 
 .rotating-card:hover {

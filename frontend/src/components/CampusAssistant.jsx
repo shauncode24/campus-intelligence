@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Sparkles } from "lucide-react";
 import "../styles/CampusAssistant.css";
+import { motion } from "framer-motion";
 
 const CampusAssistant = () => {
   const fullText =
@@ -19,8 +20,23 @@ const CampusAssistant = () => {
     }
   }, [currentIndex, fullText]);
 
+  const fadeInLeft = {
+    hidden: { opacity: 0, x: -60 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: { duration: 0.6, ease: "easeOut" },
+    },
+  };
+
   return (
-    <div className="assistant-card">
+    <motion.div
+      className="assistant-card"
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.3 }}
+      variants={fadeInLeft}
+    >
       {/* Header with gradient */}
       <div className="gradient-header"></div>
 
@@ -64,7 +80,7 @@ const CampusAssistant = () => {
           <div className="button-placeholder button-2"></div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

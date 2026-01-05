@@ -1,3 +1,15 @@
+.main-content {
+  transition: margin-left 0.3s ease;
+  margin-left: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content.sidebar-open {
+  margin-left: 280px;
+}
+
 .dashboard-content {
   min-height: 90vh;
   width: 100%;
@@ -5,4 +17,12 @@
   align-content: center;
   position: relative;
   background-color: #fafbfc;
+  flex: 1;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .main-content.sidebar-open {
+    margin-left: 0;
+  }
 }
