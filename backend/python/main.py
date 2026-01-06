@@ -77,14 +77,20 @@ async def query_documents(request: QueryRequest):
         )
         
         if cached_question:
-            print(f"♻️ Reusing cached answer")
+            print(f"♻️ Reusing cached answer (similarity: {cached_question.get('similarity', 1.0):.3f})")
             
-            # Increment count and store user question
+            # Increment count
             await cache_repository.increment_question_count(cached_question['id'])
+            
+            # Store user question with full data
             await cache_repository.store_user_question(
                 request.userId,
                 cached_question['id'],
-                request.question
+                request.question,
+                answer=cached_question['answer'],
+                intent=cached_question.get('intent'),
+                confidence=cached_question.get('confidence'),
+                sources=cached_question.get('sources', [])
             )
             
             # Extract deadline info for cached response
@@ -98,7 +104,7 @@ async def query_documents(request: QueryRequest):
                 sources=cached_question.get('sources', []),
                 hasVisualContent=any(s.get('type') == 'image' for s in cached_question.get('sources', [])),
                 cached=True,
-                similarity=cached_question['similarity'],
+                similarity=cached_question.get('similarity'),
                 deadline=deadline,
                 confidence=cached_question.get('confidence')
             )
@@ -113,12 +119,26 @@ async def query_documents(request: QueryRequest):
         )
         
         if not context_docs:
-            return QueryResponse(
+            response = QueryResponse(
                 answer="I couldn't find any relevant information in the documents.",
                 sources=[],
                 hasVisualContent=False,
-                cached=False
+                cached=False,
+                confidence={"level": "Low", "score": 0, "reasoning": "No relevant sources found"}
             )
+            
+            # Still store in history even if no answer
+            await cache_repository.store_user_question(
+                request.userId,
+                "no_answer",
+                request.question,
+                answer=response.answer,
+                intent=intent,
+                confidence=response.confidence,
+                sources=[]
+            )
+            
+            return response
         
         print(f"📚 Retrieved {len(context_docs)} documents")
         
@@ -135,6 +155,7 @@ async def query_documents(request: QueryRequest):
         
         # Calculate confidence
         confidence = calculate_confidence(sources)
+        print(f"📊 Confidence: {confidence.get('level')} ({confidence.get('score')}%)")
         
         # Extract deadline info
         deadline = extract_deadline_info(answer, sources)
@@ -150,12 +171,16 @@ async def query_documents(request: QueryRequest):
             deadline=deadline
         )
         
-        # Store user question history
+        # Store user question history with full data
         if question_id:
             await cache_repository.store_user_question(
                 request.userId,
                 question_id,
-                request.question
+                request.question,
+                answer=answer,
+                intent=intent,
+                confidence=confidence,
+                sources=sources
             )
         
         print(f"✅ Answer generated and cached\n")
@@ -171,6 +196,8 @@ async def query_documents(request: QueryRequest):
         
     except Exception as e:
         print(f"❌ Error in query: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -216,6 +243,8 @@ async def process_document(request: ProcessDocumentRequest):
         
     except Exception as e:
         print(f"❌ Error processing document: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -251,13 +280,94 @@ async def get_faq(limit: int = 10):
 
 
 @app.get("/history/{userId}")
-async def get_user_history(userId: str, limit: int = 20):
-    """Get user's question history"""
-    if not firebase_client.is_connected:
-        raise HTTPException(status_code=500, detail="Firebase not initialized")
-    
-    history = await cache_repository.get_user_history(userId, limit)
-    return {"history": history}
+async def get_user_history(userId: str, limit: int = 100, favorites_only: bool = False):
+    """Get user's question history with optional favorites filter"""
+    try:
+        if not firebase_client.is_connected:
+            raise HTTPException(status_code=500, detail="Firebase not initialized")
+        
+        print(f"📖 Fetching history for user: {userId} (limit: {limit}, favorites_only: {favorites_only})")
+        history = await cache_repository.get_user_history(userId, limit, favorites_only)
+        print(f"✅ Returning {len(history)} history items")
+        
+        return {"history": history}
+    except Exception as e:
+        print(f"❌ Error fetching history: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/history/user/{userId}/question/{historyId}/favorite")
+async def toggle_favorite(userId: str, historyId: str):
+    """Toggle favorite status for a question in user's history"""
+    try:
+        if not firebase_client.is_connected:
+            raise HTTPException(status_code=500, detail="Firebase not initialized")
+        
+        print(f"⭐ Toggling favorite for history {historyId} (user: {userId})")
+        
+        new_status = await cache_repository.toggle_favorite(userId, historyId)
+        
+        if new_status is None:
+            raise HTTPException(status_code=404, detail="History item not found or unauthorized")
+        
+        print(f"✅ Favorite status updated to: {new_status}")
+        return {"success": True, "favorite": new_status}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error toggling favorite: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/history/user/{userId}/question/{historyId}")
+async def delete_user_question(userId: str, historyId: str):
+    """Delete a specific question from user's history"""
+    try:
+        if not firebase_client.is_connected:
+            raise HTTPException(status_code=500, detail="Firebase not initialized")
+        
+        print(f"🗑️ Attempting to delete history {historyId} for user {userId}")
+        
+        success = await cache_repository.delete_user_question(userId, historyId)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="History item not found or unauthorized")
+        
+        print(f"✅ Successfully deleted history item {historyId}")
+        return {"success": True, "message": "History item deleted"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting history item: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/documents/{documentId}/exists")
+async def check_document_exists(documentId: str):
+    """Check if a document exists in Firebase"""
+    try:
+        if not firebase_client.is_connected:
+            raise HTTPException(status_code=500, detail="Firebase not initialized")
+        
+        db = firebase_client.db
+        doc_ref = db.collection('documents').document(documentId).get()
+        
+        exists = doc_ref.exists
+        print(f"📄 Document {documentId} exists: {exists}")
+        
+        return {"exists": exists, "documentId": documentId}
+        
+    except Exception as e:
+        print(f"❌ Error checking document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Chat from "../components/Chat";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -19,6 +19,23 @@ export default function StudentDashboard() {
     loading: false,
     userId: "",
   });
+  const chatRef = useRef(null);
+
+  // Check for re-ask question on mount
+  useEffect(() => {
+    const reaskQuestion = localStorage.getItem("reask_question");
+    if (reaskQuestion) {
+      console.log("🔄 Re-asking question:", reaskQuestion);
+      // Clear the stored question
+      localStorage.removeItem("reask_question");
+      // Trigger the question after a brief delay to ensure Chat component is ready
+      setTimeout(() => {
+        if (chatRef.current && chatRef.current.sendMessage) {
+          chatRef.current.sendMessage(reaskQuestion);
+        }
+      }, 100);
+    }
+  }, []);
 
   const handleStreamingUpdate = useCallback((state) => {
     setChatState(state);
@@ -52,6 +69,7 @@ export default function StudentDashboard() {
         <Footer />
 
         <Chat
+          ref={chatRef}
           onMessagesChange={setHasMessages}
           onStreamingUpdate={handleStreamingUpdate}
         />

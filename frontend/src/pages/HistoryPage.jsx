@@ -1,27 +1,32 @@
-import { useState, useEffect } from "react";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import React, { useState, useEffect } from "react";
+import { BookOpen } from "lucide-react";
+import FilterSection from "../components/FilterSection";
+import QuestionCard from "../components/QuestionCard";
+import InsightsSidebar from "../components/InsightsSidebar";
 import "./HistoryPage.css";
-import "../styles/Skeleton.css";
-import { usePageTitle } from "../components/usePageTitle";
-const { VITE_API_BASE_URL } = import.meta.env;
-const { VITE_PYTHON_RAG_URL } = import.meta.env;
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+
+const VITE_PYTHON_RAG_URL =
+  import.meta.env.VITE_PYTHON_RAG_URL || "http://localhost:8000";
 
 export default function HistoryPage() {
-  usePageTitle("Question History");
+  const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredHistory = history.filter(
-    (item) =>
-      item.questionText.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.answer.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const [timeFilter, setTimeFilter] = useState("any");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [confidenceFilter, setConfidenceFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("timeline");
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [expandedItems, setExpandedItems] = useState(new Set());
+  const [selectedItems, setSelectedItems] = useState(new Set());
+  const [insights, setInsights] = useState(null);
+  const [documents, setDocuments] = useState(new Map());
 
   useEffect(() => {
-    // Get or create user ID from localStorage
     let storedUserId = localStorage.getItem("campus_intel_user_id");
     if (!storedUserId) {
       storedUserId = `user_${Date.now()}_${Math.random()
@@ -30,44 +35,184 @@ export default function HistoryPage() {
       localStorage.setItem("campus_intel_user_id", storedUserId);
     }
     setUserId(storedUserId);
+
     fetchHistory(storedUserId);
-  }, []);
+  }, [showFavoritesOnly]);
 
   const fetchHistory = async (uid) => {
     try {
-      const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=50`
-      );
+      console.log(`📖 Fetching history for user: ${uid}`);
+      const url = showFavoritesOnly
+        ? `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=100&favorites_only=true`
+        : `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=100`;
+
+      const response = await fetch(url);
       const data = await response.json();
-      setHistory(data.history);
+      const historyData = data.history || [];
+      console.log(`✅ Received ${historyData.length} history items`);
+
+      setHistory(historyData);
+      calculateInsights(historyData);
+      await checkDocumentExistence(historyData);
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching history:", error);
+      console.error("❌ Error fetching history:", error);
       setLoading(false);
     }
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return "Unknown date";
+  const checkDocumentExistence = async (historyData) => {
+    const docMap = new Map();
+    const uniqueDocIds = new Set();
 
-    // Handle Firestore Timestamp object
-    let date;
+    historyData.forEach((item) => {
+      if (item.sources) {
+        item.sources.forEach((source) => {
+          if (source.documentId) {
+            uniqueDocIds.add(source.documentId);
+          }
+        });
+      }
+    });
+
+    console.log(`📄 Checking existence for ${uniqueDocIds.size} documents`);
+
+    for (const docId of uniqueDocIds) {
+      try {
+        const response = await fetch(
+          `${VITE_PYTHON_RAG_URL}/documents/${docId}/exists`
+        );
+        const data = await response.json();
+        docMap.set(docId, data.exists);
+      } catch (error) {
+        console.error(`Error checking document ${docId}:`, error);
+        docMap.set(docId, false);
+      }
+    }
+
+    setDocuments(docMap);
+  };
+
+  const calculateInsights = (historyData) => {
+    if (!historyData.length) {
+      console.log("⚠️ No history data for insights");
+      return;
+    }
+
+    const intentCounts = {};
+    const confidenceScores = [];
+    const hourCounts = new Array(24).fill(0);
+
+    historyData.forEach((item) => {
+      const intent = item.intent || "general";
+      intentCounts[intent] = (intentCounts[intent] || 0) + 1;
+
+      if (item.confidence && typeof item.confidence.score === "number") {
+        confidenceScores.push(item.confidence.score);
+      }
+
+      if (item.askedAt) {
+        const date = parseFirestoreDate(item.askedAt);
+        if (date) {
+          hourCounts[date.getHours()]++;
+        }
+      }
+    });
+
+    const topIntent = Object.entries(intentCounts).sort(
+      (a, b) => b[1] - a[1]
+    )[0];
+
+    const avgConfidence = confidenceScores.length
+      ? Math.round(
+          confidenceScores.reduce((a, b) => a + b, 0) / confidenceScores.length
+        )
+      : 0;
+
+    const mostActiveHour = hourCounts.indexOf(Math.max(...hourCounts));
+    const mostActiveTime = `${mostActiveHour % 12 || 12}:00 ${
+      mostActiveHour >= 12 ? "PM" : "AM"
+    }`;
+
+    const streak = calculateStreak(historyData);
+    const weekGrowth = calculateWeekGrowth(historyData);
+
+    const calculatedInsights = {
+      totalQuestions: historyData.length,
+      topTopic: topIntent ? topIntent[0] : "general",
+      topTopicCount: topIntent ? topIntent[1] : 0,
+      avgConfidence,
+      mostActiveTime,
+      streak,
+      weekGrowth,
+    };
+
+    setInsights(calculatedInsights);
+  };
+
+  const calculateStreak = (historyData) => {
+    const dates = historyData
+      .map((item) => {
+        const date = parseFirestoreDate(item.askedAt);
+        return date ? date.toDateString() : null;
+      })
+      .filter(Boolean);
+
+    const uniqueDates = [...new Set(dates)].sort(
+      (a, b) => new Date(b) - new Date(a)
+    );
+
+    let streak = 0;
+    for (let i = 0; i < uniqueDates.length; i++) {
+      const checkDate = new Date();
+      checkDate.setDate(checkDate.getDate() - i);
+
+      if (uniqueDates.includes(checkDate.toDateString())) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  };
+
+  const calculateWeekGrowth = (historyData) => {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const thisWeek = historyData.filter((item) => {
+      const date = parseFirestoreDate(item.askedAt);
+      return date && date >= weekAgo;
+    }).length;
+
+    const lastWeek = historyData.filter((item) => {
+      const date = parseFirestoreDate(item.askedAt);
+      return date && date >= twoWeeksAgo && date < weekAgo;
+    }).length;
+
+    if (lastWeek === 0) return thisWeek > 0 ? 100 : 0;
+    return Math.round(((thisWeek - lastWeek) / lastWeek) * 100);
+  };
+
+  const parseFirestoreDate = (timestamp) => {
+    if (!timestamp) return null;
     if (timestamp.toDate && typeof timestamp.toDate === "function") {
-      date = timestamp.toDate();
-    } else if (timestamp._seconds) {
-      // Firestore Timestamp has _seconds property
-      date = new Date(timestamp._seconds * 1000);
-    } else if (timestamp.seconds) {
-      // Alternative Timestamp format
-      date = new Date(timestamp.seconds * 1000);
-    } else {
-      date = new Date(timestamp);
+      return timestamp.toDate();
     }
+    if (timestamp._seconds) {
+      return new Date(timestamp._seconds * 1000);
+    }
+    if (timestamp.seconds) {
+      return new Date(timestamp.seconds * 1000);
+    }
+    return new Date(timestamp);
+  };
 
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      return "Unknown date";
-    }
+  const formatDate = (timestamp) => {
+    const date = parseFirestoreDate(timestamp);
+    if (!date || isNaN(date.getTime())) return "Unknown date";
 
     const now = new Date();
     const diffTime = Math.abs(now - date);
@@ -77,141 +222,367 @@ export default function HistoryPage() {
       const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
       if (diffHours === 0) {
         const diffMinutes = Math.floor(diffTime / (1000 * 60));
-        return diffMinutes === 0
-          ? "Just now"
-          : `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
+        return diffMinutes === 0 ? "Just now" : `${diffMinutes}m`;
       }
-      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+      return `${diffHours}h`;
+    }
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const getDateGroup = (timestamp) => {
+    const date = parseFirestoreDate(timestamp);
+    if (!date || isNaN(date.getTime())) return "OLDER";
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    const itemDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
+
+    if (itemDate.getTime() === today.getTime()) return "TODAY";
+    if (itemDate.getTime() === yesterday.getTime()) return "YESTERDAY";
+    return "OLDER";
+  };
+
+  const filterHistory = () => {
+    let filtered = [...history];
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (item) =>
+          item.questionText?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.answer?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
 
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
+    if (timeFilter !== "any") {
+      const now = new Date();
+      filtered = filtered.filter((item) => {
+        const date = parseFirestoreDate(item.askedAt);
+        if (!date) return false;
 
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+        switch (timeFilter) {
+          case "today":
+            return date.toDateString() === now.toDateString();
+          case "week":
+            return date >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          case "month":
+            return date >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          default:
+            return true;
+        }
+      });
+    }
+
+    if (typeFilter !== "all") {
+      filtered = filtered.filter((item) => {
+        const itemIntent = (item.intent || "general").toLowerCase();
+        return itemIntent === typeFilter.toLowerCase();
+      });
+    }
+
+    if (confidenceFilter !== "all") {
+      filtered = filtered.filter((item) => {
+        const level = item.confidence?.level?.toLowerCase();
+        return level === confidenceFilter.toLowerCase();
+      });
+    }
+
+    return filtered;
+  };
+
+  const groupByDate = (items) => {
+    const groups = { TODAY: [], YESTERDAY: [], OLDER: [] };
+    items.forEach((item) => {
+      const group = getDateGroup(item.askedAt);
+      groups[group].push(item);
+    });
+    return groups;
+  };
+
+  const toggleExpand = (id) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    setExpandedItems(newExpanded);
+  };
+
+  const toggleSelect = (id) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const toggleFavorite = async (id) => {
+    try {
+      const response = await fetch(
+        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${id}/favorite`,
+        { method: "PUT" }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update local state
+        setHistory((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, favorite: data.favorite } : item
+          )
+        );
+        toast.success(
+          data.favorite ? "Added to favorites" : "Removed from favorites"
+        );
+      } else {
+        toast.error("Failed to update favorite status");
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      toast.error("Failed to update favorite status");
+    }
+  };
+
+  const deleteQuestion = async (historyId) => {
+    if (!confirm("Are you sure you want to remove this from your history?"))
+      return;
+
+    try {
+      const response = await fetch(
+        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${historyId}`,
+        { method: "DELETE" }
+      );
+
+      if (response.ok) {
+        const newHistory = history.filter((item) => item.id !== historyId);
+        setHistory(newHistory);
+        calculateInsights(newHistory);
+        toast.success("Question removed from history");
+      } else {
+        const error = await response.json();
+        toast.error("Failed to delete: " + (error.detail || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      toast.error("Failed to delete question");
+    }
+  };
+
+  const handleReask = (questionText) => {
+    // Store question in localStorage and navigate to main page
+    localStorage.setItem("reask_question", questionText);
+    navigate("/student");
+  };
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success("Copied to clipboard!");
     });
   };
 
+  const getIntentColor = (intent) => {
+    const colors = {
+      deadline: "#ea4335",
+      procedure: "#4285f4",
+      definition: "#34a853",
+      requirement: "#fbbc04",
+      general: "#5f6368",
+    };
+    return colors[intent?.toLowerCase()] || colors.general;
+  };
+
+  const getConfidenceBadge = (confidence) => {
+    if (!confidence || typeof confidence.score !== "number") return null;
+    const level = confidence.level?.toLowerCase();
+    const colors = {
+      high: "#34a853",
+      medium: "#fbbc04",
+      low: "#ea4335",
+    };
+    return { color: colors[level] || "#5f6368", level: confidence.level };
+  };
+
+  const hasDocumentMissing = (item) => {
+    if (!item.sources) return false;
+    return item.sources.some(
+      (source) => source.documentId && !documents.get(source.documentId)
+    );
+  };
+
+  const filteredHistory = filterHistory();
+  const groupedHistory = groupByDate(filteredHistory);
+
   if (loading) {
     return (
-      <>
-        <Header />
-        <div className="history-loading">
-          {loading && (
-            <div className="faq-list">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="faq-item">
-                  <div style={{ padding: "20px" }}>
-                    <div className="skeleton skeleton-title"></div>
-                    <div
-                      className="skeleton skeleton-text"
-                      style={{ width: "80%" }}
-                    ></div>
-                    <div
-                      className="skeleton skeleton-text"
-                      style={{ width: "40%" }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <p>Loading your question history...</p>
+      <div className="history-page">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+          }}
+        >
+          Loading your question history...
         </div>
-        <Footer />
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <Header />
-      <div className="history-container">
-        <div className="history-header">
-          <h1 className="history-title">Your Question History</h1>
-          <p className="history-subtitle">
-            View all your previous questions and answers in one place
-          </p>
-        </div>
-
-        <div style={{ maxWidth: "500px", margin: "24px auto" }}>
-          <input
-            type="text"
-            placeholder="Search your questions..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px 16px",
-              fontSize: "1rem",
-              border: "1px solid #dadce0",
-              borderRadius: "24px",
-              outline: "none",
-            }}
-          />
-        </div>
-
-        {history.length === 0 ? (
-          <div className="history-empty">
+    <div className="history-page">
+      <div className="history-header">
+        <div className="history-header-content">
+          <div className="history-title-section">
+            <h1 className="history-title">History</h1>
+            <span className="history-count">{history.length} Questions</span>
+          </div>
+          <button
+            className={`favorites-toggle-btn ${
+              showFavoritesOnly ? "active" : ""
+            }`}
+            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="64"
-              height="64"
-              fill="#dadce0"
+              width="16"
+              height="16"
               viewBox="0 0 16 16"
+              fill={showFavoritesOnly ? "#fbbc04" : "none"}
+              stroke="currentColor"
+              strokeWidth="1.5"
             >
-              <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783" />
+              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
             </svg>
-            <h2>No questions asked yet</h2>
-            <p>Start asking questions to build your history!</p>
-          </div>
-        ) : (
-          <div className="history-timeline">
-            {filteredHistory.map((item, index) => (
-              <div key={item.id} className="history-item">
-                <div className="history-timestamp">
-                  {formatDate(item.askedAt)}
-                </div>
-                <div className="history-card">
-                  <div className="history-question">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      fill="#5f6368"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-                      <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94" />
-                    </svg>
-                    <p>{item.questionText}</p>
-                  </div>
-                  <div className="history-answer">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      fill="#4285f4"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2" />
-                    </svg>
-                    <p>{item.answer}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {filteredHistory.length === 0 && searchTerm && (
-              <div className="history-empty">
-                <p>No questions found matching "{searchTerm}"</p>
-              </div>
-            )}
-          </div>
-        )}
+            {showFavoritesOnly ? "Show All" : "Favorites"}
+          </button>
+        </div>
       </div>
-      <Footer />
-    </>
+
+      <div className="history-main">
+        <div className="history-content">
+          <FilterSection
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            timeFilter={timeFilter}
+            setTimeFilter={setTimeFilter}
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            confidenceFilter={confidenceFilter}
+            setConfidenceFilter={setConfidenceFilter}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+          />
+
+          {filteredHistory.length === 0 ? (
+            <div className="empty-state">
+              <BookOpen size={48} color="#dadce0" />
+              <h2>No questions found</h2>
+              <p>
+                {showFavoritesOnly
+                  ? "You haven't favorited any questions yet!"
+                  : "Try adjusting your filters or start asking questions!"}
+              </p>
+            </div>
+          ) : (
+            <div className={`history-${viewMode}-view`}>
+              {viewMode === "grid" ? (
+                <div className="history-grid">
+                  {filteredHistory.map((item) => (
+                    <QuestionCard
+                      key={item.id}
+                      item={item}
+                      isExpanded={expandedItems.has(item.id)}
+                      isSelected={selectedItems.has(item.id)}
+                      isFavorite={item.favorite}
+                      docMissing={hasDocumentMissing(item)}
+                      formatDate={formatDate}
+                      getIntentColor={getIntentColor}
+                      getConfidenceBadge={getConfidenceBadge}
+                      toggleExpand={toggleExpand}
+                      toggleSelect={toggleSelect}
+                      toggleFavorite={toggleFavorite}
+                      handleReask={handleReask}
+                      handleCopy={handleCopy}
+                      deleteQuestion={deleteQuestion}
+                      userId={userId}
+                      viewMode={viewMode}
+                    />
+                  ))}
+                </div>
+              ) : viewMode === "list" ? (
+                <div className="history-list">
+                  {filteredHistory.map((item) => (
+                    <QuestionCard
+                      key={item.id}
+                      item={item}
+                      isExpanded={expandedItems.has(item.id)}
+                      isSelected={selectedItems.has(item.id)}
+                      isFavorite={item.favorite}
+                      docMissing={hasDocumentMissing(item)}
+                      formatDate={formatDate}
+                      getIntentColor={getIntentColor}
+                      getConfidenceBadge={getConfidenceBadge}
+                      toggleExpand={toggleExpand}
+                      toggleSelect={toggleSelect}
+                      toggleFavorite={toggleFavorite}
+                      handleReask={handleReask}
+                      handleCopy={handleCopy}
+                      deleteQuestion={deleteQuestion}
+                      userId={userId}
+                      viewMode={viewMode}
+                    />
+                  ))}
+                </div>
+              ) : (
+                Object.entries(groupedHistory).map(([group, items]) => {
+                  if (items.length === 0) return null;
+
+                  return (
+                    <div key={group} className="date-group">
+                      <div className="date-group-label">{group}</div>
+
+                      {items.map((item) => (
+                        <QuestionCard
+                          key={item.id}
+                          item={item}
+                          isExpanded={expandedItems.has(item.id)}
+                          isSelected={selectedItems.has(item.id)}
+                          isFavorite={item.favorite}
+                          docMissing={hasDocumentMissing(item)}
+                          formatDate={formatDate}
+                          getIntentColor={getIntentColor}
+                          getConfidenceBadge={getConfidenceBadge}
+                          toggleExpand={toggleExpand}
+                          toggleSelect={toggleSelect}
+                          toggleFavorite={toggleFavorite}
+                          handleReask={handleReask}
+                          handleCopy={handleCopy}
+                          deleteQuestion={deleteQuestion}
+                          userId={userId}
+                          viewMode={viewMode}
+                        />
+                      ))}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+
+        <InsightsSidebar insights={insights} />
+      </div>
+    </div>
   );
 }

@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import ChatInput from "./ChatInput";
 
 const { VITE_API_BASE_URL } = import.meta.env;
 
-export default function Chat({ onMessagesChange, onStreamingUpdate }) {
+const Chat = forwardRef(({ onMessagesChange, onStreamingUpdate }, ref) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState("");
@@ -139,5 +139,14 @@ export default function Chat({ onMessagesChange, onStreamingUpdate }) {
     }
   };
 
+  // Expose sendMessage method to parent via ref
+  useImperativeHandle(ref, () => ({
+    sendMessage,
+  }));
+
   return <ChatInput onSendMessage={sendMessage} loading={loading} />;
-}
+});
+
+Chat.displayName = "Chat";
+
+export default Chat;
