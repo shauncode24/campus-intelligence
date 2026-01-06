@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 
 const VITE_PYTHON_RAG_URL =
   import.meta.env.VITE_PYTHON_RAG_URL || "http://localhost:8000";
+import Header from "./../components/Header";
 
 export default function HistoryPage() {
   const navigate = useNavigate();
@@ -335,7 +336,6 @@ export default function HistoryPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Update local state
         setHistory((prev) =>
           prev.map((item) =>
             item.id === id ? { ...item, favorite: data.favorite } : item
@@ -379,7 +379,6 @@ export default function HistoryPage() {
   };
 
   const handleReask = (questionText) => {
-    // Store question in localStorage and navigate to main page
     localStorage.setItem("reask_question", questionText);
     navigate("/student");
   };
@@ -440,149 +439,127 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="history-page">
-      <div className="history-header">
-        <div className="history-header-content">
-          <div className="history-title-section">
-            <h1 className="history-title">History</h1>
-            <span className="history-count">{history.length} Questions</span>
+    <>
+      <Header />
+      <div className="history-page">
+        <FilterSection
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          timeFilter={timeFilter}
+          setTimeFilter={setTimeFilter}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          confidenceFilter={confidenceFilter}
+          setConfidenceFilter={setConfidenceFilter}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          totalQuestions={history.length}
+          showFavoritesOnly={showFavoritesOnly}
+          setShowFavoritesOnly={setShowFavoritesOnly}
+        />
+
+        <div className="history-main">
+          <div className="history-content">
+            {filteredHistory.length === 0 ? (
+              <div className="empty-state">
+                <BookOpen size={48} color="#dadce0" />
+                <h2>No questions found</h2>
+                <p>
+                  {showFavoritesOnly
+                    ? "You haven't favorited any questions yet!"
+                    : "Try adjusting your filters or start asking questions!"}
+                </p>
+              </div>
+            ) : (
+              <div className={`history-${viewMode}-view`}>
+                {viewMode === "grid" ? (
+                  <div className="history-grid">
+                    {filteredHistory.map((item) => (
+                      <QuestionCard
+                        key={item.id}
+                        item={item}
+                        isExpanded={expandedItems.has(item.id)}
+                        isSelected={selectedItems.has(item.id)}
+                        isFavorite={item.favorite}
+                        docMissing={hasDocumentMissing(item)}
+                        formatDate={formatDate}
+                        getIntentColor={getIntentColor}
+                        getConfidenceBadge={getConfidenceBadge}
+                        toggleExpand={toggleExpand}
+                        toggleSelect={toggleSelect}
+                        toggleFavorite={toggleFavorite}
+                        handleReask={handleReask}
+                        handleCopy={handleCopy}
+                        deleteQuestion={deleteQuestion}
+                        userId={userId}
+                        viewMode={viewMode}
+                      />
+                    ))}
+                  </div>
+                ) : viewMode === "list" ? (
+                  <div className="history-list">
+                    {filteredHistory.map((item) => (
+                      <QuestionCard
+                        key={item.id}
+                        item={item}
+                        isExpanded={expandedItems.has(item.id)}
+                        isSelected={selectedItems.has(item.id)}
+                        isFavorite={item.favorite}
+                        docMissing={hasDocumentMissing(item)}
+                        formatDate={formatDate}
+                        getIntentColor={getIntentColor}
+                        getConfidenceBadge={getConfidenceBadge}
+                        toggleExpand={toggleExpand}
+                        toggleSelect={toggleSelect}
+                        toggleFavorite={toggleFavorite}
+                        handleReask={handleReask}
+                        handleCopy={handleCopy}
+                        deleteQuestion={deleteQuestion}
+                        userId={userId}
+                        viewMode={viewMode}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  Object.entries(groupedHistory).map(([group, items]) => {
+                    if (items.length === 0) return null;
+
+                    return (
+                      <div key={group} className="date-group">
+                        <div className="date-group-label">{group}</div>
+
+                        {items.map((item) => (
+                          <QuestionCard
+                            key={item.id}
+                            item={item}
+                            isExpanded={expandedItems.has(item.id)}
+                            isSelected={selectedItems.has(item.id)}
+                            isFavorite={item.favorite}
+                            docMissing={hasDocumentMissing(item)}
+                            formatDate={formatDate}
+                            getIntentColor={getIntentColor}
+                            getConfidenceBadge={getConfidenceBadge}
+                            toggleExpand={toggleExpand}
+                            toggleSelect={toggleSelect}
+                            toggleFavorite={toggleFavorite}
+                            handleReask={handleReask}
+                            handleCopy={handleCopy}
+                            deleteQuestion={deleteQuestion}
+                            userId={userId}
+                            viewMode={viewMode}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
-          <button
-            className={`favorites-toggle-btn ${
-              showFavoritesOnly ? "active" : ""
-            }`}
-            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill={showFavoritesOnly ? "#fbbc04" : "none"}
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
-            </svg>
-            {showFavoritesOnly ? "Show All" : "Favorites"}
-          </button>
+
+          <InsightsSidebar insights={insights} />
         </div>
       </div>
-
-      <div className="history-main">
-        <div className="history-content">
-          <FilterSection
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            timeFilter={timeFilter}
-            setTimeFilter={setTimeFilter}
-            typeFilter={typeFilter}
-            setTypeFilter={setTypeFilter}
-            confidenceFilter={confidenceFilter}
-            setConfidenceFilter={setConfidenceFilter}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-          />
-
-          {filteredHistory.length === 0 ? (
-            <div className="empty-state">
-              <BookOpen size={48} color="#dadce0" />
-              <h2>No questions found</h2>
-              <p>
-                {showFavoritesOnly
-                  ? "You haven't favorited any questions yet!"
-                  : "Try adjusting your filters or start asking questions!"}
-              </p>
-            </div>
-          ) : (
-            <div className={`history-${viewMode}-view`}>
-              {viewMode === "grid" ? (
-                <div className="history-grid">
-                  {filteredHistory.map((item) => (
-                    <QuestionCard
-                      key={item.id}
-                      item={item}
-                      isExpanded={expandedItems.has(item.id)}
-                      isSelected={selectedItems.has(item.id)}
-                      isFavorite={item.favorite}
-                      docMissing={hasDocumentMissing(item)}
-                      formatDate={formatDate}
-                      getIntentColor={getIntentColor}
-                      getConfidenceBadge={getConfidenceBadge}
-                      toggleExpand={toggleExpand}
-                      toggleSelect={toggleSelect}
-                      toggleFavorite={toggleFavorite}
-                      handleReask={handleReask}
-                      handleCopy={handleCopy}
-                      deleteQuestion={deleteQuestion}
-                      userId={userId}
-                      viewMode={viewMode}
-                    />
-                  ))}
-                </div>
-              ) : viewMode === "list" ? (
-                <div className="history-list">
-                  {filteredHistory.map((item) => (
-                    <QuestionCard
-                      key={item.id}
-                      item={item}
-                      isExpanded={expandedItems.has(item.id)}
-                      isSelected={selectedItems.has(item.id)}
-                      isFavorite={item.favorite}
-                      docMissing={hasDocumentMissing(item)}
-                      formatDate={formatDate}
-                      getIntentColor={getIntentColor}
-                      getConfidenceBadge={getConfidenceBadge}
-                      toggleExpand={toggleExpand}
-                      toggleSelect={toggleSelect}
-                      toggleFavorite={toggleFavorite}
-                      handleReask={handleReask}
-                      handleCopy={handleCopy}
-                      deleteQuestion={deleteQuestion}
-                      userId={userId}
-                      viewMode={viewMode}
-                    />
-                  ))}
-                </div>
-              ) : (
-                Object.entries(groupedHistory).map(([group, items]) => {
-                  if (items.length === 0) return null;
-
-                  return (
-                    <div key={group} className="date-group">
-                      <div className="date-group-label">{group}</div>
-
-                      {items.map((item) => (
-                        <QuestionCard
-                          key={item.id}
-                          item={item}
-                          isExpanded={expandedItems.has(item.id)}
-                          isSelected={selectedItems.has(item.id)}
-                          isFavorite={item.favorite}
-                          docMissing={hasDocumentMissing(item)}
-                          formatDate={formatDate}
-                          getIntentColor={getIntentColor}
-                          getConfidenceBadge={getConfidenceBadge}
-                          toggleExpand={toggleExpand}
-                          toggleSelect={toggleSelect}
-                          toggleFavorite={toggleFavorite}
-                          handleReask={handleReask}
-                          handleCopy={handleCopy}
-                          deleteQuestion={deleteQuestion}
-                          userId={userId}
-                          viewMode={viewMode}
-                        />
-                      ))}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </div>
-
-        <InsightsSidebar insights={insights} />
-      </div>
-    </div>
+    </>
   );
 }

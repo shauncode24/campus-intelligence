@@ -1,48 +1,89 @@
 .filter-section {
-  background-color: white;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background-color: #fdfdfd;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 20px 32px 16px;
+  margin-bottom: 0;
 }
 
-.search-container {
-  position: relative;
-  margin-bottom: 16px;
+.filter-header {
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 20px;
 }
 
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+.filter-title-section {
+  gap: 12px;
+  flex-direction: row;
+}
+
+.filter-title {
+  font-size: 24px;
+  font-weight: 400;
+  margin: 0;
+  color: #202124;
+}
+
+.filter-count {
+  font-size: 14px;
   color: #5f6368;
+  white-space: nowrap;
 }
 
-.search-input {
+.filter-search-container {
+  background-color: #ffffff;
+  flex-direction: row;
+  gap: 10px;
+  padding: 0px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.filter-search-icon {
+  color: #5f6368;
+  pointer-events: none;
+}
+
+.filter-search-input {
   width: 100%;
-  padding: 12px 12px 12px 44px;
-  border: 1px solid #dadce0;
   border-radius: 24px;
   font-size: 14px;
   outline: none;
   font-family: inherit;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  transition: all 0.2s;
+  padding: 15px;
+  width: 400px;
 }
 
-.search-input:focus {
+/* .filter-search-input:focus {
+  background-color: white;
   border-color: #4285f4;
-  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+  box-shadow: 0 1px 6px rgba(66, 133, 244, 0.2);
 }
 
-.filters-row {
+.filter-search-input::placeholder {
+  color: #80868b;
+} */
+
+.filter-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.filter-dropdowns {
   display: flex;
   gap: 12px;
   align-items: center;
-  flex-wrap: wrap;
 }
 
-.filter-select {
-  padding: 8px 32px 8px 12px;
+.filter-dropdown {
+  padding: 8px 36px 8px 14px;
   border: 1px solid #dadce0;
   border-radius: 8px;
   font-size: 14px;
@@ -50,60 +91,114 @@
   background-color: white;
   font-family: inherit;
   outline: none;
+  color: #3c4043;
+  transition: all 0.2s;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235f6368' d='M6 8.825L1.175 4 2.238 2.937 6 6.7l3.763-3.763L10.825 4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  appearance: none;
 }
 
-.filter-select:hover {
+.filter-dropdown:hover {
   background-color: #f8f9fa;
+  border-color: #5f6368;
 }
 
-.filter-select:focus {
+.filter-dropdown:focus {
   border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
 }
 
-.view-mode-toggle {
-  margin-left: auto;
+.filter-view-modes {
   display: flex;
-  gap: 8px;
+  gap: 0;
   border: 1px solid #dadce0;
   border-radius: 8px;
-  padding: 4px;
   background-color: white;
+  padding: 2px;
 }
 
-.view-mode-btn {
-  padding: 6px 12px;
+.view-mode-button {
+  padding: 8px 16px;
   border: none;
   background: transparent;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13px;
+  gap: 6px;
+  font-size: 14px;
   color: #5f6368;
   font-family: inherit;
+  transition: all 0.2s;
+  white-space: nowrap;
 }
 
-.view-mode-btn.active {
-  background: #e8f0fe;
+.view-mode-button:hover:not(.active) {
+  background-color: #f8f9fa;
+}
+
+.view-mode-button.active {
+  background-color: #e8f0fe;
   color: #1967d2;
 }
 
-.view-mode-btn:hover:not(.active) {
-  background: #f8f9fa;
+.view-mode-button svg {
+  flex-shrink: 0;
 }
 
-@media (max-width: 768px) {
-  .view-mode-toggle {
-    display: none;
-  }
-
-  .filters-row {
+@media (max-width: 1200px) {
+  .filter-header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .filter-select {
+  .filter-search-container {
+    max-width: none;
+  }
+
+  .filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-dropdowns {
+    flex-wrap: wrap;
+  }
+
+  .filter-view-modes {
+    justify-content: stretch;
+  }
+
+  .view-mode-button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .filter-section {
+    padding: 16px;
+  }
+
+  .filter-title {
+    font-size: 20px;
+  }
+
+  .filter-dropdowns {
+    flex-direction: column;
     width: 100%;
+  }
+
+  .filter-dropdown {
+    width: 100%;
+  }
+
+  .view-mode-button span {
+    display: none;
+  }
+
+  .view-mode-button {
+    padding: 10px;
   }
 }

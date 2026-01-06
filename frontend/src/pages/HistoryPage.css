@@ -1,73 +1,7 @@
 .history-page {
-  font-family: "Google Sans", "Segoe UI", Roboto, sans-serif;
-  background-color: #f8f9fa;
+  background-color: #fcfcfd;
   min-height: 100vh;
-}
-
-.history-header {
-  background-color: white;
-  border-bottom: 1px solid #dadce0;
-  padding: 16px 24px;
-}
-
-.history-header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.history-title-section {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.history-title {
-  font-size: 22px;
-  font-weight: 400;
-  margin: 0;
-  color: #202124;
-}
-
-.history-count {
-  font-size: 14px;
-  color: #5f6368;
-}
-
-.favorites-toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border: 1px solid #dadce0;
-  border-radius: 20px;
-  background-color: white;
-  color: #5f6368;
-  font-size: 14px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.favorites-toggle-btn:hover {
-  background-color: #f8f9fa;
-  border-color: #5f6368;
-}
-
-.favorites-toggle-btn.active {
-  background-color: #fef7e0;
-  border-color: #fbbc04;
-  color: #ea8600;
-}
-
-.favorites-toggle-btn svg {
-  transition: transform 0.2s;
-}
-
-.favorites-toggle-btn:hover svg {
-  transform: scale(1.1);
+  margin-top: 80px;
 }
 
 .history-main {
@@ -97,6 +31,7 @@
   border-radius: 8px;
   padding: 48px;
   text-align: center;
+  margin-top: 24px;
 }
 
 .empty-state h2 {
@@ -145,16 +80,5 @@
 @media (max-width: 768px) {
   .history-main {
     padding: 16px;
-  }
-
-  .history-header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .favorites-toggle-btn {
-    width: 100%;
-    justify-content: center;
   }
 }

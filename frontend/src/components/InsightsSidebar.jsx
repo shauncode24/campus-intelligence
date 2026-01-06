@@ -8,64 +8,92 @@ export default function InsightsSidebar({ insights }) {
   return (
     <div className="history-sidebar">
       <div className="history-sidebar-sticky">
-        <h2 className="insights-title">Your Insights</h2>
+        <div className="insights-title">Your Insights</div>
 
         {/* Total Questions */}
-        <div className="insight-card">
-          <div className="insight-header">
-            <TrendingUp size={20} color="#4285f4" />
+        <div className="default insight-card">
+          <div className="default insight-header">
+            <div className="default insight-header-icon">
+              <TrendingUp size={20} color="#4285f4" />
+            </div>
             {insights.weekGrowth !== 0 && (
               <span
-                className={`insight-growth ${
+                className={` ${
                   insights.weekGrowth > 0 ? "positive" : "negative"
                 }`}
+                style={{
+                  fontSize: "15px",
+                  fontWeight: "500",
+                  color: "#202124",
+                }}
               >
                 {insights.weekGrowth > 0 ? "+" : ""}
                 {insights.weekGrowth}% this week
               </span>
             )}
           </div>
-          <div className="insight-label">Total Questions</div>
-          <div className="insight-value">{insights.totalQuestions}</div>
+          <div>
+            <div className="insight-label">Total Questions</div>
+            <div className="insight-value">{insights.totalQuestions}</div>
+          </div>
         </div>
 
         {/* Top Topic */}
-        <div className="insight-card">
-          <div className="insight-header">
-            <BookOpen size={20} color="#fbbc04" />
-            <span
+        <div className="default insight-card">
+          <div className="default insight-header">
+            <div className="default insight-header-icon">
+              <BookOpen size={20} color="#fbbc04" />
+            </div>
+            <div
               style={{
-                fontSize: "13px",
+                fontSize: "15px",
                 fontWeight: "500",
                 color: "#202124",
               }}
             >
               Top Topic
-            </span>
+            </div>
           </div>
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: "400",
-              color: "#202124",
-              textTransform: "capitalize",
-              marginBottom: "4px",
-            }}
-          >
-            {insights.topTopic}
-          </div>
-          <div className="insight-subtitle">
-            {insights.topTopicCount} questions asked
+          <div>
+            <div
+              className="insight-label"
+              style={{
+                flexDirection: "row",
+                gap: "5px",
+                fontSize: "1.2rem",
+                color: "black",
+                textTransform: "capitalize",
+              }}
+            >
+              {insights.topTopic}
+            </div>
+            <div
+              className="insight-value"
+              style={{ fontSize: "0.8rem", color: "#3985e2ff" }}
+            >
+              {insights.topTopicCount} questions asked
+            </div>
           </div>
         </div>
 
         {/* Streak */}
-        <div className="insight-card">
-          <div className="insight-header">
-            <Flame size={20} color="#ea4335" />
+        <div className="default insight-card">
+          <div className="default insight-header">
+            <div className="default insight-header-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                fill="currentColor"
+                class="bi bi-lightning-charge"
+                viewBox="0 0 16 16"
+              >
+                <path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09zM4.157 8.5H7a.5.5 0 0 1 .478.647L6.11 13.59l5.732-6.09H9a.5.5 0 0 1-.478-.647L9.89 2.41z" />
+              </svg>
+            </div>
             <span
               style={{
-                fontSize: "13px",
+                fontSize: "15px",
                 fontWeight: "500",
                 color: "#202124",
               }}
@@ -73,33 +101,49 @@ export default function InsightsSidebar({ insights }) {
               Current Streak
             </span>
           </div>
-          <div
-            style={{
-              fontSize: "32px",
-              fontWeight: "500",
-              color: "#202124",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            {insights.streak} Days <Flame size={24} color="#ea4335" />
+          <div>
+            <div
+              className="default insight-label"
+              style={{
+                flexDirection: "row",
+                gap: "5px",
+                fontSize: "1.5rem",
+                color: "black",
+              }}
+            >
+              {insights.streak} Days
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                fill="#FA7E39"
+                class="bi bi-fire"
+                viewBox="0 0 16 16"
+              >
+                <path d="M8 16c3.314 0 6-2 6-5.5 0-1.5-.5-4-2.5-6 .25 1.5-1.25 2-1.25 2C11 4 9 .5 6 0c.357 2 .5 4-2 6-1.25 1-2 2.729-2 4.5C2 14 4.686 16 8 16m0-1c-1.657 0-3-1-3-2.75 0-.75.25-2 1.25-3C6.125 10 7 10.5 7 10.5c-.375-1.25.5-3.25 2-3.5-.179 1-.25 2 1 3 .625.5 1 1.364 1 2.25C11 14 9.657 15 8 15" />
+              </svg>
+            </div>
+            <div
+              className="insight-value"
+              style={{ fontSize: "0.8rem", color: "#3985e2ff" }}
+            >
+              Keep it up!
+            </div>
           </div>
-          <div className="insight-subtitle">Keep it up!</div>
         </div>
 
         {/* Activity Habits */}
         <div className="insight-card">
-          <h3
+          <div
             style={{
               fontSize: "14px",
               fontWeight: "500",
-              marginBottom: "12px",
+              marginBottom: "18px",
               color: "#202124",
             }}
           >
             Activity Habits
-          </h3>
+          </div>
 
           <div className="habit-item">
             <Clock size={16} color="#5f6368" />
@@ -123,22 +167,6 @@ export default function InsightsSidebar({ insights }) {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Suggested */}
-        <div className="insight-card">
-          <h3
-            style={{
-              fontSize: "14px",
-              fontWeight: "500",
-              marginBottom: "12px",
-              color: "#202124",
-            }}
-          >
-            Suggested for you
-          </h3>
-          <div className="suggested-item">When do finals start?</div>
-          <div className="suggested-item">Library hours this weekend</div>
         </div>
       </div>
     </div>

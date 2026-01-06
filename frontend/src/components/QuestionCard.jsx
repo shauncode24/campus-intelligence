@@ -1,3 +1,4 @@
+// QuestionCard.jsx
 import React from "react";
 import {
   Star,
@@ -7,6 +8,9 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  FileText,
+  Bookmark,
+  Share2,
 } from "lucide-react";
 import "../styles/QuestionCard.css";
 
@@ -34,12 +38,6 @@ export default function QuestionCard({
     return (
       <div className={`question-card-grid ${isSelected ? "selected" : ""}`}>
         <div className="card-grid-header">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => toggleSelect(item.id)}
-            className="question-checkbox"
-          />
           <button
             onClick={() => toggleFavorite(item.id)}
             className="favorite-btn-grid"
@@ -120,13 +118,6 @@ export default function QuestionCard({
   if (viewMode === "list") {
     return (
       <div className={`question-card-list ${isSelected ? "selected" : ""}`}>
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={() => toggleSelect(item.id)}
-          className="question-checkbox"
-        />
-
         <div className="card-list-main">
           <div className="card-list-top">
             <h3 className="question-text-list">{item.questionText}</h3>
@@ -201,129 +192,114 @@ export default function QuestionCard({
     );
   }
 
-  // Timeline view (default)
+  // Timeline view (default) - NEW DESIGN
   return (
-    <div className={`question-card ${isSelected ? "selected" : ""}`}>
-      <div className="question-card-content">
-        <div className="red-dot" />
-
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={() => toggleSelect(item.id)}
-          className="question-checkbox"
-        />
-
-        <div className="question-main">
-          <div className="question-header">
-            <div style={{ flex: 1 }}>
-              <h3 className="question-text">{item.questionText}</h3>
-
-              <div className="question-meta">
-                <span>{formatDate(item.askedAt)}</span>
-                <span>•</span>
-                <span
-                  className="meta-badge"
-                  style={{
-                    backgroundColor: getIntentColor(item.intent) + "15",
-                    color: getIntentColor(item.intent),
-                  }}
-                >
-                  {item.intent || "general"}
-                </span>
-                {confidence && (
-                  <>
-                    <span>•</span>
-                    <span
-                      className="meta-badge"
-                      style={{
-                        backgroundColor: confidence.color + "15",
-                        color: confidence.color,
-                      }}
-                    >
-                      {confidence.level} confidence
-                    </span>
-                  </>
-                )}
-                {docMissing && (
-                  <>
-                    <span>•</span>
-                    <span className="missing-doc-badge">
-                      <AlertCircle size={12} />
-                      Document unavailable
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-
+    <div className={`question-card-new ${isSelected ? "selected" : ""}`}>
+      <div className="question-card-header-row">
+        <div className="question-content-wrapper">
+          <div className="question-title-row">
+            <h3 className="question-text-new">{item.questionText}</h3>
             <button
               onClick={() => toggleFavorite(item.id)}
-              className="favorite-btn"
+              className="favorite-btn-new"
             >
               <Star
                 size={20}
-                fill={isFavorite ? "#fbbc04" : "none"}
-                color={isFavorite ? "#fbbc04" : "#5f6368"}
+                fill={isFavorite ? "#fbbf24" : "none"}
+                color={isFavorite ? "#fbbf24" : "#9ca3af"}
+                strokeWidth={2}
               />
             </button>
           </div>
 
+          <div className="question-meta-new">
+            <span>{formatDate(item.askedAt)}</span>
+            <span>•</span>
+            <span
+              className="meta-badge-new"
+              style={{
+                backgroundColor: getIntentColor(item.intent) + "25",
+                color: getIntentColor(item.intent),
+              }}
+            >
+              {item.intent || "general"}
+            </span>
+            {confidence && (
+              <>
+                <span>•</span>
+                <div className="confidence-badge-new">
+                  <div
+                    className="confidence-dot"
+                    style={{ backgroundColor: confidence.color }}
+                  />
+                  <span style={{ color: confidence.color }}>
+                    {confidence.level} confidence
+                  </span>
+                </div>
+              </>
+            )}
+            {docMissing && (
+              <>
+                <span>•</span>
+                <span className="missing-doc-badge-new">
+                  <AlertCircle size={12} />
+                  Document unavailable
+                </span>
+              </>
+            )}
+          </div>
+
           {isExpanded && (
-            <div className="answer-section">
-              <p className="answer-text">{item.answer}</p>
+            <div className="answer-section-new">
+              <p className="answer-text-new">{item.answer}</p>
 
               {item.sources && item.sources.length > 0 && (
-                <div className="sources-section">
-                  <div className="sources-title">
-                    Sources: {item.sources.length} document
-                    {item.sources.length > 1 ? "s" : ""}
-                  </div>
-                  {item.sources.slice(0, 3).map((source, idx) => (
-                    <div key={idx} className="source-item">
-                      • {source.documentName} (Page {source.page})
-                    </div>
-                  ))}
+                <div className="sources-section-new">
+                  <FileText size={16} className="sources-icon" />
+                  <span className="sources-text">
+                    Sources:{" "}
+                    {item.sources.map((s) => s.documentName).join(", ")}
+                  </span>
                 </div>
               )}
-
-              <div className="action-buttons">
-                <button
-                  className="action-btn"
-                  onClick={() => handleReask(item.questionText)}
-                >
-                  <RotateCcw size={14} /> Re-ask
-                </button>
-                <button
-                  className="action-btn"
-                  onClick={() => handleCopy(item.answer)}
-                >
-                  <Copy size={14} /> Copy
-                </button>
-                <button
-                  onClick={() => deleteQuestion(item.id)}
-                  className="action-btn delete"
-                >
-                  <Trash2 size={14} /> Delete
-                </button>
-              </div>
             </div>
           )}
 
-          <button onClick={() => toggleExpand(item.id)} className="toggle-btn">
-            {isExpanded ? (
-              <>
-                <ChevronUp size={16} />
-                Show less
-              </>
-            ) : (
-              <>
-                <ChevronDown size={16} />
-                Show more
-              </>
-            )}
-          </button>
+          <div className="action-buttons-new">
+            <button
+              className="action-btn-new"
+              onClick={() => handleReask(item.questionText)}
+            >
+              <RotateCcw size={14} />
+              Re-ask
+            </button>
+            <button
+              className="action-btn-new"
+              onClick={() => handleCopy(item.answer)}
+            >
+              <Copy size={14} />
+            </button>
+            <button className="action-btn-new">
+              <Bookmark size={14} />
+            </button>
+            <button className="action-btn-new">
+              <Share2 size={14} />
+            </button>
+            <button
+              onClick={() => deleteQuestion(item.id)}
+              className="action-btn-new delete-btn-new"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         </div>
+
+        <button
+          onClick={() => toggleExpand(item.id)}
+          className="expand-btn-new"
+        >
+          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        </button>
       </div>
     </div>
   );
