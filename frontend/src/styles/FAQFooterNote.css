@@ -1,0 +1,62 @@
+.faq-footer-note {
+  margin-top: 48px;
+  padding: 24px;
+  background: linear-gradient(135deg, #e8f4ff 0%, #f0f8ff 100%);
+  border-radius: 12px;
+  border: 1px solid #cce5ff;
+}
+
+.faq-footer-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.faq-footer-icon {
+  flex-shrink: 0;
+  color: #1a73e8;
+  margin-top: 2px;
+}
+
+.faq-footer-text {
+  flex: 1;
+}
+
+.faq-footer-main {
+  color: #1a73e8;
+  margin: 0 0 8px 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.faq-footer-sub {
+  color: #5f6368;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .faq-footer-note {
+    padding: 20px;
+    margin-top: 32px;
+  }
+
+  .faq-footer-content {
+    gap: 12px;
+  }
+
+  .faq-footer-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .faq-footer-main {
+    font-size: 0.9rem;
+  }
+
+  .faq-footer-sub {
+    font-size: 0.8rem;
+  }
+}

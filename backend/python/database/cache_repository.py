@@ -264,7 +264,7 @@ class CacheRepository:
     
     @staticmethod
     async def get_faq(limit: int = 10):
-        """Get frequently asked questions"""
+        """Get frequently asked questions with full data"""
         db = firebase_client.db
         if not db:
             print("⚠️ Firebase not available for getting FAQ")
@@ -284,7 +284,12 @@ class CacheRepository:
                     "question": data.get('question'),
                     "answer": data.get('answer'),
                     "count": data.get('count', 0),
-                    "intent": data.get('intent'),
+                    "intent": data.get('intent', 'general'),
+                    "confidence": data.get('confidence'),
+                    "sources": data.get('sources', []),
+                    "deadline": data.get('deadline'),
+                    "createdAt": data.get('createdAt'),
+                    "lastAskedAt": data.get('lastAskedAt'),
                 })
             
             print(f"📋 Retrieved {len(faqs)} FAQs")
