@@ -85,9 +85,15 @@ export default function Header(props) {
             </span>
             <span
               className="default header-right-options"
-              onClick={() => handleNavigation("/")}
+              onClick={() => handleNavigation("/documents")}
             >
               Documents
+            </span>
+            <span
+              className="default header-right-options"
+              onClick={() => handleNavigation("/saved-answers")}
+            >
+              Saved
             </span>
             <span
               className="default admin-option"

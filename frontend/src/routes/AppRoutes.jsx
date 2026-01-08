@@ -7,6 +7,8 @@ import FAQPage from "../pages/FAQPage";
 import HistoryPage from "../pages/HistoryPage";
 import CalendarCallback from "../pages/CalendarCallback";
 import DocumentManagement from "../pages/DocumentManagement";
+import DocumentLibrary from "../pages/DocumentLibrary";
+import SavedAnswers from "../pages/SavedAnswer";
 
 export default function AppRoutes() {
   return (
@@ -17,6 +19,8 @@ export default function AppRoutes() {
         <Route path="/admin/add-document" element={<AddDocument />} />
         <Route path="/student" element={<StudentDashboard />} />
         <Route path="/faq" element={<FAQPage />} />
+        <Route path="/saved-answers" element={<SavedAnswers />} />
+        <Route path="/documents" element={<DocumentLibrary />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/calendar/success" element={<CalendarCallback />} />
         <Route path="/calendar/error" element={<CalendarCallback />} />

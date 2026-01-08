@@ -8,6 +8,8 @@ import aiohttp
 
 warnings.filterwarnings('ignore')
 
+from pydantic import BaseModel
+
 # Configuration and database
 from config import Config
 from database.firebase_client import firebase_client
@@ -32,6 +34,10 @@ from models import (
     QueryResponse,
     HealthResponse
 )
+
+class UpdateNoteRequest(BaseModel):
+    userId: str
+    note: str
 
 # Validate configuration
 Config.validate()
@@ -367,6 +373,39 @@ async def check_document_exists(documentId: str):
         
     except Exception as e:
         print(f"❌ Error checking document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.put("/history/{history_id}/note")
+async def update_personal_note(history_id: str, request: UpdateNoteRequest):
+    """
+    Update personal note for a history item
+    """
+    try:
+        if not firebase_client.is_connected:
+            raise HTTPException(status_code=500, detail="Firebase not initialized")
+        
+        success = await cache_repository.update_personal_note(
+            request.userId,
+            history_id,
+            request.note
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=404, 
+                detail="History item not found or unauthorized"
+            )
+        
+        return {
+            "success": True,
+            "message": "Note updated successfully",
+            "historyId": history_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating note: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

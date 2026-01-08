@@ -62,3 +62,7 @@ class HistoryItem(BaseModel):
     questionText: str
     answer: str
     askedAt: Any
+
+class UpdateNoteRequest(BaseModel):
+    userId: str
+    note: str

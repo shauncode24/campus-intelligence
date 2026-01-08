@@ -174,8 +174,8 @@ class CacheRepository:
     async def store_user_question(user_id: str, question_id: str, question_text: str, 
                                    answer: str = None, intent: str = None, 
                                    confidence: dict = None, sources: list = None,
-                                   favorite: bool = False):
-        """Store user question in history with full data including favorite status"""
+                                   favorite: bool = False, personal_note: str = None):
+        """Store user question in history with full data including favorite status and notes"""
         db = firebase_client.db
         if not db:
             print("⚠️ Firebase not available for storing user question")
@@ -191,6 +191,7 @@ class CacheRepository:
                 'confidence': confidence,
                 'sources': sources or [],
                 'favorite': favorite,
+                'personalNote': personal_note or "",
                 'askedAt': firestore.SERVER_TIMESTAMP,
             }
             
@@ -232,6 +233,38 @@ class CacheRepository:
         except Exception as e:
             print(f"❌ Error toggling favorite: {e}")
             return None
+    
+    @staticmethod
+    async def update_personal_note(user_id: str, history_id: str, note: str):
+        """Update personal note for a user question"""
+        db = firebase_client.db
+        if not db:
+            print("⚠️ Firebase not available for updating note")
+            return False
+        
+        try:
+            doc_ref = db.collection('user_questions').document(history_id)
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                print(f"⚠️ History item {history_id} not found")
+                return False
+            
+            doc_data = doc.to_dict()
+            if doc_data.get('userId') != user_id:
+                print(f"⚠️ User {user_id} not authorized to modify history {history_id}")
+                return False
+            
+            doc_ref.update({
+                'personalNote': note,
+                'noteUpdatedAt': firestore.SERVER_TIMESTAMP
+            })
+            print(f"📝 Updated note for history {history_id}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error updating note: {e}")
+            return False
     
     @staticmethod
     async def delete_user_question(user_id: str, history_id: str):
@@ -301,7 +334,7 @@ class CacheRepository:
     
     @staticmethod
     async def get_user_history(user_id: str, limit: int = 20, favorites_only: bool = False):
-        """Get user's question history with proper data"""
+        """Get user's question history with proper data including personal notes"""
         db = firebase_client.db
         if not db:
             print("⚠️ Firebase not available for getting user history")
@@ -332,6 +365,7 @@ class CacheRepository:
                     "confidence": data.get('confidence'),
                     "sources": data.get('sources', []),
                     "favorite": data.get('favorite', False),
+                    "personalNote": data.get('personalNote', ''),
                     "askedAt": data.get('askedAt'),
                 }
                 
