@@ -9,6 +9,12 @@
   height: 45px;
 }
 
+.header-main.sidebar-open {
+  align-self: flex-end;
+  width: calc(100vw - 350px);
+  margin-left: 0px;
+}
+
 .header-left {
   width: 30%;
   flex-direction: row;

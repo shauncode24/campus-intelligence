@@ -1,8 +1,210 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css";
 
-export default function Sidebar({ isOpen, onToggle }) {
+const { VITE_PYTHON_RAG_URL } = import.meta.env;
+
+export default function Sidebar({
+  isOpen,
+  onToggle,
+  currentChatId,
+  onChatSelect,
+}) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [recentChats, setRecentChats] = useState([]);
+  const [userId, setUserId] = useState("");
+  const [loadingChats, setLoadingChats] = useState(false);
+  const [deletingChatId, setDeletingChatId] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Get or create user ID
+    let storedUserId = localStorage.getItem("campus_intel_user_id");
+    if (!storedUserId) {
+      storedUserId = `user_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+      localStorage.setItem("campus_intel_user_id", storedUserId);
+    }
+    console.log("👤 Sidebar User ID:", storedUserId);
+    setUserId(storedUserId);
+
+    // Fetch user's chats
+    if (storedUserId) {
+      fetchUserChats(storedUserId);
+    }
+  }, []);
+
+  // Refetch chats when currentChatId changes (after creating new chat)
+  useEffect(() => {
+    if (userId && currentChatId) {
+      console.log(
+        "🔄 Refetching chats due to currentChatId change:",
+        currentChatId
+      );
+      fetchUserChats(userId);
+    }
+  }, [currentChatId]);
+
+  const fetchUserChats = async (uid) => {
+    setLoadingChats(true);
+    setError(null);
+
+    const url = `${VITE_PYTHON_RAG_URL}/chats/user/${uid}?limit=10`;
+    console.log("📡 Fetching chats from:", url);
+
+    try {
+      const response = await fetch(url);
+      console.log("📊 Response status:", response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Chats data received:", data);
+
+      if (data.success && Array.isArray(data.chats)) {
+        console.log(`📋 Setting ${data.chats.length} chats`);
+        setRecentChats(data.chats);
+      } else {
+        console.warn("⚠️ Unexpected data format:", data);
+        setRecentChats([]);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching chats:", error);
+      setError(error.message);
+      setRecentChats([]);
+    } finally {
+      setLoadingChats(false);
+    }
+  };
+
+  const handleNewChat = async () => {
+    console.log("➕ Creating new chat for user:", userId);
+
+    try {
+      const response = await fetch(`${VITE_PYTHON_RAG_URL}/chats/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userId,
+          title: "New Chat",
+        }),
+      });
+
+      const data = await response.json();
+      console.log("📝 Create chat response:", data);
+
+      if (data.success) {
+        console.log("✅ Chat created with ID:", data.chatId);
+
+        // Refresh chats list immediately
+        await fetchUserChats(userId);
+
+        // Navigate to the new chat
+        if (onChatSelect) {
+          onChatSelect(data.chatId);
+        }
+        navigate(`/student?chat=${data.chatId}`);
+      } else {
+        console.error("❌ Failed to create chat:", data);
+      }
+    } catch (error) {
+      console.error("❌ Error creating new chat:", error);
+      setError("Failed to create new chat");
+    }
+  };
+
+  const handleDeleteChat = async (chatId, e) => {
+    e.stopPropagation();
+
+    if (!confirm("Are you sure you want to delete this chat?")) {
+      return;
+    }
+
+    console.log("🗑️ Deleting chat:", chatId);
+    setDeletingChatId(chatId);
+
+    try {
+      const response = await fetch(
+        `${VITE_PYTHON_RAG_URL}/chats/${chatId}/user/${userId}`,
+        { method: "DELETE" }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log("✅ Chat deleted successfully");
+
+        // Refresh chats list
+        await fetchUserChats(userId);
+
+        // If we deleted the current chat, create a new one
+        if (currentChatId === chatId) {
+          handleNewChat();
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error deleting chat:", error);
+    } finally {
+      setDeletingChatId(null);
+    }
+  };
+
+  const handleChatClick = (chatId) => {
+    console.log("💬 Selecting chat:", chatId);
+    if (onChatSelect) {
+      onChatSelect(chatId);
+    }
+    navigate(`/student?chat=${chatId}`);
+  };
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) {
+      return "Just now";
+    }
+
+    try {
+      let date;
+
+      // Handle Firestore Timestamp format
+      if (timestamp._seconds) {
+        date = new Date(timestamp._seconds * 1000);
+      } else if (timestamp.seconds) {
+        date = new Date(timestamp.seconds * 1000);
+      } else if (typeof timestamp === "string") {
+        // Handle ISO string format
+        date = new Date(timestamp);
+      } else if (timestamp instanceof Date) {
+        date = timestamp;
+      } else {
+        console.log("⚠️ Unknown timestamp format:", timestamp);
+        return "Just now";
+      }
+
+      if (isNaN(date.getTime())) {
+        console.log("⚠️ Invalid date:", date);
+        return "Just now";
+      }
+
+      const now = new Date();
+      const diffTime = Math.abs(now - date);
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) return "Today";
+      if (diffDays === 1) return "Yesterday";
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+    } catch (error) {
+      console.error("❌ Error formatting timestamp:", error, timestamp);
+      return "Just now";
+    }
+  };
 
   const menuItems = [
     {
@@ -12,7 +214,6 @@ export default function Sidebar({ isOpen, onToggle }) {
           width="16"
           height="16"
           fill="currentColor"
-          class="bi bi-chat-left-dots"
           viewBox="0 0 16 16"
         >
           <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z" />
@@ -20,7 +221,7 @@ export default function Sidebar({ isOpen, onToggle }) {
         </svg>
       ),
       label: "Recent Chats",
-      count: 12,
+      count: recentChats.length,
       active: true,
     },
     {
@@ -30,52 +231,22 @@ export default function Sidebar({ isOpen, onToggle }) {
           width="16"
           height="16"
           fill="currentColor"
-          class="bi bi-file-text"
           viewBox="0 0 16 16"
         >
-          <path d="M5 4a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1zm-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5M5 8a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1zm0 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1z" />
-          <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zm10-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1" />
-        </svg>
-      ),
-      label: "Documents",
-      count: 450,
-    },
-    {
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          fill="currentColor"
-          class="bi bi-bookmark-check"
-          viewBox="0 0 16 16"
-        >
-          <path
-            fill-rule="evenodd"
-            d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0"
-          />
           <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.482a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z" />
         </svg>
       ),
       label: "Saved Answers",
       count: 8,
+      onClick: () => navigate("/history?favorites=true"),
     },
-  ];
-
-  const recentChats = [
-    { title: "Final Project Guidelines" },
-    { title: "Scholarship Deadlines" },
-    { title: "Course Registration" },
   ];
 
   return (
     <>
-      {/* Overlay for mobile */}
       {isOpen && <div className="sidebar-overlay" onClick={onToggle}></div>}
 
-      {/* Sidebar */}
       <div className={`sidebar ${isOpen ? "open" : ""}`}>
-        {/* Header */}
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <div className="logo-icon">
@@ -84,7 +255,6 @@ export default function Sidebar({ isOpen, onToggle }) {
                 width="24"
                 height="24"
                 fill="white"
-                class="bi bi-mortarboard"
                 viewBox="0 0 16 16"
               >
                 <path d="M8.211 2.047a.5.5 0 0 0-.422 0l-7.5 3.5a.5.5 0 0 0 .025.917l7.5 3a.5.5 0 0 0 .372 0L14 7.14V13a1 1 0 0 0-1 1v2h3v-2a1 1 0 0 0-1-1V6.739l.686-.275a.5.5 0 0 0 .025-.917zM8 8.46 1.758 5.965 8 3.052l6.242 2.913z" />
@@ -97,8 +267,7 @@ export default function Sidebar({ isOpen, onToggle }) {
           </div>
         </div>
 
-        {/* New Chat Button */}
-        <button className="new-chat-btn">
+        <button className="new-chat-btn" onClick={handleNewChat}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="18"
@@ -114,15 +283,13 @@ export default function Sidebar({ isOpen, onToggle }) {
           New Chat
         </button>
 
-        {/* Search */}
-
-        {/* Menu Section */}
         <div className="sidebar-section">
           <div className="sidebar-section-label">MENU</div>
           {menuItems.map((item, index) => (
             <div
               key={index}
               className={`sidebar-menu-item ${item.active ? "active" : ""}`}
+              onClick={item.onClick}
             >
               <span className="menu-item-icon">{item.icon}</span>
               <span className="menu-item-label">{item.label}</span>
@@ -131,28 +298,102 @@ export default function Sidebar({ isOpen, onToggle }) {
           ))}
         </div>
 
-        {/* Recent Section */}
         <div className="sidebar-section">
-          <div className="sidebar-section-label">RECENT</div>
-          {recentChats.map((chat, index) => (
-            <div key={index} className="sidebar-recent-item">
-              <span className="recent-item-text">{chat.title}</span>
-              <button className="recent-item-menu">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                </svg>
-              </button>
+          <div className="sidebar-section-label">
+            RECENT
+            <button
+              onClick={() => fetchUserChats(userId)}
+              style={{
+                marginLeft: "auto",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "#5f6368",
+                fontSize: "12px",
+              }}
+            >
+              🔄
+            </button>
+          </div>
+
+          {error && (
+            <div
+              className="sidebar-error"
+              style={{
+                padding: "8px",
+                background: "#fce8e6",
+                color: "#c5221f",
+                borderRadius: "4px",
+                fontSize: "12px",
+                marginBottom: "8px",
+              }}
+            >
+              {error}
             </div>
-          ))}
+          )}
+
+          {loadingChats ? (
+            <div className="sidebar-loading">Loading chats...</div>
+          ) : recentChats.length === 0 ? (
+            <div className="sidebar-empty">
+              <p style={{ fontSize: "13px", color: "#5f6368", padding: "8px" }}>
+                No chats yet. Click "New Chat" to start!
+              </p>
+              <p
+                style={{ fontSize: "11px", color: "#80868b", padding: "0 8px" }}
+              >
+                User ID: {userId?.substring(0, 15)}...
+              </p>
+            </div>
+          ) : (
+            recentChats.map((chat) => (
+              <div
+                key={chat.id}
+                className={`sidebar-recent-item ${
+                  currentChatId === chat.id ? "active" : ""
+                }`}
+                onClick={() => handleChatClick(chat.id)}
+              >
+                <div className="recent-item-content">
+                  <span className="recent-item-text">{chat.title}</span>
+                  <span className="recent-item-date">
+                    {formatTimestamp(chat.updatedAt)}
+                  </span>
+                </div>
+                <button
+                  className="recent-item-menu"
+                  onClick={(e) => handleDeleteChat(chat.id, e)}
+                  disabled={deletingChatId === chat.id}
+                >
+                  {deletingChatId === chat.id ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      fill="currentColor"
+                      viewBox="0 0 16 16"
+                      className="spinner"
+                    >
+                      <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0M3.5 8a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.5-.5" />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      fill="currentColor"
+                      viewBox="0 0 16 16"
+                    >
+                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" />
+                      <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            ))
+          )}
         </div>
 
-        {/* User Profile */}
         <div className="sidebar-profile">
           <div className="profile-avatar">AS</div>
           <div className="default profile-info">
@@ -162,7 +403,6 @@ export default function Sidebar({ isOpen, onToggle }) {
         </div>
       </div>
 
-      {/* Toggle Button */}
       <button className="default sidebar-toggle" onClick={onToggle}>
         <svg
           xmlns="http://www.w3.org/2000/svg"

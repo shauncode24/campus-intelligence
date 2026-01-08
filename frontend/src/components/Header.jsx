@@ -10,7 +10,11 @@ export default function Header(props) {
   };
   return (
     <>
-      <div className="default header-main">
+      <div
+        className={`default header-main ${
+          props.sidebarOpen ? "sidebar-open" : ""
+        }`}
+      >
         <div
           className="default header-left"
           onClick={() => handleNavigation("/")}

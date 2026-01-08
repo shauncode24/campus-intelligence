@@ -35,6 +35,9 @@ from models import (
     HealthResponse
 )
 
+# Import chat routes
+from routes.chatRoutes import router as chat_router
+
 class UpdateNoteRequest(BaseModel):
     userId: str
     note: str
@@ -53,6 +56,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include chat routes WITHOUT /api prefix - mount at root level
+app.include_router(chat_router, tags=["chats"])
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -375,6 +381,7 @@ async def check_document_exists(documentId: str):
         print(f"❌ Error checking document: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     
+
 @app.put("/history/{history_id}/note")
 async def update_personal_note(history_id: str, request: UpdateNoteRequest):
     """

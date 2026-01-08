@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import "../styles/ChatInput.css";
 
-export default function ChatInput({ onSendMessage, loading }) {
+export default function ChatInput({ onSendMessage, loading, sidebarOpen }) {
   const [input, setInput] = useState("");
   const textareaRef = useRef(null);
 
@@ -33,7 +33,11 @@ export default function ChatInput({ onSendMessage, loading }) {
   };
 
   return (
-    <div className="default chat-input-container">
+    <div
+      className={`default chat-input-container ${
+        sidebarOpen ? "sidebar-open" : ""
+      }`}
+    >
       <div className="default chat-input-wrapper">
         <svg
           xmlns="http://www.w3.org/2000/svg"
