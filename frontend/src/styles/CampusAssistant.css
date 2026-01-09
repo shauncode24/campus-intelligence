@@ -127,3 +127,23 @@
 .button-2 {
   width: 5rem;
 }
+
+@media (max-width: 768px) {
+  .assistant-card {
+    width: 90%;
+    padding: 1.5rem;
+  }
+
+  .assistant-title {
+    font-size: 1.1rem;
+  }
+
+  .message-text {
+    font-size: 0.95rem;
+  }
+
+  .avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}

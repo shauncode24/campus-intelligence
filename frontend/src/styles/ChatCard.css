@@ -50,3 +50,14 @@
   color: #111827;
   margin: 0;
 }
+
+@media (max-width: 768px) {
+  .deadline-card {
+    width: 90%;
+    padding: 16px;
+  }
+
+  .deadline-question {
+    font-size: 14px;
+  }
+}

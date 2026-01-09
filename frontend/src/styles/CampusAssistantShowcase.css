@@ -278,3 +278,31 @@
   width: 18px;
   border-radius: 3px;
 }
+
+@media (max-width: 1024px) {
+  .showcase-grid {
+    flex-direction: column;
+    width: 95vw;
+    gap: 30px;
+  }
+
+  .rotating-card {
+    width: 100%;
+  }
+
+  .stats-section {
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-section {
+    flex-wrap: wrap;
+  }
+
+  .stat-box {
+    flex: 1 1 45%;
+  }
+}

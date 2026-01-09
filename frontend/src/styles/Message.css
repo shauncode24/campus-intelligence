@@ -76,6 +76,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  padding: 4px;
 }
 
 /* AI Message Styles */
@@ -419,5 +420,75 @@
   50%,
   100% {
     opacity: 0;
+  }
+}
+
+@media (max-width: 1024px) {
+  .message-container {
+    max-width: 85%;
+  }
+}
+
+@media (max-width: 768px) {
+  .message-wrapper {
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .user-message-container {
+    max-width: 85%;
+  }
+
+  .user-message-header {
+    padding-right: 40px;
+  }
+
+  .user-message-bubble,
+  .message-content {
+    padding: 12px 14px;
+  }
+
+  .message-text-content {
+    font-size: 14px;
+    padding: 12px 0 20px 0;
+  }
+
+  .ai-icon,
+  .user-avatar {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+  }
+
+  .top-section {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 0 8px 0;
+  }
+
+  .confidence-badge-top,
+  .document-badge {
+    font-size: 0.65rem;
+  }
+
+  .message-actions-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .message-content {
+    max-width: 85%;
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .message-container {
+    max-width: 95%;
+  }
+
+  .user-message-container {
+    max-width: 95%;
   }
 }

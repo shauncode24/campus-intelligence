@@ -336,3 +336,51 @@
   position: absolute;
   z-index: 11;
 }
+
+@media (max-width: 1024px) {
+  .campus-intel-container {
+    width: 95vw;
+    height: auto;
+    min-height: 60vh;
+  }
+
+  .content-grid {
+    flex-direction: column;
+  }
+
+  .old-way-container,
+  .intel-container {
+    width: calc(100% - 40px);
+    border-radius: 15px;
+  }
+
+  .tab-button {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .old-tabs-container {
+    gap: 8px;
+  }
+
+  .old-tabs {
+    height: 25px;
+  }
+
+  .old-page {
+    height: 150px;
+    width: 120px;
+  }
+
+  .window-card {
+    height: auto;
+  }
+
+  .question-section,
+  .answer-card {
+    width: calc(95% - 30px);
+    font-size: 0.85rem;
+  }
+}

@@ -206,3 +206,37 @@
     transform: rotate(360deg);
   }
 }
+
+@media (max-width: 768px) {
+  .calendar-preview-modal {
+    min-width: 90%;
+    max-height: 60vh;
+  }
+
+  .calendar-preview-header,
+  .calendar-preview-body,
+  .calendar-preview-footer {
+    padding: 16px;
+  }
+
+  .preview-cancel-btn,
+  .preview-confirm-btn {
+    padding: 10px 16px;
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-preview-modal {
+    min-width: 95%;
+  }
+
+  .calendar-preview-footer {
+    flex-direction: column;
+  }
+
+  .preview-cancel-btn,
+  .preview-confirm-btn {
+    width: 100%;
+  }
+}

@@ -1,9 +1,13 @@
 import ChatCard from "./ChatCard";
 import "../styles/WelcomeScreen.css";
 
-export default function WelcomeScreen({ isVisible }) {
+export default function WelcomeScreen({ isVisible, sidebarOpen }) {
   return (
-    <div className={`welcome-screen ${isVisible ? "visible" : "hidden"}`}>
+    <div
+      className={`welcome-screen ${isVisible ? "visible" : "hidden"} ${
+        sidebarOpen ? "sidebar-open" : ""
+      }`}
+    >
       <div className="welcome-icon">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -18,7 +22,7 @@ export default function WelcomeScreen({ isVisible }) {
       </div>
 
       <div className="welcome-title">
-        Welcome back,&nbsp; <span style={{ color: "#4285f4" }}>Alex!</span>
+        Welcome back, <span style={{ color: "#4285f4" }}>Alex!</span>
       </div>
 
       <div className="welcome-subtitle">

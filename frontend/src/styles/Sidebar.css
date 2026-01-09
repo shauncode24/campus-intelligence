@@ -371,3 +371,55 @@
     left: 280px;
   }
 }
+
+@media (max-width: 1024px) {
+  .sidebar-toggle {
+    left: 16px;
+  }
+
+  .sidebar.open ~ .sidebar-toggle {
+    left: 296px;
+  }
+
+  .sidebar {
+    height: 100vh;
+  }
+}
+
+@media (max-width: 768px) {
+  /* .sidebar {
+    width: 260px;
+  }
+
+  .sidebar-toggle {
+    width: 28px;
+    height: 28px;
+  }
+
+  .new-chat-btn {
+    padding: 10px 14px;
+    font-size: 0.9rem;
+  }
+
+  .sidebar.open ~ .sidebar-toggle {
+    left: 260px;
+  } */
+}
+
+@media (max-width: 480px) {
+  /* .sidebar {
+    width: 240px;
+  }
+
+  .sidebar.open ~ .sidebar-toggle {
+    left: 240px;
+  }
+
+  .logo-text {
+    font-size: 1.1rem;
+  }
+
+  .sidebar-section-label {
+    font-size: 0.65rem;
+  } */
+}

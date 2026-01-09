@@ -17,6 +17,7 @@ export default function Sidebar({
   const [loadingChats, setLoadingChats] = useState(false);
   const [deletingChatId, setDeletingChatId] = useState(null);
   const [error, setError] = useState(null);
+  const [savedCount, setSavedCount] = useState(0);
 
   useEffect(() => {
     // Get or create user ID
@@ -33,6 +34,7 @@ export default function Sidebar({
     // Fetch user's chats
     if (storedUserId) {
       fetchUserChats(storedUserId);
+      fetchSavedCount(storedUserId);
     }
   }, []);
 
@@ -44,6 +46,7 @@ export default function Sidebar({
         currentChatId
       );
       fetchUserChats(userId);
+      fetchSavedCount(userId);
     }
   }, [currentChatId]);
 
@@ -78,6 +81,18 @@ export default function Sidebar({
       setRecentChats([]);
     } finally {
       setLoadingChats(false);
+    }
+  };
+
+  const fetchSavedCount = async (uid) => {
+    try {
+      const response = await fetch(
+        `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=100&favorites_only=true`
+      );
+      const data = await response.json();
+      setSavedCount(data.history?.length || 0);
+    } catch (error) {
+      console.error("Error fetching saved count:", error);
     }
   };
 
@@ -237,8 +252,8 @@ export default function Sidebar({
         </svg>
       ),
       label: "Saved Answers",
-      count: 8,
-      onClick: () => navigate("/history?favorites=true"),
+      count: savedCount,
+      onClick: () => navigate("/saved-answers"),
     },
   ];
 

@@ -18,7 +18,13 @@
   position: relative;
   background-color: #fafbfc;
   flex: 1;
+  margin-top: 100px;
 }
+
+.dashboard-content.hidden {
+  margin-top: 0px;
+}
+
 /* Loading Chat State - ADD AT END */
 .loading-chat {
   display: flex;
@@ -52,7 +58,10 @@
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-  .main-content.sidebar-open {
-    margin-left: 0;
-  }
+}
+
+@media (max-width: 1024px) {
+}
+
+@media (max-width: 768px) {
 }

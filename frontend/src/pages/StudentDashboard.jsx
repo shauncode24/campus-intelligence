@@ -213,7 +213,7 @@ export default function StudentDashboard() {
               <p>Loading chat...</p>
             </div>
           </div>
-          <Footer />
+          {/* <Footer /> */}
         </div>
       </>
     );
@@ -231,8 +231,12 @@ export default function StudentDashboard() {
       <div className={`main-content ${sidebarOpen ? "sidebar-open" : ""}`}>
         <Header sidebarOpen={sidebarOpen} />
 
-        <div className="default dashboard-content">
-          <WelcomeScreen isVisible={!hasMessages} />
+        <div
+          className={`default dashboard-content ${
+            !hasMessages ? "visible" : "hidden"
+          }`}
+        >
+          <WelcomeScreen isVisible={!hasMessages} sidebarOpen={sidebarOpen} />
 
           {hasMessages && (
             <MessageList
@@ -245,7 +249,7 @@ export default function StudentDashboard() {
           )}
         </div>
 
-        <Footer />
+        {/* <Footer /> */}
 
         {currentChatId && (
           <Chat

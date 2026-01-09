@@ -2,6 +2,7 @@ import { useState } from "react";
 import CalendarButton from "./CalendarButton";
 import SourcesList from "./SourcesList";
 import "../styles/Message.css";
+const { VITE_API_BASE_URL, VITE_PYTHON_RAG_URL } = import.meta.env;
 
 export default function Message({ message, userId, isStreaming }) {
   const m = message;
@@ -28,9 +29,37 @@ export default function Message({ message, userId, isStreaming }) {
     console.log("Thumbs down feedback:", !thumbsDown);
   };
 
-  const handleSave = () => {
-    setSaved(!saved);
-    console.log("Saved:", !saved);
+  const formatTimestamp = (timestamp) => {
+    const now = new Date();
+    const messageTime = new Date(timestamp);
+    const diffMs = now - messageTime;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return messageTime.toLocaleDateString();
+  };
+
+  const handleSave = async () => {
+    try {
+      // Get the message data from props
+      const historyId = m.historyId; // You'll need to pass this from parent
+
+      const response = await fetch(
+        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${historyId}/favorite`,
+        { method: "PUT" }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSaved(data.favorite);
+        console.log("Favorite status updated:", data.favorite);
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    }
   };
 
   const handleExport = () => {
@@ -66,7 +95,9 @@ export default function Message({ message, userId, isStreaming }) {
         <div className="user-message-container">
           <div className="user-message-header">
             <span className="user-label">You</span>
-            <span className="user-timestamp">Just now</span>
+            <span className="user-timestamp">
+              {m.timestamp ? formatTimestamp(m.timestamp) : "Just now"}
+            </span>{" "}
           </div>
           <div className="user-message-content">
             <div className="user-message-bubble">{m.text}</div>

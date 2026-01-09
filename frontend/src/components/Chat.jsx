@@ -93,7 +93,11 @@ const Chat = forwardRef(
     const sendMessage = async (input) => {
       if (!input.trim() || !chatId) return;
 
-      const userMessage = { role: "user", text: input };
+      const userMessage = {
+        role: "user",
+        text: input,
+        timestamp: new Date().toISOString(),
+      };
       setMessages((prev) => [...prev, userMessage]);
       setLoading(true);
       setStreamingMessage("");
@@ -202,6 +206,22 @@ const Chat = forwardRef(
                         metadata: metadata,
                       }),
                     });
+
+                    // Add this:
+                    const historyResponse = await fetch(
+                      `${VITE_PYTHON_RAG_URL}/history/${userId}?limit=1`
+                    );
+                    const historyData = await historyResponse.json();
+                    const latestHistory = historyData.history[0];
+
+                    // Update the bot message in state with historyId
+                    setMessages((prev) =>
+                      prev.map((msg, idx) =>
+                        idx === prev.length - 1
+                          ? { ...msg, historyId: latestHistory.id }
+                          : msg
+                      )
+                    );
                   } catch (error) {
                     console.error("Error saving bot message:", error);
                   }

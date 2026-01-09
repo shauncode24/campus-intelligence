@@ -2,7 +2,7 @@
   width: 70vw;
   height: fit-content;
   padding: 10px;
-  max-height: 80vh;
+  /* max-height: 80vh; */
   overflow-y: scroll;
   display: flex;
   flex-direction: column;
@@ -50,5 +50,19 @@
   }
   40% {
     transform: scale(1);
+  }
+}
+
+@media (max-width: 1024px) {
+  .message-list-container {
+    width: 85vw;
+  }
+}
+
+@media (max-width: 768px) {
+  .message-list-container {
+    width: 95vw;
+    padding: 5px;
+    margin-top: 80px;
   }
 }
