@@ -42,6 +42,7 @@ export default function Sidebar({
   }, [currentChatId]);
 
   const fetchUserChats = async (uid) => {
+    const controller = new AbortController();
     setLoadingChats(true);
     setError(null);
 
@@ -49,7 +50,7 @@ export default function Sidebar({
     console.log("📡 Fetching chats from:", url);
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: controller.signal });
       console.log("📊 Response status:", response.status);
 
       if (!response.ok) {
@@ -67,6 +68,7 @@ export default function Sidebar({
         setRecentChats([]);
       }
     } catch (error) {
+      if (error.name === "AbortError") return;
       console.error("❌ Error fetching chats:", error);
       setError(error.message);
       setRecentChats([]);

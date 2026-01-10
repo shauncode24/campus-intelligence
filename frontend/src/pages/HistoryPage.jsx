@@ -35,13 +35,14 @@ export default function HistoryPage() {
   }, [showFavoritesOnly, userId]);
 
   const fetchHistory = async (uid) => {
+    const controller = new AbortController();
     try {
       console.log(`📖 Fetching history for user: ${uid}`);
       const url = showFavoritesOnly
         ? `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=100&favorites_only=true`
         : `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=100`;
 
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: controller.signal });
       const data = await response.json();
       const historyData = data.history || [];
       console.log(`✅ Received ${historyData.length} history items`);
@@ -51,6 +52,7 @@ export default function HistoryPage() {
       await checkDocumentExistence(historyData);
       setLoading(false);
     } catch (error) {
+      if (error.name === "AbortError") return;
       console.error("❌ Error fetching history:", error);
       setLoading(false);
     }

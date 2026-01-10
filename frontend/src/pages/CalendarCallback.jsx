@@ -13,31 +13,27 @@ export default function CalendarCallback() {
     if (location.pathname.includes("/calendar/success")) {
       setStatus("success");
 
-      // Auto-close popup after 3 seconds if in popup
-      if (window.opener) {
-        setTimeout(() => {
+      const timer = setTimeout(() => {
+        if (window.opener) {
           window.close();
-        }, 3000);
-      } else {
-        // If not in popup, redirect to dashboard after 3 seconds
-        setTimeout(() => {
+        } else {
           navigate("/student");
-        }, 3000);
-      }
+        }
+      }, 3000);
+
+      return () => clearTimeout(timer);
     } else if (location.pathname.includes("/calendar/error")) {
       setStatus("error");
 
-      // Auto-close popup after 5 seconds if in popup
-      if (window.opener) {
-        setTimeout(() => {
+      const timer = setTimeout(() => {
+        if (window.opener) {
           window.close();
-        }, 5000);
-      } else {
-        // If not in popup, redirect to dashboard after 5 seconds
-        setTimeout(() => {
+        } else {
           navigate("/student");
-        }, 5000);
-      }
+        }
+      }, 5000);
+
+      return () => clearTimeout(timer);
     }
   }, [location, navigate]);
 

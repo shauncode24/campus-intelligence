@@ -85,6 +85,8 @@ const Chat = forwardRef(
     const sendMessage = async (input) => {
       if (!input.trim() || !chatId) return;
 
+      const controller = new AbortController();
+
       const userMessage = {
         role: "user",
         text: input,
@@ -131,6 +133,7 @@ const Chat = forwardRef(
             question: input,
             userId: userId,
           }),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -229,6 +232,10 @@ const Chat = forwardRef(
 
         setLoading(false);
       } catch (error) {
+        if (error.name === "AbortError") {
+          console.log("Request aborted");
+          return;
+        }
         console.error("Error sending message:", error);
         const errorMessage = {
           role: "bot",

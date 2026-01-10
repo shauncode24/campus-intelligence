@@ -10,14 +10,22 @@ const CampusAssistant = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    if (currentIndex < fullText.length) {
-      const timeout = setTimeout(() => {
-        setDisplayedText((prev) => prev + fullText[currentIndex]);
-        setCurrentIndex((prev) => prev + 1);
-      }, 20); // Adjust speed here (lower = faster)
+    let isMounted = true;
+    let timeout;
 
-      return () => clearTimeout(timeout);
+    if (currentIndex < fullText.length) {
+      timeout = setTimeout(() => {
+        if (isMounted) {
+          setDisplayedText((prev) => prev + fullText[currentIndex]);
+          setCurrentIndex((prev) => prev + 1);
+        }
+      }, 20);
     }
+
+    return () => {
+      isMounted = false;
+      if (timeout) clearTimeout(timeout);
+    };
   }, [currentIndex, fullText]);
 
   const fadeInLeft = {

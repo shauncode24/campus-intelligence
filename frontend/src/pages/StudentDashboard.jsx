@@ -123,12 +123,13 @@ export default function StudentDashboard() {
   };
 
   const loadChatMessages = async (chatId) => {
+    const controller = new AbortController();
     console.log("📥 Loading messages for chat:", chatId);
     try {
       const url = `${VITE_PYTHON_RAG_URL}/chats/${chatId}/messages?limit=100`;
       console.log("📡 GET request to:", url);
 
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: controller.signal });
       console.log("📊 Response status:", response.status);
 
       const data = await response.json();
@@ -155,6 +156,7 @@ export default function StudentDashboard() {
         console.log("📭 No messages in this chat yet");
       }
     } catch (error) {
+      if (error.name === "AbortError") return;
       console.error("❌ Error loading chat messages:", error);
     }
   };
