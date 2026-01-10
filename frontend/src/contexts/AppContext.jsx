@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { getUserId } from "../utils/validation";
+const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
 const AppContext = createContext(null);
 
@@ -8,13 +9,16 @@ export function AppProvider({ children }) {
     user: {
       id: null,
       loading: true,
-      error: null,
     },
     chats: {
       data: [],
       loading: false,
-      error: null,
-      currentChatId: null,
+      lastFetch: null,
+    },
+    history: {
+      data: [],
+      loading: false,
+      favoritesOnly: false,
     },
     theme: {
       sidebarOpen: true,
@@ -61,11 +65,124 @@ export function AppProvider({ children }) {
     }));
   };
 
+  const fetchChats = async (userId) => {
+    if (!userId || state.chats.loading) return;
+
+    setState((prev) => ({
+      ...prev,
+      chats: { ...prev.chats, loading: true },
+    }));
+
+    try {
+      const response = await fetch(
+        `${VITE_PYTHON_RAG_URL}/chats/user/${userId}?limit=10`
+      );
+      const data = await response.json();
+
+      setState((prev) => ({
+        ...prev,
+        chats: {
+          data: data.chats || [],
+          loading: false,
+          lastFetch: Date.now(),
+        },
+      }));
+    } catch (error) {
+      console.error("Failed to fetch chats:", error);
+      setState((prev) => ({
+        ...prev,
+        chats: { ...prev.chats, loading: false },
+      }));
+    }
+  };
+
+  const fetchHistory = async (userId, favoritesOnly = false) => {
+    if (!userId || state.history.loading) return;
+
+    setState((prev) => ({
+      ...prev,
+      history: { ...prev.history, loading: true },
+    }));
+
+    try {
+      const url = favoritesOnly
+        ? `${VITE_PYTHON_RAG_URL}/history/${userId}?limit=100&favorites_only=true`
+        : `${VITE_PYTHON_RAG_URL}/history/${userId}?limit=100`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      setState((prev) => ({
+        ...prev,
+        history: {
+          data: data.history || [],
+          loading: false,
+          favoritesOnly,
+        },
+      }));
+    } catch (error) {
+      console.error("Failed to fetch history:", error);
+      setState((prev) => ({
+        ...prev,
+        history: { ...prev.history, loading: false },
+      }));
+    }
+  };
+
+  const updateHistoryItem = (historyId, updates) => {
+    setState((prev) => ({
+      ...prev,
+      history: {
+        ...prev.history,
+        data: prev.history.data.map((item) =>
+          item.id === historyId ? { ...item, ...updates } : item
+        ),
+      },
+    }));
+  };
+
+  const removeHistoryItem = (historyId) => {
+    setState((prev) => ({
+      ...prev,
+      history: {
+        ...prev.history,
+        data: prev.history.data.filter((item) => item.id !== historyId),
+      },
+    }));
+  };
+
+  const updateChatTitle = (chatId, newTitle) => {
+    setState((prev) => ({
+      ...prev,
+      chats: {
+        ...prev.chats,
+        data: prev.chats.data.map((chat) =>
+          chat.id === chatId ? { ...chat, title: newTitle } : chat
+        ),
+      },
+    }));
+  };
+
+  const removeChat = (chatId) => {
+    setState((prev) => ({
+      ...prev,
+      chats: {
+        ...prev.chats,
+        data: prev.chats.data.filter((chat) => chat.id !== chatId),
+      },
+    }));
+  };
+
   const value = {
     state,
     actions: {
       updateUser,
-      updateChats,
+      fetchChats,
+      fetchHistory,
+      updateHistoryItem,
+      removeHistoryItem,
+      updateChatTitle,
+      removeChat,
       toggleSidebar,
       setPendingQuestion,
     },

@@ -8,18 +8,20 @@ import { parseTimestamp } from "../utils/validation";
 import { handleError } from "../utils/errors";
 
 export default function SavedAnswers() {
-  const [savedAnswers, setSavedAnswers] = useState([]);
+  const { state, actions } = useApp();
+  const userId = state.user.id;
+  const savedAnswers = state.history.data.filter((h) => h.favorite);
+  const loading = state.history.loading;
+
   const [filteredAnswers, setFilteredAnswers] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [noteText, setNoteText] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  const { state } = useApp();
-  const userId = state.user.id;
 
   useEffect(() => {
-    if (userId) fetchSavedAnswers(userId);
+    if (userId) {
+      actions.fetchHistory(userId, true);
+    }
   }, [userId]);
 
   useEffect(() => {
@@ -31,21 +33,6 @@ export default function SavedAnswers() {
       );
     }
   }, [selectedCategory, savedAnswers]);
-
-  const fetchSavedAnswers = async (uid) => {
-    try {
-      setLoading(true);
-      const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=100&favorites_only=true`
-      );
-      const data = await response.json();
-      setSavedAnswers(data.history || []);
-      setLoading(false);
-    } catch (error) {
-      handleError(error, { customMessage: "Failed to load saved answers" });
-      setLoading(false);
-    }
-  };
 
   const categories = [
     { id: "All", label: "All" },
@@ -68,14 +55,12 @@ export default function SavedAnswers() {
 
     try {
       const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/history/${userId}/${historyId}`,
-        { method: "DELETE" }
+        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${historyId}/favorite`,
+        { method: "PUT" }
       );
 
       if (response.ok) {
-        setSavedAnswers(savedAnswers.filter((a) => a.id !== historyId));
-      } else {
-        alert("Failed to remove saved answer");
+        actions.removeHistoryItem(historyId);
       }
     } catch (error) {
       handleError(error, { customMessage: "Failed to remove saved answer" });
@@ -100,14 +85,9 @@ export default function SavedAnswers() {
       );
 
       if (response.ok) {
-        const updated = savedAnswers.map((a) =>
-          a.id === id ? { ...a, personalNote: noteText } : a
-        );
-        setSavedAnswers(updated);
+        actions.updateHistoryItem(id, { personalNote: noteText });
         setEditingNoteId(null);
         setNoteText("");
-      } else {
-        alert("Failed to save note");
       }
     } catch (error) {
       handleError(error, { customMessage: "Failed to save note" });

@@ -15,81 +15,28 @@ export default function Sidebar({
   onChatSelect,
 }) {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [recentChats, setRecentChats] = useState([]);
-  const [loadingChats, setLoadingChats] = useState(false);
+  const { state, actions } = useApp();
+  const userId = state.user.id;
+  const recentChats = state.chats.data;
+  const loadingChats = state.chats.loading;
+  const savedCount = state.history.data.filter((h) => h.favorite).length;
+
   const [deletingChatId, setDeletingChatId] = useState(null);
   const [error, setError] = useState(null);
-  const [savedCount, setSavedCount] = useState(0);
-
-  const { state } = useApp();
-  const userId = state.user.id;
 
   useEffect(() => {
     if (userId) {
-      fetchUserChats(userId);
-      fetchSavedCount(userId);
+      actions.fetchChats(userId);
+      actions.fetchHistory(userId, true); // Fetch favorites for count
     }
   }, [userId]);
 
   // Refetch chats when currentChatId changes (after creating new chat)
   useEffect(() => {
     if (userId && currentChatId) {
-      console.log(
-        "🔄 Refetching chats due to currentChatId change:",
-        currentChatId
-      );
-      fetchUserChats(userId);
-      fetchSavedCount(userId);
+      actions.fetchChats(userId);
     }
   }, [currentChatId]);
-
-  const fetchUserChats = async (uid) => {
-    const controller = new AbortController();
-    setLoadingChats(true);
-    setError(null);
-
-    const url = `${VITE_PYTHON_RAG_URL}/chats/user/${uid}?limit=10`;
-    console.log("📡 Fetching chats from:", url);
-
-    try {
-      const response = await fetch(url, { signal: controller.signal });
-      console.log("📊 Response status:", response.status);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("✅ Chats data received:", data);
-
-      if (data.success && Array.isArray(data.chats)) {
-        console.log(`📋 Setting ${data.chats.length} chats`);
-        setRecentChats(data.chats);
-      } else {
-        console.warn("⚠️ Unexpected data format:", data);
-        setRecentChats([]);
-      }
-    } catch (error) {
-      if (error.name === "AbortError") return;
-      handleError(error, { customMessage: "Failed to load chats" });
-      setRecentChats([]);
-    } finally {
-      setLoadingChats(false);
-    }
-  };
-
-  const fetchSavedCount = async (uid) => {
-    try {
-      const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=100&favorites_only=true`
-      );
-      const data = await response.json();
-      setSavedCount(data.history?.length || 0);
-    } catch (error) {
-      handleError(error, { silent: true });
-    }
-  };
 
   const handleNewChat = async () => {
     console.log("➕ Creating new chat for user:", userId);
@@ -133,7 +80,6 @@ export default function Sidebar({
       return;
     }
 
-    console.log("🗑️ Deleting chat:", chatId);
     setDeletingChatId(chatId);
 
     try {
@@ -145,12 +91,8 @@ export default function Sidebar({
       const data = await response.json();
 
       if (data.success) {
-        console.log("✅ Chat deleted successfully");
+        actions.removeChat(chatId);
 
-        // Refresh chats list
-        await fetchUserChats(userId);
-
-        // If we deleted the current chat, create a new one
         if (currentChatId === chatId) {
           handleNewChat();
         }

@@ -17,8 +17,11 @@ import Header from "./../components/Header";
 
 export default function HistoryPage() {
   const navigate = useNavigate();
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { state, actions } = useApp();
+  const userId = state.user.id;
+  const history = state.history.data;
+  const loading = state.history.loading;
+
   const [searchTerm, setSearchTerm] = useState("");
   const [timeFilter, setTimeFilter] = useState("any");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -30,38 +33,11 @@ export default function HistoryPage() {
   const [insights, setInsights] = useState(null);
   const [documents, setDocuments] = useState(new Map());
 
-  const { state } = useApp();
-  const { actions } = useApp();
-  const userId = state.user.id;
-
   useEffect(() => {
-    if (userId) fetchHistory(userId);
-  }, [showFavoritesOnly, userId]);
-
-  const fetchHistory = async (uid) => {
-    const controller = new AbortController();
-    try {
-      console.log(`📖 Fetching history for user: ${uid}`);
-      const url = showFavoritesOnly
-        ? `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=100&favorites_only=true`
-        : `${VITE_PYTHON_RAG_URL}/history/${uid}?limit=100`;
-
-      const response = await fetch(url, { signal: controller.signal });
-      const data = await response.json();
-      const historyData = data.history || [];
-      console.log(`✅ Received ${historyData.length} history items`);
-
-      setHistory(historyData);
-      calculateInsights(historyData);
-      await checkDocumentExistence(historyData);
-      setLoading(false);
-    } catch (error) {
-      if (error.name !== "AbortError") {
-        handleError(error, { customMessage: "Failed to load history" });
-      }
-      setLoading(false);
+    if (userId) {
+      actions.fetchHistory(userId, showFavoritesOnly);
     }
-  };
+  }, [userId, showFavoritesOnly]);
 
   const checkDocumentExistence = async (historyData) => {
     const docMap = new Map();
@@ -323,16 +299,10 @@ export default function HistoryPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setHistory((prev) =>
-          prev.map((item) =>
-            item.id === id ? { ...item, favorite: data.favorite } : item
-          )
-        );
+        actions.updateHistoryItem(id, { favorite: data.favorite });
         toast.success(
           data.favorite ? "Added to favorites" : "Removed from favorites"
         );
-      } else {
-        toast.error("Failed to update favorite status");
       }
     } catch (error) {
       handleError(error, { customMessage: "Failed to update favorite status" });
@@ -350,13 +320,8 @@ export default function HistoryPage() {
       );
 
       if (response.ok) {
-        const newHistory = history.filter((item) => item.id !== historyId);
-        setHistory(newHistory);
-        calculateInsights(newHistory);
+        actions.removeHistoryItem(historyId);
         toast.success("Question removed from history");
-      } else {
-        const error = await response.json();
-        toast.error("Failed to delete: " + (error.detail || "Unknown error"));
       }
     } catch (error) {
       handleError(error, { customMessage: "Failed to delete question" });
