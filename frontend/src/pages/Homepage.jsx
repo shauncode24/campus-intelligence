@@ -1,13 +1,20 @@
 import { motion } from "framer-motion";
+import { lazy, Suspense } from "react";
+
+// Lazy load below-fold components
+const CampusIntelComparison = lazy(() =>
+  import("../components/CampusIntelComparison")
+);
+const CampusAssistantShowcase = lazy(() =>
+  import("../components/CampusAssistantShowcase")
+);
 import "./Homepage.css";
 import Header from "./../components/Header";
 import Footer from "../components/Footer";
 import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../components/usePageTitle";
-import CampusIntelComparison from "./../components/CampusIntelComparison";
 import Steps from "../components/Steps";
 import CampusAssistant from "../components/CampusAssistant";
-import CampusAssistantShowcase from "../components/CampusAssistantShowcase";
 
 export default function Homepage() {
   usePageTitle("Home");
@@ -154,24 +161,28 @@ export default function Homepage() {
         </div>
 
         {/* Comparison Section */}
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-          variants={fadeInUp}
-        >
-          <CampusIntelComparison />
-        </motion.div>
+        <Suspense fallback={<div style={{ minHeight: "400px" }} />}>
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.3 }}
+            variants={fadeInUp}
+          >
+            <CampusIntelComparison />
+          </motion.div>
+        </Suspense>
 
         {/* Showcase Section */}
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-          variants={fadeInUp}
-        >
-          <CampusAssistantShowcase />
-        </motion.div>
+        <Suspense fallback={<div style={{ minHeight: "400px" }} />}>
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.3 }}
+            variants={fadeInUp}
+          >
+            <CampusAssistantShowcase />
+          </motion.div>
+        </Suspense>
 
         {/* Sub Footer */}
         <motion.div

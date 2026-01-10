@@ -3,9 +3,13 @@ import "./CalendarButton.css";
 import { FcGoogle } from "react-icons/fc";
 const { VITE_API_BASE_URL } = import.meta.env;
 import toast from "react-hot-toast";
-import CalendarPreviewModal from "./CalendarPreviewModal";
+import { lazy, Suspense } from "react";
+const CalendarPreviewModal = lazy(() => import("./CalendarPreviewModal"));
 import { handleError } from "../utils/errors";
 import Spinner from "../components/Loading/Spinner";
+const preloadModal = () => {
+  import("./CalendarPreviewModal");
+};
 
 export default function CalendarButton({ deadline, userId, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -193,6 +197,8 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
                 <button
                   className="default calendar-button add-button"
                   onClick={() => setShowPreview(true)}
+                  onMouseEnter={preloadModal}
+                  onFocus={preloadModal}
                   disabled={loading}
                 >
                   <svg
@@ -210,19 +216,23 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
                   </svg>
                   Preview & Add to Calendar
                 </button>
-                <CalendarPreviewModal
-                  isOpen={showPreview}
-                  onClose={() => setShowPreview(false)}
-                  onConfirm={handleAddToCalendar}
-                  eventData={{
-                    title: deadline.title,
-                    date: deadline.date,
-                    description: deadline.description || deadline.context,
-                    sourceDocument:
-                      deadline.sourceDocument || "Campus Documents",
-                  }}
-                  loading={loading}
-                />
+                {showPreview && (
+                  <Suspense fallback={<Spinner size="sm" />}>
+                    <CalendarPreviewModal
+                      isOpen={showPreview}
+                      onClose={() => setShowPreview(false)}
+                      onConfirm={handleAddToCalendar}
+                      eventData={{
+                        title: deadline.title,
+                        date: deadline.date,
+                        description: deadline.description || deadline.context,
+                        sourceDocument:
+                          deadline.sourceDocument || "Campus Documents",
+                      }}
+                      loading={loading}
+                    />
+                  </Suspense>
+                )}
               </>
             )}
 
