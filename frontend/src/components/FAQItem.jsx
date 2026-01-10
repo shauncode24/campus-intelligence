@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "../styles/FAQItem.css";
+import { parseTimestamp } from "../utils/validation";
 
 export default function FAQItem({
   faq,
@@ -124,9 +125,9 @@ export default function FAQItem({
   };
 
   const formatTimestamp = (timestamp) => {
-    if (!timestamp?._seconds) return "Recently";
+    const date = parseTimestamp(timestamp);
+    if (!date) return "Recently";
 
-    const date = new Date(timestamp._seconds * 1000);
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));

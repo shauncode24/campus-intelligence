@@ -7,6 +7,7 @@ import "./HistoryPage.css";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useApp } from "../contexts/AppContext";
+import { parseTimestamp, validateConfidence } from "../utils/validation";
 
 const VITE_PYTHON_RAG_URL =
   import.meta.env.VITE_PYTHON_RAG_URL || "http://localhost:8000";
@@ -109,7 +110,7 @@ export default function HistoryPage() {
       }
 
       if (item.askedAt) {
-        const date = parseFirestoreDate(item.askedAt);
+        const date = parseTimestamp(item.askedAt);
         if (date) {
           hourCounts[date.getHours()]++;
         }
@@ -150,7 +151,7 @@ export default function HistoryPage() {
   const calculateStreak = (historyData) => {
     const dates = historyData
       .map((item) => {
-        const date = parseFirestoreDate(item.askedAt);
+        const date = parseTimestamp(item.askedAt);
         return date ? date.toDateString() : null;
       })
       .filter(Boolean);
@@ -180,12 +181,12 @@ export default function HistoryPage() {
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
     const thisWeek = historyData.filter((item) => {
-      const date = parseFirestoreDate(item.askedAt);
+      const date = parseTimestamp(item.askedAt);
       return date && date >= weekAgo;
     }).length;
 
     const lastWeek = historyData.filter((item) => {
-      const date = parseFirestoreDate(item.askedAt);
+      const date = parseTimestamp(item.askedAt);
       return date && date >= twoWeeksAgo && date < weekAgo;
     }).length;
 
@@ -193,22 +194,8 @@ export default function HistoryPage() {
     return Math.round(((thisWeek - lastWeek) / lastWeek) * 100);
   };
 
-  const parseFirestoreDate = (timestamp) => {
-    if (!timestamp) return null;
-    if (timestamp.toDate && typeof timestamp.toDate === "function") {
-      return timestamp.toDate();
-    }
-    if (timestamp._seconds) {
-      return new Date(timestamp._seconds * 1000);
-    }
-    if (timestamp.seconds) {
-      return new Date(timestamp.seconds * 1000);
-    }
-    return new Date(timestamp);
-  };
-
   const formatDate = (timestamp) => {
-    const date = parseFirestoreDate(timestamp);
+    const date = parseTimestamp(timestamp);
     if (!date || isNaN(date.getTime())) return "Unknown date";
 
     const now = new Date();
@@ -216,7 +203,7 @@ export default function HistoryPage() {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffHours = Math.floor(diffTime / (1000 / 60 / 60));
       if (diffHours === 0) {
         const diffMinutes = Math.floor(diffTime / (1000 * 60));
         return diffMinutes === 0 ? "Just now" : `${diffMinutes}m`;
@@ -230,7 +217,7 @@ export default function HistoryPage() {
   };
 
   const getDateGroup = (timestamp) => {
-    const date = parseFirestoreDate(timestamp);
+    const date = parseTimestamp(timestamp);
     if (!date || isNaN(date.getTime())) return "OLDER";
 
     const now = new Date();
@@ -261,7 +248,7 @@ export default function HistoryPage() {
     if (timeFilter !== "any") {
       const now = new Date();
       filtered = filtered.filter((item) => {
-        const date = parseFirestoreDate(item.askedAt);
+        const date = parseTimestamp(item.askedAt);
         if (!date) return false;
 
         switch (timeFilter) {
@@ -397,14 +384,18 @@ export default function HistoryPage() {
   };
 
   const getConfidenceBadge = (confidence) => {
-    if (!confidence || typeof confidence.score !== "number") return null;
-    const level = confidence.level?.toLowerCase();
+    const validated = validateConfidence(confidence);
+    if (!validated) return null;
+
     const colors = {
       high: "#34a853",
       medium: "#fbbc04",
       low: "#ea4335",
     };
-    return { color: colors[level] || "#5f6368", level: confidence.level };
+    return {
+      color: colors[validated.level.toLowerCase()] || "#5f6368",
+      level: validated.level,
+    };
   };
 
   const hasDocumentMissing = (item) => {

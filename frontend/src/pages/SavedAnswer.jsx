@@ -4,6 +4,7 @@ import Footer from "../components/Footer";
 import "./SavedAnswers.css";
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 import { useApp } from "../contexts/AppContext";
+import { parseTimestamp } from "../utils/validation";
 
 export default function SavedAnswers() {
   const [savedAnswers, setSavedAnswers] = useState([]);
@@ -174,18 +175,9 @@ export default function SavedAnswers() {
   };
 
   const formatDate = (timestamp) => {
-    if (!timestamp) return "Unknown date";
-    let date;
-    if (timestamp.toDate && typeof timestamp.toDate === "function") {
-      date = timestamp.toDate();
-    } else if (timestamp._seconds) {
-      date = new Date(timestamp._seconds * 1000);
-    } else if (timestamp.seconds) {
-      date = new Date(timestamp.seconds * 1000);
-    } else {
-      date = new Date(timestamp);
-    }
-    if (isNaN(date.getTime())) return "Unknown date";
+    const date = parseTimestamp(timestamp);
+    if (!date || isNaN(date.getTime())) return "Unknown date";
+
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",

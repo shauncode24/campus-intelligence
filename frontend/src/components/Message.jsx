@@ -2,6 +2,11 @@ import { useState } from "react";
 import CalendarButton from "./CalendarButton";
 import SourcesList from "./SourcesList";
 import "../styles/Message.css";
+import {
+  parseTimestamp,
+  validateConfidence,
+  validateSources,
+} from "../utils/validation";
 const { VITE_API_BASE_URL, VITE_PYTHON_RAG_URL } = import.meta.env;
 
 export default function Message({ message, userId, isStreaming }) {
@@ -30,16 +35,18 @@ export default function Message({ message, userId, isStreaming }) {
   };
 
   const formatTimestamp = (timestamp) => {
+    const date = parseTimestamp(timestamp);
+    if (!date) return "Just now";
+
     const now = new Date();
-    const messageTime = new Date(timestamp);
-    const diffMs = now - messageTime;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
+    const diffTime = Math.abs(now - date);
+    const diffMins = Math.floor(diffTime / 60000);
+    const diffHours = Math.floor(diffTime / 3600000);
 
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
-    return messageTime.toLocaleDateString();
+    return date.toLocaleDateString();
   };
 
   const handleSave = async () => {
@@ -84,6 +91,7 @@ export default function Message({ message, userId, isStreaming }) {
   };
 
   const getConfidenceColor = (level) => {
+    if (!level) return "#5f6368";
     if (level === "High") return "#22C55E";
     if (level === "Medium") return "#fbbc04";
     return "#DC2626";
@@ -136,42 +144,44 @@ export default function Message({ message, userId, isStreaming }) {
       <div className="message-container message-container-ai">
         <div className="message-content">
           <div className="message-bubble bubble-ai">
-            {!isStreaming && m.confidence && (
-              <div className="top-section">
-                <div
-                  className="confidence-badge-top"
-                  style={{ color: getConfidenceColor(m.confidence.level) }}
-                >
+            {!isStreaming &&
+              m.confidence &&
+              validateConfidence(m.confidence) && (
+                <div className="top-section">
                   <div
-                    className="default badge-div"
-                    style={{
-                      backgroundColor: getConfidenceColor(m.confidence.level),
-                    }}
-                  ></div>
-                  <span className="confidence-text">
-                    {m.confidence.level} confidence &nbsp;
-                  </span>
-                  <span className="confidence-percentage">
-                    {m.confidence.score}%
-                  </span>
-                </div>
-
-                <div className="document-badge">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="13"
-                    height="13"
-                    fill="currentColor"
-                    className="bi bi-file-earmark-arrow-up"
-                    viewBox="0 0 16 16"
+                    className="confidence-badge-top"
+                    style={{ color: getConfidenceColor(m.confidence.level) }}
                   >
-                    <path d="M8.5 11.5a.5.5 0 0 1-1 0V7.707L6.354 8.854a.5.5 0 1 1-.708-.708l2-2a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 7.707z" />
-                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z" />
-                  </svg>
-                  Based on documents uploaded on Dec 21, 2024
+                    <div
+                      className="default badge-div"
+                      style={{
+                        backgroundColor: getConfidenceColor(m.confidence.level),
+                      }}
+                    ></div>
+                    <span className="confidence-text">
+                      {m.confidence.level} confidence &nbsp;
+                    </span>
+                    <span className="confidence-percentage">
+                      {m.confidence.score}%
+                    </span>
+                  </div>
+
+                  <div className="document-badge">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="13"
+                      height="13"
+                      fill="currentColor"
+                      className="bi bi-file-earmark-arrow-up"
+                      viewBox="0 0 16 16"
+                    >
+                      <path d="M8.5 11.5a.5.5 0 0 1-1 0V7.707L6.354 8.854a.5.5 0 1 1-.708-.708l2-2a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 7.707z" />
+                      <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z" />
+                    </svg>
+                    Based on documents uploaded on Dec 21, 2024
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             <div className="message-text-content">
               {m.text}

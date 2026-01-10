@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css";
 import { useApp } from "../contexts/AppContext";
+import { parseTimestamp } from "../utils/validation";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -170,48 +171,17 @@ export default function Sidebar({
   };
 
   const formatTimestamp = (timestamp) => {
-    if (!timestamp) {
-      return "Just now";
-    }
+    const date = parseTimestamp(timestamp);
+    if (!date) return "Just now";
 
-    try {
-      let date;
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-      // Handle Firestore Timestamp format
-      if (timestamp._seconds) {
-        date = new Date(timestamp._seconds * 1000);
-      } else if (timestamp.seconds) {
-        date = new Date(timestamp.seconds * 1000);
-      } else if (typeof timestamp === "string") {
-        // Handle ISO string format
-        date = new Date(timestamp);
-      } else if (timestamp instanceof Date) {
-        date = timestamp;
-      } else {
-        console.log("⚠️ Unknown timestamp format:", timestamp);
-        return "Just now";
-      }
-
-      if (isNaN(date.getTime())) {
-        console.log("⚠️ Invalid date:", date);
-        return "Just now";
-      }
-
-      const now = new Date();
-      const diffTime = Math.abs(now - date);
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0) return "Today";
-      if (diffDays === 1) return "Yesterday";
-      if (diffDays < 7) return `${diffDays}d ago`;
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-    } catch (error) {
-      console.error("❌ Error formatting timestamp:", error, timestamp);
-      return "Just now";
-    }
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const menuItems = [

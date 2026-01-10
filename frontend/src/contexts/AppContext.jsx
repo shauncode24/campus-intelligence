@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { getUserId } from "../utils/validation";
 
 const AppContext = createContext(null);
 
@@ -22,14 +23,7 @@ export function AppProvider({ children }) {
 
   // Initialize user ONCE
   useEffect(() => {
-    let storedUserId = localStorage.getItem("campus_intel_user_id");
-    if (!storedUserId) {
-      storedUserId = `user_${Date.now()}_${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-      localStorage.setItem("campus_intel_user_id", storedUserId);
-    }
-
+    const storedUserId = getUserId();
     setState((prev) => ({
       ...prev,
       user: { id: storedUserId, loading: false, error: null },
