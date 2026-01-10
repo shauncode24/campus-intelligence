@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import "../styles/ChatInput.css";
+import { useApp } from "../contexts/AppContext";
 
 export default function ChatInput({ onSendMessage, loading, sidebarOpen }) {
   const [input, setInput] = useState("");
