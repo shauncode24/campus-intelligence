@@ -1,5 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import ChatInput from "./ChatInput";
+import { useApp } from "../contexts/AppContext";
 
 const { VITE_API_BASE_URL, VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -16,10 +17,12 @@ const Chat = forwardRef(
   ) => {
     const [messages, setMessages] = useState(initialMessages);
     const [loading, setLoading] = useState(false);
-    const [userId, setUserId] = useState("");
     const [streamingMessage, setStreamingMessage] = useState("");
     const [streamingMetadata, setStreamingMetadata] = useState(null);
     const [isFirstMessage, setIsFirstMessage] = useState(true);
+
+    const { state } = useApp();
+    const userId = state.user.id;
 
     // Sync with initialMessages when they change (when loading a different chat)
     useEffect(() => {
@@ -33,17 +36,6 @@ const Chat = forwardRef(
     useEffect(() => {
       console.log("Messages state updated:", messages.length);
     }, [messages]);
-
-    useEffect(() => {
-      let storedUserId = localStorage.getItem("campus_intel_user_id");
-      if (!storedUserId) {
-        storedUserId = `user_${Date.now()}_${Math.random()
-          .toString(36)
-          .substr(2, 9)}`;
-        localStorage.setItem("campus_intel_user_id", storedUserId);
-      }
-      setUserId(storedUserId);
-    }, []);
 
     useEffect(() => {
       if (onMessagesChange) {

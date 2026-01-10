@@ -8,6 +8,7 @@ import WelcomeScreen from "../components/WelcomeScreen";
 import MessageList from "../components/MessageList";
 import { usePageTitle } from "../components/usePageTitle";
 import "./StudentDashboard.css";
+import { useApp } from "../contexts/AppContext";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -17,11 +18,13 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const chatRef = useRef(null);
 
+  const { state, actions } = useApp();
+  const userId = state.user.id;
+  const sidebarOpen = state.theme.sidebarOpen;
+
   const [hasMessages, setHasMessages] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [loadingChat, setLoadingChat] = useState(true);
-  const [userId, setUserId] = useState("");
   const [chatState, setChatState] = useState({
     messages: [],
     streamingMessage: "",
@@ -29,18 +32,6 @@ export default function StudentDashboard() {
     loading: false,
     userId: "",
   });
-
-  // Get user ID on mount
-  useEffect(() => {
-    let storedUserId = localStorage.getItem("campus_intel_user_id");
-    if (!storedUserId) {
-      storedUserId = `user_${Date.now()}_${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-      localStorage.setItem("campus_intel_user_id", storedUserId);
-    }
-    setUserId(storedUserId);
-  }, []);
 
   // Check for chat ID in URL or create new chat
   useEffect(() => {
@@ -192,16 +183,12 @@ export default function StudentDashboard() {
     navigate(`/student?chat=${chatId}`);
   };
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
   if (loadingChat) {
     return (
       <>
         <Sidebar
           isOpen={sidebarOpen}
-          onToggle={toggleSidebar}
+          onToggle={actions.toggleSidebar}
           currentChatId={currentChatId}
           onChatSelect={handleChatSelect}
         />
@@ -223,7 +210,7 @@ export default function StudentDashboard() {
     <>
       <Sidebar
         isOpen={sidebarOpen}
-        onToggle={toggleSidebar}
+        onToggle={actions.toggleSidebar}
         currentChatId={currentChatId}
         onChatSelect={handleChatSelect}
       />

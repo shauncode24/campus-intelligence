@@ -6,6 +6,7 @@ import InsightsSidebar from "../components/InsightsSidebar";
 import "./HistoryPage.css";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useApp } from "../contexts/AppContext";
 
 const VITE_PYTHON_RAG_URL =
   import.meta.env.VITE_PYTHON_RAG_URL || "http://localhost:8000";
@@ -15,7 +16,6 @@ export default function HistoryPage() {
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [timeFilter, setTimeFilter] = useState("any");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -27,18 +27,12 @@ export default function HistoryPage() {
   const [insights, setInsights] = useState(null);
   const [documents, setDocuments] = useState(new Map());
 
-  useEffect(() => {
-    let storedUserId = localStorage.getItem("campus_intel_user_id");
-    if (!storedUserId) {
-      storedUserId = `user_${Date.now()}_${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-      localStorage.setItem("campus_intel_user_id", storedUserId);
-    }
-    setUserId(storedUserId);
+  const { state } = useApp();
+  const userId = state.user.id;
 
-    fetchHistory(storedUserId);
-  }, [showFavoritesOnly]);
+  useEffect(() => {
+    if (userId) fetchHistory(userId);
+  }, [showFavoritesOnly, userId]);
 
   const fetchHistory = async (uid) => {
     try {

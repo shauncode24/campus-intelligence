@@ -3,6 +3,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./SavedAnswers.css";
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
+import { useApp } from "../contexts/AppContext";
 
 export default function SavedAnswers() {
   const [savedAnswers, setSavedAnswers] = useState([]);
@@ -11,19 +12,13 @@ export default function SavedAnswers() {
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [noteText, setNoteText] = useState("");
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState("");
+
+  const { state } = useApp();
+  const userId = state.user.id;
 
   useEffect(() => {
-    let storedUserId = localStorage.getItem("campus_intel_user_id");
-    if (!storedUserId) {
-      storedUserId = `user_${Date.now()}_${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-      localStorage.setItem("campus_intel_user_id", storedUserId);
-    }
-    setUserId(storedUserId);
-    fetchSavedAnswers(storedUserId);
-  }, []);
+    if (userId) fetchSavedAnswers(userId);
+  }, [userId]);
 
   useEffect(() => {
     if (selectedCategory === "All") {

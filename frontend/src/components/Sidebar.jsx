@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css";
+import { useApp } from "../contexts/AppContext";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -13,30 +14,20 @@ export default function Sidebar({
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [recentChats, setRecentChats] = useState([]);
-  const [userId, setUserId] = useState("");
   const [loadingChats, setLoadingChats] = useState(false);
   const [deletingChatId, setDeletingChatId] = useState(null);
   const [error, setError] = useState(null);
   const [savedCount, setSavedCount] = useState(0);
 
-  useEffect(() => {
-    // Get or create user ID
-    let storedUserId = localStorage.getItem("campus_intel_user_id");
-    if (!storedUserId) {
-      storedUserId = `user_${Date.now()}_${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-      localStorage.setItem("campus_intel_user_id", storedUserId);
-    }
-    console.log("👤 Sidebar User ID:", storedUserId);
-    setUserId(storedUserId);
+  const { state } = useApp();
+  const userId = state.user.id;
 
-    // Fetch user's chats
-    if (storedUserId) {
-      fetchUserChats(storedUserId);
-      fetchSavedCount(storedUserId);
+  useEffect(() => {
+    if (userId) {
+      fetchUserChats(userId);
+      fetchSavedCount(userId);
     }
-  }, []);
+  }, [userId]);
 
   // Refetch chats when currentChatId changes (after creating new chat)
   useEffect(() => {
