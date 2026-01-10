@@ -5,6 +5,7 @@ import "./SavedAnswers.css";
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 import { useApp } from "../contexts/AppContext";
 import { parseTimestamp } from "../utils/validation";
+import { handleError } from "../utils/errors";
 
 export default function SavedAnswers() {
   const [savedAnswers, setSavedAnswers] = useState([]);
@@ -41,7 +42,7 @@ export default function SavedAnswers() {
       setSavedAnswers(data.history || []);
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching saved answers:", error);
+      handleError(error, { customMessage: "Failed to load saved answers" });
       setLoading(false);
     }
   };
@@ -77,8 +78,7 @@ export default function SavedAnswers() {
         alert("Failed to remove saved answer");
       }
     } catch (error) {
-      console.error("Error removing saved answer:", error);
-      alert("Error removing saved answer");
+      handleError(error, { customMessage: "Failed to remove saved answer" });
     }
   };
 
@@ -110,8 +110,7 @@ export default function SavedAnswers() {
         alert("Failed to save note");
       }
     } catch (error) {
-      console.error("Error saving note:", error);
-      alert("Error saving note");
+      handleError(error, { customMessage: "Failed to save note" });
     }
   };
 

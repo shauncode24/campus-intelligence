@@ -8,6 +8,7 @@ import MessageList from "../components/MessageList";
 import { usePageTitle } from "../components/usePageTitle";
 import { useChat } from "../hooks/useChat";
 import { useApp } from "../contexts/AppContext";
+import { handleError } from "../utils/errors";
 import "./StudentDashboard.css";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
@@ -103,7 +104,7 @@ export default function StudentDashboard() {
       }
     } catch (error) {
       if (error.name !== "AbortError") {
-        console.error("❌ Error creating new chat:", error);
+        handleError(error, { customMessage: "Failed to create new chat" });
       }
     } finally {
       setLoadingChat(false);

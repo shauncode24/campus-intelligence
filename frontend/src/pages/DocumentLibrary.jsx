@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./DocumentLibrary.css";
+import { handleError } from "../utils/errors";
 
 export default function DocumentLibrary() {
   const [documents, setDocuments] = useState([]);
@@ -36,7 +37,7 @@ export default function DocumentLibrary() {
       setDocuments(docs);
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching documents:", err);
+      handleError(err, { customMessage: "Failed to load documents" });
       setLoading(false);
     }
   };

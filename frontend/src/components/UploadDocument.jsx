@@ -4,6 +4,7 @@ import { db } from "../app/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import "../styles/UploadDocument.css";
 import toast from "react-hot-toast";
+import { handleError } from "../utils/errors";
 const { VITE_API_BASE_URL } = import.meta.env;
 
 export default function UploadDocument() {
@@ -87,8 +88,7 @@ export default function UploadDocument() {
         throw new Error(processResult.message);
       }
     } catch (err) {
-      console.error("Upload error:", err);
-      toast.error(err.message);
+      handleError(err, { customMessage: "Upload failed. Please try again." });
       setUploadProgress(0);
       setProcessingStage("");
     } finally {

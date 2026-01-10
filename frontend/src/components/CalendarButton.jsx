@@ -4,6 +4,7 @@ import { FcGoogle } from "react-icons/fc";
 const { VITE_API_BASE_URL } = import.meta.env;
 import toast from "react-hot-toast";
 import CalendarPreviewModal from "./CalendarPreviewModal";
+import { handleError } from "../utils/errors";
 
 export default function CalendarButton({ deadline, userId, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -50,8 +51,9 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
         }, 1000);
       }
     } catch (err) {
-      console.error("Connection error:", err);
-      setError("Failed to connect to Google Calendar");
+      handleError(err, {
+        customMessage: "Failed to connect to Google Calendar",
+      });
     } finally {
       setLoading(false);
     }
@@ -65,7 +67,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
       const data = await response.json();
       setConnected(data.connected);
     } catch (err) {
-      console.error("Status check error:", err);
+      handleError(err, { silent: true });
     }
   };
 
@@ -101,17 +103,10 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
         toast.success("Event added to your Google Calendar!");
         setSelect(false);
       } else {
-        if (data.error === "Not authorized" || data.error === "Token expired") {
-          setConnected(false);
-          setError(data.message);
-        } else {
-          setError(data.message || "Failed to create event");
-        }
+        handleError(new Error(data.message), { customMessage: data.message });
       }
     } catch (err) {
-      console.error("Create event error:", err);
-      toast.error("Failed to add event to calendar");
-      setError("Failed to add event to calendar");
+      handleError(err, { customMessage: "Failed to add event to calendar" });
     } finally {
       setLoading(false);
     }

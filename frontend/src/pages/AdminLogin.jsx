@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import "./AdminLogin.css";
 import toast from "react-hot-toast";
 import { usePageTitle } from "../components/usePageTitle";
+import { handleError } from "../utils/errors";
 
 export default function AdminLogin() {
   usePageTitle("Admin Login");
@@ -25,7 +26,9 @@ export default function AdminLogin() {
         navigate("/student");
       }
     } catch (err) {
-      toast.error(err.message);
+      handleError(err, {
+        customMessage: "Login failed. Please check your credentials.",
+      });
     } finally {
       setLoading(false);
     }

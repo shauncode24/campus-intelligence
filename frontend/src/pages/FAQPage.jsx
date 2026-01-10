@@ -8,6 +8,7 @@ import FAQFooterNote from "../components/FAQFooterNote";
 import FAQSkeleton from "../components/FAQSkelton";
 import { usePageTitle } from "../components/usePageTitle";
 import "./FAQPage.css";
+import { handleError } from "../utils/errors";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -37,7 +38,7 @@ export default function FAQPage() {
       setFaqs(data.faqs);
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching FAQs:", error);
+      handleError(error, { customMessage: "Failed to load FAQs" });
       setLoading(false);
     }
   };

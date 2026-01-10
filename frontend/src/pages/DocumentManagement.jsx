@@ -7,6 +7,7 @@ const { VITE_API_BASE_URL } = import.meta.env;
 import toast from "react-hot-toast";
 import { usePageTitle } from "../components/usePageTitle";
 import ConfirmModal from "../components/ConfirmModal";
+import { handleError } from "../utils/errors";
 
 export default function DocumentManagement() {
   usePageTitle("Manage Documents");
@@ -27,7 +28,8 @@ export default function DocumentManagement() {
       }));
       setDocuments(docs);
     } catch (err) {
-      console.error("Error fetching documents:", err);
+      handleError(err, { customMessage: "Failed to load documents" });
+      setLoading(false);
     }
   };
 
@@ -38,7 +40,7 @@ export default function DocumentManagement() {
         setDocuments(documents.filter((d) => d.id !== id));
         toast.success("Document deleted successfully");
       } catch (err) {
-        toast.error("Error deleting document: " + err.message);
+        handleError(err, { customMessage: "Failed to delete document" });
       }
     }
   };
@@ -82,7 +84,7 @@ export default function DocumentManagement() {
         fetchDocuments();
       }
     } catch (err) {
-      alert("Error reprocessing document: " + err.message);
+      handleError(err, { customMessage: "Failed to reprocess document" });
       fetchDocuments();
     }
   };

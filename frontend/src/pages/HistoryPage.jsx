@@ -7,6 +7,7 @@ import "./HistoryPage.css";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useApp } from "../contexts/AppContext";
+import { handleError } from "../utils/errors";
 import { parseTimestamp, validateConfidence } from "../utils/validation";
 
 const VITE_PYTHON_RAG_URL =
@@ -54,8 +55,9 @@ export default function HistoryPage() {
       await checkDocumentExistence(historyData);
       setLoading(false);
     } catch (error) {
-      if (error.name === "AbortError") return;
-      console.error("❌ Error fetching history:", error);
+      if (error.name !== "AbortError") {
+        handleError(error, { customMessage: "Failed to load history" });
+      }
       setLoading(false);
     }
   };
@@ -84,7 +86,7 @@ export default function HistoryPage() {
         const data = await response.json();
         docMap.set(docId, data.exists);
       } catch (error) {
-        console.error(`Error checking document ${docId}:`, error);
+        handleError(error, { silent: true }); // Silent for document checks
         docMap.set(docId, false);
       }
     }
@@ -332,8 +334,7 @@ export default function HistoryPage() {
         toast.error("Failed to update favorite status");
       }
     } catch (error) {
-      console.error("Error toggling favorite:", error);
-      toast.error("Failed to update favorite status");
+      handleError(error, { customMessage: "Failed to update favorite status" });
     }
   };
 
@@ -357,8 +358,7 @@ export default function HistoryPage() {
         toast.error("Failed to delete: " + (error.detail || "Unknown error"));
       }
     } catch (error) {
-      console.error("Error deleting question:", error);
-      toast.error("Failed to delete question");
+      handleError(error, { customMessage: "Failed to delete question" });
     }
   };
 

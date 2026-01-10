@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css";
 import { useApp } from "../contexts/AppContext";
 import { parseTimestamp } from "../utils/validation";
+import { handleError } from "../utils/errors";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -70,8 +71,7 @@ export default function Sidebar({
       }
     } catch (error) {
       if (error.name === "AbortError") return;
-      console.error("❌ Error fetching chats:", error);
-      setError(error.message);
+      handleError(error, { customMessage: "Failed to load chats" });
       setRecentChats([]);
     } finally {
       setLoadingChats(false);
@@ -86,7 +86,7 @@ export default function Sidebar({
       const data = await response.json();
       setSavedCount(data.history?.length || 0);
     } catch (error) {
-      console.error("Error fetching saved count:", error);
+      handleError(error, { silent: true });
     }
   };
 
@@ -121,8 +121,7 @@ export default function Sidebar({
         console.error("❌ Failed to create chat:", data);
       }
     } catch (error) {
-      console.error("❌ Error creating new chat:", error);
-      setError("Failed to create new chat");
+      handleError(error, { customMessage: "Failed to create new chat" });
     }
   };
 
@@ -156,7 +155,7 @@ export default function Sidebar({
         }
       }
     } catch (error) {
-      console.error("❌ Error deleting chat:", error);
+      handleError(error, { customMessage: "Failed to delete chat" });
     } finally {
       setDeletingChatId(null);
     }
