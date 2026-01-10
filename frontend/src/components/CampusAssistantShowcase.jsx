@@ -30,19 +30,22 @@ const CampusAssistantShowcase = () => {
   ];
 
   useEffect(() => {
-    let timeoutId;
+    const timeouts = [];
+
     const interval = setInterval(() => {
       setIsAnimating(true);
 
-      timeoutId = setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         setCurrentIndex((prev) => (prev + 1) % queries.length);
         setIsAnimating(false);
       }, 600);
+
+      timeouts.push(timeoutId);
     }, 4000);
 
     return () => {
       clearInterval(interval);
-      if (timeoutId) clearTimeout(timeoutId);
+      timeouts.forEach(clearTimeout);
     };
   }, [queries.length]);
 

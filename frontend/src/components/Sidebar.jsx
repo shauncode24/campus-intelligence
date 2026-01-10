@@ -39,8 +39,6 @@ export default function Sidebar({
   }, [currentChatId]);
 
   const handleNewChat = async () => {
-    console.log("➕ Creating new chat for user:", userId);
-
     try {
       const response = await fetch(`${VITE_PYTHON_RAG_URL}/chats/create`, {
         method: "POST",
@@ -52,21 +50,16 @@ export default function Sidebar({
       });
 
       const data = await response.json();
-      console.log("📝 Create chat response:", data);
 
       if (data.success) {
-        console.log("✅ Chat created with ID:", data.chatId);
-
         // Refresh chats list immediately
-        await fetchUserChats(userId);
+        await actions.fetchChats(userId);
 
         // Navigate to the new chat
         if (onChatSelect) {
           onChatSelect(data.chatId);
         }
         navigate(`/student?chat=${data.chatId}`);
-      } else {
-        console.error("❌ Failed to create chat:", data);
       }
     } catch (error) {
       handleError(error, { customMessage: "Failed to create new chat" });
@@ -219,38 +212,7 @@ export default function Sidebar({
         </div>
 
         <div className="sidebar-section">
-          <div className="sidebar-section-label">
-            RECENT
-            <button
-              onClick={() => fetchUserChats(userId)}
-              style={{
-                marginLeft: "auto",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "#5f6368",
-                fontSize: "12px",
-              }}
-            >
-              🔄
-            </button>
-          </div>
-
-          {error && (
-            <div
-              className="sidebar-error"
-              style={{
-                padding: "8px",
-                background: "#fce8e6",
-                color: "#c5221f",
-                borderRadius: "4px",
-                fontSize: "12px",
-                marginBottom: "8px",
-              }}
-            >
-              {error}
-            </div>
-          )}
+          <div className="sidebar-section-label">RECENT</div>
 
           {loadingChats ? (
             <ChatListSkeleton count={5} />
@@ -258,11 +220,6 @@ export default function Sidebar({
             <div className="sidebar-empty">
               <p style={{ fontSize: "13px", color: "#5f6368", padding: "8px" }}>
                 No chats yet. Click "New Chat" to start!
-              </p>
-              <p
-                style={{ fontSize: "11px", color: "#80868b", padding: "0 8px" }}
-              >
-                User ID: {userId?.substring(0, 15)}...
               </p>
             </div>
           ) : (

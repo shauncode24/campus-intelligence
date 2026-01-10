@@ -9,32 +9,31 @@ export default function CalendarCallback() {
   const [status, setStatus] = useState("loading"); // 'loading' | 'success' | 'error'
 
   useEffect(() => {
-    // Check if this is success or error page
+    let timer;
+
     if (location.pathname.includes("/calendar/success")) {
       setStatus("success");
-
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         if (window.opener) {
           window.close();
         } else {
           navigate("/student");
         }
       }, 3000);
-
-      return () => clearTimeout(timer);
     } else if (location.pathname.includes("/calendar/error")) {
       setStatus("error");
-
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         if (window.opener) {
           window.close();
         } else {
           navigate("/student");
         }
       }, 5000);
-
-      return () => clearTimeout(timer);
     }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [location, navigate]);
 
   const handleClose = () => {
