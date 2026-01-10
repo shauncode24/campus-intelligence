@@ -8,12 +8,7 @@ import ChatListSkeleton from "../components/Loading/ChatListSkeleton";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
-export default function Sidebar({
-  isOpen,
-  onToggle,
-  currentChatId,
-  onChatSelect,
-}) {
+export default function Sidebar({ isOpen, onToggle, currentChatId }) {
   const navigate = useNavigate();
   const { state, actions } = useApp();
   const userId = state.user.id;
@@ -27,7 +22,7 @@ export default function Sidebar({
   useEffect(() => {
     if (userId) {
       actions.fetchChats(userId);
-      actions.fetchHistory(userId, true); // Fetch favorites for count
+      actions.fetchHistory(userId, true);
     }
   }, [userId]);
 
@@ -52,13 +47,7 @@ export default function Sidebar({
       const data = await response.json();
 
       if (data.success) {
-        // Refresh chats list immediately
         await actions.fetchChats(userId);
-
-        // Navigate to the new chat
-        if (onChatSelect) {
-          onChatSelect(data.chatId);
-        }
         navigate(`/student?chat=${data.chatId}`);
       }
     } catch (error) {
@@ -98,10 +87,6 @@ export default function Sidebar({
   };
 
   const handleChatClick = (chatId) => {
-    console.log("💬 Selecting chat:", chatId);
-    if (onChatSelect) {
-      onChatSelect(chatId);
-    }
     navigate(`/student?chat=${chatId}`);
   };
 

@@ -20,7 +20,7 @@ export default function SavedAnswers() {
 
   useEffect(() => {
     if (userId) {
-      actions.fetchHistory(userId, true);
+      actions.fetchHistory(userId, true); // Fetch favorites only
     }
   }, [userId]);
 
