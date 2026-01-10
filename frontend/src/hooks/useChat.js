@@ -12,6 +12,13 @@ export function useChat(chatId, userId) {
 
   // Load messages when chatId changes
   useEffect(() => {
+    // IMMEDIATELY clear state on chatId change
+    setMessages([]);
+    setStreamingMessage("");
+    setStreamingMetadata(null);
+    setLoading(false);
+    setIsFirstMessage(true);
+
     if (!chatId) return;
 
     const controller = new AbortController();
@@ -44,7 +51,14 @@ export function useChat(chatId, userId) {
     }
 
     loadMessages();
-    return () => controller.abort();
+
+    return () => {
+      controller.abort();
+      // Clear state on unmount/chat switch
+      setMessages([]);
+      setStreamingMessage("");
+      setStreamingMetadata(null);
+    };
   }, [chatId]);
 
   const sendMessage = useCallback(
@@ -81,6 +95,7 @@ export function useChat(chatId, userId) {
             content: input,
             metadata: {},
           }),
+          signal: controller.signal,
         });
 
         // Auto-generate title for first message
@@ -89,11 +104,14 @@ export function useChat(chatId, userId) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ firstMessage: input }),
+            signal: controller.signal,
           });
           setIsFirstMessage(false);
         }
       } catch (error) {
-        console.error("Error saving user message:", error);
+        if (error.name !== "AbortError") {
+          console.error("Error saving user message:", error);
+        }
       }
 
       try {
