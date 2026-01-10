@@ -10,6 +10,8 @@ import { useChat } from "../hooks/useChat";
 import { useApp } from "../contexts/AppContext";
 import { handleError } from "../utils/errors";
 import "./StudentDashboard.css";
+import MessageSkeleton from "../components/Loading/MessageSkeleton";
+import Spinner from "../components/Loading/Spinner";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -122,19 +124,19 @@ export default function StudentDashboard() {
   if (loadingChat) {
     return (
       <>
-        <Sidebar
-          isOpen={sidebarOpen}
-          onToggle={actions.toggleSidebar}
-          currentChatId={currentChatId}
-          onChatSelect={handleChatSelect}
-        />
+        <Sidebar />
         <div className={`main-content ${sidebarOpen ? "sidebar-open" : ""}`}>
           <Header sidebarOpen={sidebarOpen} />
-          <div className="dashboard-content">
-            <div className="loading-chat">
-              <div className="spinner-large"></div>
-              <p>Loading chat...</p>
-            </div>
+          <div
+            className="dashboard-content"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "400px",
+            }}
+          >
+            <Spinner size="lg" />
           </div>
         </div>
       </>

@@ -5,6 +5,8 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./DocumentLibrary.css";
 import { handleError } from "../utils/errors";
+import DocumentSkeleton from "../components/Loading/DocumentSkeleton";
+import Spinner from "../components/Loading/Spinner";
 
 export default function DocumentLibrary() {
   const [documents, setDocuments] = useState([]);
@@ -107,9 +109,11 @@ export default function DocumentLibrary() {
     return (
       <>
         <Header />
-        <div className="doc-library-loading">
-          <div className="loading-spinner"></div>
-          <p>Loading document library...</p>
+        <div className="doc-library-container">
+          <div className="doc-library-header">
+            <h1 className="doc-library-title">Document Library</h1>
+          </div>
+          <DocumentSkeleton count={6} />
         </div>
         <Footer />
       </>

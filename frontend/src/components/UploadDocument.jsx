@@ -6,6 +6,7 @@ import "../styles/UploadDocument.css";
 import toast from "react-hot-toast";
 import { handleError } from "../utils/errors";
 const { VITE_API_BASE_URL } = import.meta.env;
+import Spinner from "../components/Loading/Spinner";
 
 export default function UploadDocument() {
   const [file, setFile] = useState(null);

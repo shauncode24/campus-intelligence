@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import Message from "./Message";
 import "../styles/MessageList.css";
+import MessageSkeleton from "../components/Loading/MessageSkeleton";
 
 export default function MessageList({
   messages,
@@ -35,7 +36,14 @@ export default function MessageList({
 
       <div ref={messagesEndRef} />
 
-      {loading && !streamingMessage && (
+      {loading && !streamingMessage && messages.length === 0 && (
+        <>
+          <MessageSkeleton />
+          <MessageSkeleton />
+        </>
+      )}
+
+      {loading && !streamingMessage && messages.length > 0 && (
         <div className="thinking-indicator">
           <div className="thinking-dots">
             <span></span>

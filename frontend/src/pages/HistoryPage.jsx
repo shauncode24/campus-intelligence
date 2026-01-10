@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { useApp } from "../contexts/AppContext";
 import { handleError } from "../utils/errors";
 import { parseTimestamp, validateConfidence } from "../utils/validation";
+import Spinner from "../components/Loading/Spinner";
 
 const VITE_PYTHON_RAG_URL =
   import.meta.env.VITE_PYTHON_RAG_URL || "http://localhost:8000";
@@ -412,15 +413,16 @@ export default function HistoryPage() {
   if (loading) {
     return (
       <div className="history-page">
+        <Header />
         <div
           style={{
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            height: "100vh",
+            minHeight: "400px",
           }}
         >
-          Loading your question history...
+          <Spinner size="lg" />
         </div>
       </div>
     );

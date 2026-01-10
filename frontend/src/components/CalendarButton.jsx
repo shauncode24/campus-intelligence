@@ -5,6 +5,7 @@ const { VITE_API_BASE_URL } = import.meta.env;
 import toast from "react-hot-toast";
 import CalendarPreviewModal from "./CalendarPreviewModal";
 import { handleError } from "../utils/errors";
+import Spinner from "../components/Loading/Spinner";
 
 export default function CalendarButton({ deadline, userId, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -178,7 +179,14 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
                 disabled={loading}
               >
                 <FcGoogle size={18} />
-                {loading ? "Connecting..." : "Connect Google Calendar"}
+                {loading ? (
+                  <>
+                    <Spinner size="sm" color="white" />
+                    <span style={{ marginLeft: "8px" }}>Connecting...</span>
+                  </>
+                ) : (
+                  "Connect to Google Calendar"
+                )}
               </button>
             ) : (
               <>

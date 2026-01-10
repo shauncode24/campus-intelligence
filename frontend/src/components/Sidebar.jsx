@@ -4,6 +4,7 @@ import "../styles/Sidebar.css";
 import { useApp } from "../contexts/AppContext";
 import { parseTimestamp } from "../utils/validation";
 import { handleError } from "../utils/errors";
+import ChatListSkeleton from "../components/Loading/ChatListSkeleton";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -310,7 +311,7 @@ export default function Sidebar({
           )}
 
           {loadingChats ? (
-            <div className="sidebar-loading">Loading chats...</div>
+            <ChatListSkeleton count={5} />
           ) : recentChats.length === 0 ? (
             <div className="sidebar-empty">
               <p style={{ fontSize: "13px", color: "#5f6368", padding: "8px" }}>
