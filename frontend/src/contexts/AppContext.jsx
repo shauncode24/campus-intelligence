@@ -19,6 +19,9 @@ export function AppProvider({ children }) {
     theme: {
       sidebarOpen: true,
     },
+    navigation: {
+      pendingQuestion: null,
+    },
   });
 
   // Initialize user ONCE
@@ -51,12 +54,20 @@ export function AppProvider({ children }) {
     }));
   };
 
+  const setPendingQuestion = (question) => {
+    setState((prev) => ({
+      ...prev,
+      navigation: { pendingQuestion: question },
+    }));
+  };
+
   const value = {
     state,
     actions: {
       updateUser,
       updateChats,
       toggleSidebar,
+      setPendingQuestion,
     },
   };
 

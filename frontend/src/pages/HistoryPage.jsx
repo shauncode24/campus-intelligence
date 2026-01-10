@@ -29,6 +29,7 @@ export default function HistoryPage() {
   const [documents, setDocuments] = useState(new Map());
 
   const { state } = useApp();
+  const { actions } = useApp();
   const userId = state.user.id;
 
   useEffect(() => {
@@ -362,7 +363,7 @@ export default function HistoryPage() {
   };
 
   const handleReask = (questionText) => {
-    localStorage.setItem("reask_question", questionText);
+    actions.setPendingQuestion(questionText);
     navigate("/student");
   };
 

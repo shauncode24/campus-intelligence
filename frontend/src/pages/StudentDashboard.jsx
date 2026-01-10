@@ -20,6 +20,7 @@ export default function StudentDashboard() {
   const { state, actions } = useApp();
   const userId = state.user.id;
   const sidebarOpen = state.theme.sidebarOpen;
+  const pendingQuestion = state.navigation.pendingQuestion;
 
   const [currentChatId, setCurrentChatId] = useState(null);
   const [loadingChat, setLoadingChat] = useState(true);
@@ -65,14 +66,13 @@ export default function StudentDashboard() {
 
   // Check if there's a reask question from history
   useEffect(() => {
-    const reaskQuestion = localStorage.getItem("reask_question");
-    if (reaskQuestion && currentChatId && sendMessage) {
+    if (pendingQuestion && currentChatId && sendMessage) {
       setTimeout(() => {
-        sendMessage(reaskQuestion);
-        localStorage.removeItem("reask_question");
+        sendMessage(pendingQuestion);
+        actions.setPendingQuestion(null); // Clear it
       }, 500);
     }
-  }, [currentChatId, sendMessage]);
+  }, [pendingQuestion, currentChatId, sendMessage, actions]);
 
   const createNewChat = async (signal) => {
     console.log("🆕 Creating new chat...");

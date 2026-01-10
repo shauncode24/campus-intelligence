@@ -1,8 +1,7 @@
 // src/utils/validation.js
 
-/**
- * Safely parse Firestore timestamp to Date
- */
+import { storage } from "./storage";
+
 export function parseTimestamp(timestamp) {
   if (!timestamp) return null;
 
@@ -37,11 +36,11 @@ export function parseTimestamp(timestamp) {
  */
 export function getUserId() {
   try {
-    let userId = localStorage.getItem("campus_intel_user_id");
+    let userId = storage.getUserId();
 
     if (!userId || typeof userId !== "string") {
       userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem("campus_intel_user_id", userId);
+      storage.setUserId(userId);
     }
 
     return userId;

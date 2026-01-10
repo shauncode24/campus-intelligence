@@ -116,16 +116,20 @@ export default function SavedAnswers() {
   };
 
   const handleShare = (answer) => {
+    const shareText = `Q: ${answer.questionText}\n\nA: ${answer.answer}`;
+
     if (navigator.share) {
-      navigator.share({
-        title: answer.questionText,
-        text: answer.answer,
-      });
+      navigator
+        .share({
+          title: answer.questionText,
+          text: shareText,
+        })
+        .catch((error) => {
+          console.log("Share failed:", error);
+        });
     } else {
-      navigator.clipboard.writeText(
-        `Q: ${answer.questionText}\n\nA: ${answer.answer}`
-      );
-      alert("Copied to clipboard!");
+      navigator.clipboard.writeText(shareText);
+      toast.success("Copied to clipboard!");
     }
   };
 
