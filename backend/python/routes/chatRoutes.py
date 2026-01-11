@@ -65,8 +65,8 @@ async def get_user_chats(
         print(f"❌ Error in get_user_chats: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/chats/{chatId}/user/{userId}")
-async def delete_chat(chatId: str, userId: str):
+@router.delete("/chats/{chatId}")
+async def delete_chat(chatId: str, userId: str = Query(..., description="User ID")):
     """Delete a chat and all its messages"""
     try:
         success = await chat_repository.delete_chat(userId, chatId)

@@ -79,6 +79,12 @@ export default function Message({ message, userId, isStreaming }) {
 
   const handleSave = async () => {
     try {
+      // ADD THIS CHECK:
+      if (!m.historyId) {
+        toast.error("Cannot save this message yet. Please wait...");
+        return;
+      }
+
       const historyId = m.historyId;
 
       const response = await fetch(

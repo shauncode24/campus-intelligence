@@ -40,14 +40,13 @@ export function AppProvider({ children }) {
   });
 
   const pendingRequests = useRef(new Map());
+  const isFetchingChats = useRef(false);
 
   // Generate consistent user ID based on auth state
   const generateUserId = useCallback(() => {
     if (isLoggedIn && user) {
-      // Use Firebase UID for logged-in users
       return user.uid;
     } else {
-      // Use localStorage for guest users (persistent across sessions)
       let guestId = localStorage.getItem("campus_intel_guest_id");
       if (!guestId) {
         guestId = `guest_${Date.now()}_${Math.random()
@@ -102,13 +101,30 @@ export function AppProvider({ children }) {
     async (userId, forceRefresh = false) => {
       if (!userId) return;
 
+      // ✅ CRITICAL FIX: Prevent concurrent fetches
+      if (isFetchingChats.current && !forceRefresh) {
+        console.log("⏸️ Fetch already in progress, skipping...");
+        return;
+      }
+
       const key = `chats-${userId}`;
 
-      if (pendingRequests.current.has(key)) {
+      if (pendingRequests.current.has(key) && !forceRefresh) {
         return pendingRequests.current.get(key);
       }
 
-      if (state.chats.loading && !forceRefresh) return;
+      // ✅ FIX: Check if data is fresh (within last 5 seconds)
+      const now = Date.now();
+      if (
+        state.chats.lastFetch &&
+        now - state.chats.lastFetch < 5000 &&
+        !forceRefresh
+      ) {
+        console.log("✅ Using cached chats (fresh data)");
+        return;
+      }
+
+      isFetchingChats.current = true;
 
       setState((prev) => ({
         ...prev,
@@ -140,12 +156,13 @@ export function AppProvider({ children }) {
         })
         .finally(() => {
           pendingRequests.current.delete(key);
+          isFetchingChats.current = false;
         });
 
       pendingRequests.current.set(key, promise);
       return promise;
     },
-    [state.chats.loading]
+    [] // ✅ FIX: Remove state.chats.lastFetch dependency
   );
 
   const fetchHistory = useCallback(
@@ -156,6 +173,14 @@ export function AppProvider({ children }) {
 
       if (pendingRequests.current.has(key)) {
         return pendingRequests.current.get(key);
+      }
+
+      // ✅ FIX: Only skip if we have data AND same filter
+      if (
+        state.history.data.length > 0 &&
+        state.history.favoritesOnly === favoritesOnly
+      ) {
+        return;
       }
 
       if (state.history.loading) return;
@@ -197,7 +222,7 @@ export function AppProvider({ children }) {
       pendingRequests.current.set(key, promise);
       return promise;
     },
-    [state.history.loading]
+    [] // ✅ FIX: Remove dependencies
   );
 
   const updateHistoryItem = (historyId, updates) => {
@@ -228,7 +253,9 @@ export function AppProvider({ children }) {
       chats: {
         ...prev.chats,
         data: prev.chats.data.map((chat) =>
-          chat.id === chatId ? { ...chat, title: newTitle } : chat
+          chat.id === chatId
+            ? { ...chat, title: newTitle, updatedAt: new Date() }
+            : chat
         ),
       },
     }));

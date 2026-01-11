@@ -25,13 +25,15 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
   const [editedTitle, setEditedTitle] = useState("");
 
   useEffect(() => {
-    if (userId) {
+    if (userId && state.chats.data.length === 0) {
+      // ✅ Only fetch if we have no chats
       actions.fetchChats(userId);
-      if (isLoggedIn) {
-        actions.fetchHistory(userId, true);
-      }
     }
-  }, [userId, isLoggedIn]);
+    if (isLoggedIn && state.history.data.length === 0) {
+      // ✅ Only fetch if we have no history
+      actions.fetchHistory(userId, true);
+    }
+  }, [userId]); // ✅ Only depend on userId
 
   const handleNewChat = async () => {
     try {
@@ -66,7 +68,7 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
 
     try {
       const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/chats/${chatId}/user/${userId}`,
+        `${VITE_PYTHON_RAG_URL}/chats/${chatId}?userId=${userId}`,
         { method: "DELETE" }
       );
 

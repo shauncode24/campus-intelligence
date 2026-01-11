@@ -163,6 +163,7 @@ export function useChat(chatId, userId) {
                     role: "bot",
                     text: accumulatedText,
                     timestamp: botTimestamp,
+                    historyId: null, // Will be updated after save
                     ...metadata,
                   };
                   setMessages((prev) => [...prev, botMessage]);
@@ -170,19 +171,34 @@ export function useChat(chatId, userId) {
                   setStreamingMetadata(null);
 
                   // Save bot message with timestamp
-                  await fetch(`${VITE_PYTHON_RAG_URL}/chats/messages/add`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      chatId,
-                      role: "bot",
-                      content: accumulatedText,
-                      metadata: {
-                        ...metadata,
-                        timestamp: botTimestamp, // ✅ Store timestamp
-                      },
-                    }),
-                  });
+                  const saveResponse = await fetch(
+                    `${VITE_PYTHON_RAG_URL}/chats/messages/add`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        chatId,
+                        role: "bot",
+                        content: accumulatedText,
+                        metadata: {
+                          ...metadata,
+                          timestamp: botTimestamp,
+                        },
+                      }),
+                    }
+                  );
+
+                  const saveData = await saveResponse.json();
+                  const messageId = saveData.messageId;
+
+                  // Update the bot message with historyId:
+                  setMessages((prev) =>
+                    prev.map((msg, idx) =>
+                      idx === prev.length - 1
+                        ? { ...msg, historyId: messageId }
+                        : msg
+                    )
+                  );
                 } else if (data.type === "error") {
                   throw new Error(data.data);
                 }

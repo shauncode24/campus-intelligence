@@ -1,33 +1,32 @@
-import { useState, useEffect } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import ChatInput from "../components/ChatInput";
-import Header from "../components/Header";
+import { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import WelcomeScreen from "../components/WelcomeScreen";
 import MessageList from "../components/MessageList";
-import { usePageTitle } from "../components/usePageTitle";
+import ChatInput from "../components/ChatInput";
 import { useChat } from "../hooks/useChat";
 import { useApp } from "../contexts/AppContext";
+import { usePageTitle } from "../components/usePageTitle";
 import { handleError } from "../utils/errors";
 import "./StudentDashboard.css";
-import MessageSkeleton from "../components/Loading/MessageSkeleton";
-import Spinner from "../components/Loading/Spinner";
+import Header from "./../components/Header";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
 export default function StudentDashboard() {
-  usePageTitle("Ask Questions");
+  usePageTitle("Dashboard");
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-
   const { state, actions } = useApp();
   const userId = state.user.id;
   const sidebarOpen = state.theme.sidebarOpen;
-  const pendingQuestion = state.navigation.pendingQuestion;
 
-  // ✅ URL is source of truth
-  const currentChatId = searchParams.get("chat");
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [loadingChat, setLoadingChat] = useState(false);
+  const [creatingChat, setCreatingChat] = useState(false);
+
+  const isInitialized = useRef(false);
+  const lastFetchedUserId = useRef(null);
 
   const {
     messages,
@@ -35,41 +34,75 @@ export default function StudentDashboard() {
     streamingMetadata,
     loading,
     sendMessage,
-    hasMessages,
   } = useChat(currentChatId, userId);
 
-  // Check for chat ID in URL or create new chat
+  // ✅ FIX 1: Initialize user and fetch chats ONCE
   useEffect(() => {
-    const controller = new AbortController();
+    if (!userId || userId === lastFetchedUserId.current) return;
 
-    const initializeChat = async () => {
-      if (!userId) return;
+    console.log("🔄 Initializing for user:", userId);
+    lastFetchedUserId.current = userId;
 
-      const chatIdFromUrl = searchParams.get("chat");
-
-      if (!chatIdFromUrl) {
-        await createNewChat(controller.signal);
+    const initializeUser = async () => {
+      try {
+        await actions.fetchChats(userId);
+        isInitialized.current = true;
+      } catch (error) {
+        console.error("Failed to initialize:", error);
       }
     };
 
-    initializeChat();
+    initializeUser();
+  }, [userId]); // Only depend on userId
 
-    return () => controller.abort();
-  }, [userId, searchParams]);
-
-  // Remove setLoadingChat(false) calls
-
-  // Check if there's a reask question from history
+  // ✅ FIX 2: Handle URL navigation AFTER chats are loaded
   useEffect(() => {
-    if (pendingQuestion && currentChatId && sendMessage) {
-      setTimeout(() => {
-        sendMessage(pendingQuestion);
-        actions.setPendingQuestion(null); // Clear it
-      }, 500);
-    }
-  }, [pendingQuestion, currentChatId, sendMessage, actions]);
+    if (!userId || !isInitialized.current) return;
 
-  const createNewChat = async (signal) => {
+    const params = new URLSearchParams(location.search);
+    const chatIdFromUrl = params.get("chat");
+
+    console.log("📍 Navigation check:", {
+      chatIdFromUrl,
+      currentChatId,
+      chatsCount: state.chats.data.length,
+    });
+
+    if (chatIdFromUrl) {
+      // URL has a chat ID - use it
+      if (chatIdFromUrl !== currentChatId) {
+        setCurrentChatId(chatIdFromUrl);
+      }
+    } else {
+      // No chat ID in URL
+      if (state.chats.data.length > 0) {
+        // Use most recent chat
+        const mostRecentChat = state.chats.data[0];
+        navigate(`/student?chat=${mostRecentChat.id}`, { replace: true });
+      } else if (!creatingChat) {
+        // No chats exist - create one
+        handleNewChat();
+      }
+    }
+  }, [location.search, state.chats.data, userId, isInitialized.current]);
+
+  // ✅ FIX 3: Handle pending questions
+  useEffect(() => {
+    if (state.navigation.pendingQuestion && currentChatId && !loading) {
+      sendMessage(state.navigation.pendingQuestion);
+      actions.setPendingQuestion(null);
+    }
+  }, [state.navigation.pendingQuestion, currentChatId, loading]);
+
+  const handleNewChat = async () => {
+    if (creatingChat) {
+      console.log("⏸️ Already creating chat, skipping...");
+      return;
+    }
+
+    console.log("➕ Creating new chat...");
+    setCreatingChat(true);
+
     try {
       const response = await fetch(`${VITE_PYTHON_RAG_URL}/chats/create`, {
         method: "POST",
@@ -78,40 +111,62 @@ export default function StudentDashboard() {
           userId: userId,
           title: "New Chat",
         }),
-        signal,
       });
 
       const data = await response.json();
 
       if (data.success) {
+        console.log("✅ Chat created:", data.chatId);
+
+        // ✅ Wait for chats to refresh before navigating
+        await actions.fetchChats(userId, true);
+
+        setCurrentChatId(data.chatId);
         navigate(`/student?chat=${data.chatId}`, { replace: true });
       }
     } catch (error) {
-      if (error.name !== "AbortError") {
-        handleError(error, { customMessage: "Failed to create new chat" });
-      }
+      handleError(error, { customMessage: "Failed to create new chat" });
+    } finally {
+      setCreatingChat(false);
     }
   };
 
+  const handleSidebarToggle = () => {
+    actions.toggleSidebar();
+  };
+
+  const showWelcome = !loading && !streamingMessage && messages.length === 0;
+
+  if (loadingChat) {
+    return (
+      <div className="main-content">
+        <Sidebar
+          isOpen={sidebarOpen}
+          onToggle={handleSidebarToggle}
+          currentChatId={currentChatId}
+        />
+        <div className="loading-chat">
+          <div className="spinner-large"></div>
+          <p>Loading chat...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <>
+    <div className="main-content">
+      <Header sidebarOpen={sidebarOpen} />
       <Sidebar
         isOpen={sidebarOpen}
-        onToggle={actions.toggleSidebar}
+        onToggle={handleSidebarToggle}
         currentChatId={currentChatId}
       />
 
       <div className={`main-content ${sidebarOpen ? "sidebar-open" : ""}`}>
-        <Header sidebarOpen={sidebarOpen} />
+        <div className={`dashboard-content ${showWelcome ? "" : "hidden"}`}>
+          <WelcomeScreen isVisible={showWelcome} sidebarOpen={sidebarOpen} />
 
-        <div
-          className={`default dashboard-content ${
-            !hasMessages ? "visible" : "hidden"
-          }`}
-        >
-          <WelcomeScreen isVisible={!hasMessages} sidebarOpen={sidebarOpen} />
-
-          {hasMessages && (
+          {!showWelcome && (
             <MessageList
               messages={messages}
               streamingMessage={streamingMessage}
@@ -122,14 +177,12 @@ export default function StudentDashboard() {
           )}
         </div>
 
-        {currentChatId && (
-          <ChatInput
-            onSendMessage={sendMessage}
-            loading={loading}
-            sidebarOpen={sidebarOpen}
-          />
-        )}
+        <ChatInput
+          onSendMessage={sendMessage}
+          loading={loading}
+          sidebarOpen={sidebarOpen}
+        />
       </div>
-    </>
+    </div>
   );
 }

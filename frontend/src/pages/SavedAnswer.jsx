@@ -10,20 +10,28 @@ import { handleError } from "../utils/errors";
 export default function SavedAnswers() {
   const { state, actions } = useApp();
   const userId = state.user.id;
-  const savedAnswers = state.history.data.filter((h) => h.favorite);
   const loading = state.history.loading;
 
+  const [savedAnswers, setSavedAnswers] = useState([]);
   const [filteredAnswers, setFilteredAnswers] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [noteText, setNoteText] = useState("");
 
+  // ✅ FIX: Fetch once on mount
   useEffect(() => {
     if (userId) {
-      actions.fetchHistory(userId, true); // Fetch favorites only
+      actions.fetchHistory(userId, true);
     }
-  }, [userId]);
+  }, [userId]); // Only depend on userId
 
+  // ✅ FIX: Update local state when history changes
+  useEffect(() => {
+    const favorites = state.history.data.filter((h) => h.favorite);
+    setSavedAnswers(favorites);
+  }, [state.history.data]); // Only depend on data
+
+  // ✅ FIX: Filter separately
   useEffect(() => {
     if (selectedCategory === "All") {
       setFilteredAnswers(savedAnswers);
@@ -32,7 +40,7 @@ export default function SavedAnswers() {
         savedAnswers.filter((answer) => answer.intent === selectedCategory)
       );
     }
-  }, [selectedCategory, savedAnswers]);
+  }, [selectedCategory, savedAnswers]); // Depend on both
 
   const categories = [
     { id: "All", label: "All" },
