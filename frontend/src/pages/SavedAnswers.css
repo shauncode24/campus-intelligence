@@ -240,6 +240,83 @@
   color: #5f6368;
 }
 
+.saved-answer-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.saved-confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(26, 115, 232, 0.08);
+  width: fit-content;
+}
+
+.saved-sources-section {
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  padding: 15px 0px 0px 0px;
+}
+
+/* Header */
+.saved-sources-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #5f6368;
+}
+
+.saved-sources-header svg {
+  opacity: 0.8;
+}
+
+/* List */
+.saved-sources-list {
+  gap: 6px;
+  width: 100%;
+}
+
+/* Item */
+.saved-source-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: #3c4043;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+/* Download link */
+.saved-source-download {
+  font-size: 0.75rem;
+  color: #1a73e8;
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.saved-source-download:hover {
+  text-decoration: underline;
+}
+
 /* Note Display */
 .saved-note-display {
   padding: 16px;

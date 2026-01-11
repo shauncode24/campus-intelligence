@@ -155,22 +155,11 @@ export function useChat(chatId, userId) {
                 } else if (data.type === "metadata") {
                   metadata = data.data;
                   setStreamingMetadata(metadata);
-                } else if (data.type === "done") {
-                  // ✅ Create timestamp for bot message
+                } // After "done" block in sendMessage function, replace this section:
+                else if (data.type === "done") {
                   const botTimestamp = new Date().toISOString();
 
-                  const botMessage = {
-                    role: "bot",
-                    text: accumulatedText,
-                    timestamp: botTimestamp,
-                    historyId: null, // Will be updated after save
-                    ...metadata,
-                  };
-                  setMessages((prev) => [...prev, botMessage]);
-                  setStreamingMessage("");
-                  setStreamingMetadata(null);
-
-                  // Save bot message with timestamp
+                  // Save bot message FIRST and get historyId
                   const saveResponse = await fetch(
                     `${VITE_PYTHON_RAG_URL}/chats/messages/add`,
                     {
@@ -191,14 +180,18 @@ export function useChat(chatId, userId) {
                   const saveData = await saveResponse.json();
                   const messageId = saveData.messageId;
 
-                  // Update the bot message with historyId:
-                  setMessages((prev) =>
-                    prev.map((msg, idx) =>
-                      idx === prev.length - 1
-                        ? { ...msg, historyId: messageId }
-                        : msg
-                    )
-                  );
+                  // NOW create bot message with historyId already included
+                  const botMessage = {
+                    role: "bot",
+                    text: accumulatedText,
+                    timestamp: botTimestamp,
+                    historyId: messageId, // ✅ Set immediately
+                    ...metadata,
+                  };
+
+                  setMessages((prev) => [...prev, botMessage]);
+                  setStreamingMessage("");
+                  setStreamingMetadata(null);
                 } else if (data.type === "error") {
                   throw new Error(data.data);
                 }

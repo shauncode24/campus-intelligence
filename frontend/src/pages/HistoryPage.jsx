@@ -44,7 +44,7 @@ export default function HistoryPage() {
     const uniqueDocIds = new Set();
 
     historyData.forEach((item) => {
-      if (item.sources) {
+      if (item.sources && Array.isArray(item.sources)) {
         item.sources.forEach((source) => {
           if (source.documentId) {
             uniqueDocIds.add(source.documentId);
@@ -55,21 +55,41 @@ export default function HistoryPage() {
 
     console.log(`📄 Checking existence for ${uniqueDocIds.size} documents`);
 
-    for (const docId of uniqueDocIds) {
+    // Check all documents in parallel
+    const checks = Array.from(uniqueDocIds).map(async (docId) => {
       try {
         const response = await fetch(
           `${VITE_PYTHON_RAG_URL}/documents/${docId}/exists`
         );
         const data = await response.json();
-        docMap.set(docId, data.exists);
+        return [docId, data.exists];
       } catch (error) {
-        handleError(error, { silent: true }); // Silent for document checks
-        docMap.set(docId, false);
+        console.error(`Failed to check document ${docId}:`, error);
+        return [docId, true]; // ✅ Assume exists if check fails
       }
-    }
+    });
+
+    const results = await Promise.all(checks);
+    results.forEach(([docId, exists]) => {
+      docMap.set(docId, exists);
+    });
 
     setDocuments(docMap);
   };
+
+  useEffect(() => {
+    if (userId) {
+      actions.fetchHistory(userId, showFavoritesOnly);
+    }
+  }, [userId, showFavoritesOnly]);
+
+  // ✅ Add separate effect for document checks
+  useEffect(() => {
+    if (history.length > 0) {
+      checkDocumentExistence(history);
+      calculateInsights(history);
+    }
+  }, [history]); // Only when history changes
 
   const calculateInsights = (historyData) => {
     if (!historyData.length) {

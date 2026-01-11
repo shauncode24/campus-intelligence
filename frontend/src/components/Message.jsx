@@ -85,26 +85,24 @@ export default function Message({ message, userId, isStreaming }) {
 
   const handleSave = async () => {
     try {
-      // ADD THIS CHECK:
+      // Check if we have a valid history ID
       if (!m.historyId) {
         toast.error("Cannot save this message yet. Please wait...");
         return;
       }
 
-      const historyId = m.historyId;
-
       const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${id}/favorite`,
+        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${m.historyId}/favorite`,
         { method: "PUT" }
       );
 
       if (response.ok) {
         const data = await response.json();
         setSaved(data.favorite);
-        console.log("Favorite status updated:", data.favorite);
+        toast.success(data.favorite ? "Saved!" : "Removed from saved");
       }
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      handleError(error, { customMessage: "Failed to save answer" });
     }
   };
 

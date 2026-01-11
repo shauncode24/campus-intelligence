@@ -65,16 +65,20 @@ async def get_user_chats(
         print(f"❌ Error in get_user_chats: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# In chatRoutes.py, the delete endpoint is already correct, but add logging:
+
 @router.delete("/chats/{chatId}")
 async def delete_chat(chatId: str, userId: str = Query(..., description="User ID")):
     """Delete a chat and all its messages"""
     try:
+        print(f"🗑️ Deleting chat {chatId} and all its messages...")
         success = await chat_repository.delete_chat(userId, chatId)
         
         if success:
+            print(f"✅ Chat {chatId} and all messages deleted successfully")
             return {
                 "success": True,
-                "message": "Chat deleted successfully"
+                "message": "Chat and all messages deleted successfully"
             }
         else:
             raise HTTPException(status_code=404, detail="Chat not found or unauthorized")
