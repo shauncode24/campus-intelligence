@@ -20,7 +20,7 @@ class ChatRepository:
         """
         db = firebase_client.db
         if not db:
-            print("âš ï¸ Firebase not available")
+            print("⚠️ Firebase not available")
             return None
         
         try:
@@ -34,11 +34,11 @@ class ChatRepository:
             
             doc_ref = db.collection('chats').add(chat_data)
             chat_id = doc_ref[1].id
-            print(f"âœ… Chat created with ID: {chat_id}")
+            print(f"✅ Chat created with ID: {chat_id}")
             return chat_id
             
         except Exception as e:
-            print(f"âŒ Error creating chat: {e}")
+            print(f"❌ Error creating chat: {e}")
             return None
     
     @staticmethod
@@ -55,7 +55,7 @@ class ChatRepository:
         """
         db = firebase_client.db
         if not db:
-            print("âš ï¸ Firebase not available")
+            print("⚠️ Firebase not available")
             return []
         
         try:
@@ -77,17 +77,17 @@ class ChatRepository:
                     'messageCount': chat_data.get('messageCount', 0)
                 })
             
-            print(f"ðŸ“‹ Retrieved {len(chat_list)} chats for user {user_id}")
+            print(f"📋 Retrieved {len(chat_list)} chats for user {user_id}")
             return chat_list
             
         except Exception as e:
-            print(f"âŒ Error fetching chats: {e}")
+            print(f"❌ Error fetching chats: {e}")
             return []
     
     @staticmethod
     async def delete_chat(user_id: str, chat_id: str) -> bool:
         """
-        Delete a chat and all its messages
+        Delete a chat and all its messages from Firebase
         
         Args:
             user_id: User identifier
@@ -98,43 +98,61 @@ class ChatRepository:
         """
         db = firebase_client.db
         if not db:
-            print("âš ï¸ Firebase not available")
+            print("⚠️ Firebase not available")
             return False
         
         try:
-            # Verify ownership
+            print(f"🗑️ Starting deletion of chat {chat_id} for user {user_id}")
+            
+            # Step 1: Verify the chat exists and belongs to the user
             chat_ref = db.collection('chats').document(chat_id)
             chat_doc = chat_ref.get()
             
             if not chat_doc.exists:
-                print(f"âš ï¸ Chat {chat_id} not found")
+                print(f"⚠️ Chat {chat_id} not found")
                 return False
             
             chat_data = chat_doc.to_dict()
             if chat_data.get('userId') != user_id:
-                print(f"âš ï¸ User {user_id} not authorized to delete chat {chat_id}")
+                print(f"⚠️ User {user_id} not authorized to delete chat {chat_id}")
                 return False
             
-            # Delete all messages in this chat
-            messages = db.collection('chat_messages') \
-                .where('chatId', '==', chat_id) \
-                .stream()
+            print(f"✅ Chat verified, proceeding with deletion")
             
-            batch = db.batch()
-            message_count = 0
-            for msg in messages:
-                batch.delete(msg.reference)
-                message_count += 1
+            # Step 2: Delete all messages in batches (Firebase batch limit is 500)
+            messages_ref = db.collection('chat_messages').where('chatId', '==', chat_id)
             
-            # Delete the chat itself
-            batch.delete(chat_ref)
-            batch.commit()
+            deleted_messages = 0
+            while True:
+                # Get messages in batches
+                messages_batch = messages_ref.limit(500).stream()
+                messages_list = list(messages_batch)
+                
+                if not messages_list:
+                    break
+                
+                # Delete batch
+                batch = db.batch()
+                for msg in messages_list:
+                    batch.delete(msg.reference)
+                    deleted_messages += 1
+                
+                batch.commit()
+                print(f"   Deleted {deleted_messages} messages so far...")
             
-            print(f"ðŸ—‘ï¸ Deleted chat {chat_id} with {message_count} messages")
+            print(f"✅ Deleted {deleted_messages} messages")
+            
+            # Step 3: Delete the chat document itself
+            chat_ref.delete()
+            print(f"✅ Deleted chat document {chat_id}")
+            
+            print(f"🎉 Successfully deleted chat {chat_id} with {deleted_messages} messages")
             return True
             
         except Exception as e:
-            print(f"âŒ Error deleting chat: {e}")
+            print(f"❌ Error deleting chat: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     @staticmethod
@@ -168,9 +186,10 @@ class ChatRepository:
                 'updatedAt': firestore.SERVER_TIMESTAMP
             })
             
+            print(f"✅ Auto-generated title: {title}")
             return True
         except Exception as e:
-            print(f"âŒ Error auto-generating title: {e}")
+            print(f"❌ Error auto-generating title: {e}")
             return False
     
     @staticmethod
@@ -188,7 +207,7 @@ class ChatRepository:
         """
         db = firebase_client.db
         if not db:
-            print("âš ï¸ Firebase not available")
+            print("⚠️ Firebase not available")
             return False
         
         try:
@@ -196,12 +215,12 @@ class ChatRepository:
             chat_doc = chat_ref.get()
             
             if not chat_doc.exists:
-                print(f"âš ï¸ Chat {chat_id} not found")
+                print(f"⚠️ Chat {chat_id} not found")
                 return False
             
             chat_data = chat_doc.to_dict()
             if chat_data.get('userId') != user_id:
-                print(f"âš ï¸ User {user_id} not authorized to update chat {chat_id}")
+                print(f"⚠️ User {user_id} not authorized to update chat {chat_id}")
                 return False
             
             chat_ref.update({
@@ -209,11 +228,11 @@ class ChatRepository:
                 'updatedAt': firestore.SERVER_TIMESTAMP
             })
             
-            print(f"âœ… Updated chat {chat_id} title to: {title}")
+            print(f"✅ Updated chat {chat_id} title to: {title}")
             return True
             
         except Exception as e:
-            print(f"âŒ Error updating chat title: {e}")
+            print(f"❌ Error updating chat title: {e}")
             return False
     
     @staticmethod
@@ -233,7 +252,7 @@ class ChatRepository:
         """
         db = firebase_client.db
         if not db:
-            print("âš ï¸ Firebase not available")
+            print("⚠️ Firebase not available")
             return None
         
         try:
@@ -257,11 +276,11 @@ class ChatRepository:
                 'messageCount': firestore.Increment(1)
             })
             
-            print(f"ðŸ’¬ Added message to chat {chat_id}")
+            print(f"💬 Added message to chat {chat_id}")
             return message_id
             
         except Exception as e:
-            print(f"âŒ Error adding message: {e}")
+            print(f"❌ Error adding message: {e}")
             return None
     
     @staticmethod
@@ -278,7 +297,7 @@ class ChatRepository:
         """
         db = firebase_client.db
         if not db:
-            print("âš ï¸ Firebase not available")
+            print("⚠️ Firebase not available")
             return []
         
         try:
@@ -300,11 +319,11 @@ class ChatRepository:
                     'createdAt': msg_data.get('createdAt')
                 })
             
-            print(f"ðŸ“¨ Retrieved {len(message_list)} messages for chat {chat_id}")
+            print(f"📨 Retrieved {len(message_list)} messages for chat {chat_id}")
             return message_list
             
         except Exception as e:
-            print(f"âŒ Error fetching messages: {e}")
+            print(f"❌ Error fetching messages: {e}")
             return []
 
 # Singleton instance

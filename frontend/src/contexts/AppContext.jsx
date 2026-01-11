@@ -75,7 +75,7 @@ export function AppProvider({ children }) {
   };
 
   const fetchChats = useCallback(
-    async (userId) => {
+    async (userId, forceRefresh = false) => {
       if (!userId) return;
 
       const key = `chats-${userId}`;
@@ -85,7 +85,8 @@ export function AppProvider({ children }) {
         return pendingRequests.current.get(key);
       }
 
-      if (state.chats.loading) return;
+      // Don't fetch if already loading
+      if (state.chats.loading && !forceRefresh) return;
 
       setState((prev) => ({
         ...prev,
@@ -213,11 +214,18 @@ export function AppProvider({ children }) {
   };
 
   const removeChat = (chatId) => {
+    console.log(`🗑️ Removing chat ${chatId} from state`);
     setState((prev) => ({
       ...prev,
       chats: {
         ...prev.chats,
-        data: prev.chats.data.filter((chat) => chat.id !== chatId),
+        data: prev.chats.data.filter((chat) => {
+          const shouldKeep = chat.id !== chatId;
+          if (!shouldKeep) {
+            console.log(`   Filtering out chat: ${chat.id} (${chat.title})`);
+          }
+          return shouldKeep;
+        }),
       },
     }));
   };

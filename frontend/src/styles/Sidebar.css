@@ -347,6 +347,56 @@
 .sidebar::-webkit-scrollbar-thumb:hover {
   background: #bdc1c6;
 }
+
+/* Chat title editing */
+.chat-title-input {
+  width: 90%;
+  background: rgb(255, 255, 255);
+  border: 1px solid #4285f4;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #000000;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.chat-title-input:focus {
+  border-color: #8ab4f8;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Recent item actions container */
+.recent-item-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.sidebar-recent-item:hover .recent-item-actions {
+  opacity: 1;
+}
+
+.sidebar-recent-item.active .recent-item-actions {
+  opacity: 1;
+}
+
+/* Edit action buttons */
+.recent-item-menu.edit-action {
+  background: rgba(66, 133, 244, 0.1);
+  padding: 4px;
+}
+
+.recent-item-menu.edit-action:hover {
+  background: rgba(66, 133, 244, 0.2);
+}
+
+.recent-item-menu.delete-btn:hover {
+  background: rgba(234, 67, 53, 0.1);
+  color: #ea4335;
+}
+
 /* Add/update these media queries */
 @media (max-width: 1024px) {
   .sidebar {

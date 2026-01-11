@@ -5,6 +5,7 @@ import { useApp } from "../contexts/AppContext";
 import { parseTimestamp } from "../utils/validation";
 import { handleError } from "../utils/errors";
 import ChatListSkeleton from "../components/Loading/ChatListSkeleton";
+import toast from "react-hot-toast";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -17,6 +18,8 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
   const savedCount = state.history.data.filter((h) => h.favorite).length;
 
   const [deletingChatId, setDeletingChatId] = useState(null);
+  const [editingChatId, setEditingChatId] = useState(null);
+  const [editedTitle, setEditedTitle] = useState("");
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -25,13 +28,6 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
       actions.fetchHistory(userId, true);
     }
   }, [userId]);
-
-  // Refetch chats when currentChatId changes (after creating new chat)
-  useEffect(() => {
-    if (userId && currentChatId) {
-      actions.fetchChats(userId);
-    }
-  }, [currentChatId]);
 
   const handleNewChat = async () => {
     try {
@@ -47,10 +43,7 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
       const data = await response.json();
 
       if (data.success) {
-        // Refresh chats list immediately
         await actions.fetchChats(userId);
-
-        // Navigate to the new chat
         navigate(`/student?chat=${data.chatId}`);
       }
     } catch (error) {
@@ -76,10 +69,14 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
       const data = await response.json();
 
       if (data.success) {
+        // ✅ Remove from local state
         actions.removeChat(chatId);
 
+        toast.success("Chat deleted successfully");
+
+        // ✅ If deleted chat was active, create new chat
         if (currentChatId === chatId) {
-          handleNewChat();
+          await handleNewChat();
         }
       }
     } catch (error) {
@@ -90,7 +87,59 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
   };
 
   const handleChatClick = (chatId) => {
+    if (editingChatId === chatId) return; // Don't navigate while editing
     navigate(`/student?chat=${chatId}`);
+  };
+
+  const handleStartEdit = (chatId, currentTitle, e) => {
+    e.stopPropagation();
+    setEditingChatId(chatId);
+    setEditedTitle(currentTitle);
+  };
+
+  const handleSaveEdit = async (chatId, e) => {
+    e?.stopPropagation();
+
+    if (!editedTitle.trim()) {
+      toast.error("Chat name cannot be empty");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${VITE_PYTHON_RAG_URL}/chats/${chatId}/user/${userId}/title`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: editedTitle.trim() }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        actions.updateChatTitle(chatId, editedTitle.trim());
+        toast.success("Chat name updated");
+        setEditingChatId(null);
+        setEditedTitle("");
+      }
+    } catch (error) {
+      handleError(error, { customMessage: "Failed to update chat name" });
+    }
+  };
+
+  const handleCancelEdit = (e) => {
+    e?.stopPropagation();
+    setEditingChatId(null);
+    setEditedTitle("");
+  };
+
+  const handleKeyPress = (chatId, e) => {
+    if (e.key === "Enter") {
+      handleSaveEdit(chatId, e);
+    } else if (e.key === "Escape") {
+      handleCancelEdit(e);
+    }
   };
 
   const formatTimestamp = (timestamp) => {
@@ -220,40 +269,117 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
                 onClick={() => handleChatClick(chat.id)}
               >
                 <div className="recent-item-content">
-                  <span className="recent-item-text">{chat.title}</span>
-                  <span className="recent-item-date">
-                    {formatTimestamp(chat.updatedAt)}
-                  </span>
-                </div>
-                <button
-                  className="recent-item-menu"
-                  onClick={(e) => handleDeleteChat(chat.id, e)}
-                  disabled={deletingChatId === chat.id}
-                >
-                  {deletingChatId === chat.id ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      fill="currentColor"
-                      viewBox="0 0 16 16"
-                      className="spinner"
-                    >
-                      <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0M3.5 8a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.5-.5" />
-                    </svg>
+                  {editingChatId === chat.id ? (
+                    <input
+                      type="text"
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      onKeyDown={(e) => handleKeyPress(chat.id, e)}
+                      onBlur={(e) => handleSaveEdit(chat.id, e)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="chat-title-input"
+                      autoFocus
+                      maxLength={50}
+                    />
                   ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      fill="currentColor"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" />
-                      <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z" />
-                    </svg>
+                    <>
+                      <span className="recent-item-text">{chat.title}</span>
+                      <span className="recent-item-date">
+                        {formatTimestamp(chat.updatedAt)}
+                      </span>
+                    </>
                   )}
-                </button>
+                </div>
+
+                <div className="recent-item-actions">
+                  {editingChatId === chat.id ? (
+                    <>
+                      <button
+                        className="recent-item-menu edit-action"
+                        onClick={(e) => handleSaveEdit(chat.id, e)}
+                        title="Save"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          class="bi bi-check-lg"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z" />
+                        </svg>
+                      </button>
+                      <button
+                        className="recent-item-menu edit-action"
+                        onClick={handleCancelEdit}
+                        title="Cancel"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          fill="currentColor"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z" />
+                        </svg>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="recent-item-menu"
+                        onClick={(e) => handleStartEdit(chat.id, chat.title, e)}
+                        title="Edit name"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          fill="currentColor"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                          <path
+                            fillRule="evenodd"
+                            d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        className="recent-item-menu delete-btn"
+                        onClick={(e) => handleDeleteChat(chat.id, e)}
+                        disabled={deletingChatId === chat.id}
+                        title="Delete chat"
+                      >
+                        {deletingChatId === chat.id ? (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                            className="spinner"
+                          >
+                            <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0M3.5 8a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.5-.5" />
+                          </svg>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                          >
+                            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" />
+                            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z" />
+                          </svg>
+                        )}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))
           )}
