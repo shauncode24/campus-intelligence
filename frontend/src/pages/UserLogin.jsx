@@ -82,7 +82,7 @@ export default function UserLogin() {
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="John Doe"
+                placeholder="Enter Your Name"
                 required
                 disabled={loading}
               />
