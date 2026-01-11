@@ -2,27 +2,29 @@
   width: 100%;
   background-color: #ffffff;
   border-top: 1px solid #eeeeee;
-  /* position: fixed; */
+  position: fixed;
   bottom: 0;
   left: 0;
+  right: 0;
   z-index: 1000;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 25px 0px;
+  padding: 20px 0;
   transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
 .chat-input-container.sidebar-open {
-  /* width: calc(100% - 280px); */
-  margin-left: 0px;
+  width: calc(100% - 280px);
+  left: 280px;
 }
-
 .chat-input-wrapper {
   padding: 8px 8px 8px 25px;
   display: flex;
   flex-direction: row;
   width: 55%;
+  max-width: 900px;
   border: 1px solid #dadce0;
   border-radius: 15px;
   gap: 20px;
@@ -33,7 +35,6 @@
 
 .search-icon {
   flex-shrink: 0;
-  /* align-self: flex-start; */
 }
 
 .chat-textarea {
@@ -44,7 +45,6 @@
   font-family: "Google Sans Flex", sans-serif;
   resize: none;
   overflow-y: auto;
-  /* max-height: 200px; */
   min-height: 24px;
   line-height: 1.5;
   padding: 8px 0;
@@ -121,26 +121,32 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1300px) {
   .chat-input-wrapper {
-    width: 90%;
+    width: 65%;
   }
 }
 
 @media (max-width: 1024px) {
+  .chat-input-container.sidebar-open {
+    width: 100%;
+    left: 0;
+  }
+
   .chat-input-wrapper {
-    width: 70%;
+    width: 75%;
   }
 }
 
 @media (max-width: 768px) {
   .chat-input-container {
-    padding: 15px 0;
+    padding: 15px 10px;
   }
 
   .chat-input-wrapper {
-    width: 85%;
-    padding: 6px 6px 6px 15px;
+    width: 90%;
+    padding: 8px 8px 8px 15px;
+    gap: 12px;
   }
 
   .chat-textarea {
@@ -150,5 +156,35 @@
   .chat-submit-button {
     padding: 10px 20px;
     font-size: 0.75rem;
+  }
+
+  .search-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-input-container {
+    padding: 12px 8px;
+  }
+
+  .chat-input-wrapper {
+    width: 95%;
+    padding: 7px 7px 7px 12px;
+    gap: 8px;
+  }
+  .chat-textarea {
+    font-size: 0.9rem;
+  }
+
+  .chat-submit-button {
+    padding: 10px 16px;
+    font-size: 0.7rem;
+  }
+
+  .search-icon {
+    width: 18px;
+    height: 18px;
   }
 }

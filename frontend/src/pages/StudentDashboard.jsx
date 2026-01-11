@@ -29,8 +29,6 @@ export default function StudentDashboard() {
   // ✅ URL is source of truth
   const currentChatId = searchParams.get("chat");
 
-  const [loadingChat, setLoadingChat] = useState(true);
-
   const {
     messages,
     streamingMessage,
@@ -49,9 +47,7 @@ export default function StudentDashboard() {
 
       const chatIdFromUrl = searchParams.get("chat");
 
-      if (chatIdFromUrl) {
-        setLoadingChat(false);
-      } else {
+      if (!chatIdFromUrl) {
         await createNewChat(controller.signal);
       }
     };
@@ -60,6 +56,8 @@ export default function StudentDashboard() {
 
     return () => controller.abort();
   }, [userId, searchParams]);
+
+  // Remove setLoadingChat(false) calls
 
   // Check if there's a reask question from history
   useEffect(() => {
@@ -92,32 +90,8 @@ export default function StudentDashboard() {
       if (error.name !== "AbortError") {
         handleError(error, { customMessage: "Failed to create new chat" });
       }
-    } finally {
-      setLoadingChat(false);
     }
   };
-
-  if (loadingChat) {
-    return (
-      <>
-        <Sidebar />
-        <div className={`main-content ${sidebarOpen ? "sidebar-open" : ""}`}>
-          <Header sidebarOpen={sidebarOpen} />
-          <div
-            className="dashboard-content"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: "400px",
-            }}
-          >
-            <Spinner size="lg" />
-          </div>
-        </div>
-      </>
-    );
-  }
 
   return (
     <>

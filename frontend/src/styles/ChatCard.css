@@ -51,13 +51,42 @@
   margin: 0;
 }
 
+/* Add these responsive improvements */
+@media (max-width: 1300px) {
+  .deadline-card {
+    width: 260px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .deadline-card {
+    width: 45%;
+    min-width: 200px;
+  }
+}
+
 @media (max-width: 768px) {
   .deadline-card {
-    width: 90%;
+    width: 100%;
+    max-width: 400px;
     padding: 16px;
   }
 
   .deadline-question {
     font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .deadline-card {
+    padding: 14px;
+  }
+
+  .deadline-question {
+    font-size: 13.5px;
+  }
+
+  .deadline-category {
+    font-size: 10px;
   }
 }

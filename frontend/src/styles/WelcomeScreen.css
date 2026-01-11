@@ -1,20 +1,20 @@
 .welcome-screen {
-  min-height: 100vh;
-  min-width: 100%;
+  width: 100%;
+  min-height: calc(100vh - 200px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 20px;
   transition: opacity 0.5s ease, transform 0.5s ease;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .welcome-screen.visible {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
-  justify-content: flex-start;
-  /* margin-top: 50px; */
 }
 
 .welcome-screen.hidden {
@@ -22,10 +22,11 @@
   transform: translateY(-20px);
   pointer-events: none;
   position: absolute;
+  visibility: hidden;
 }
 
 .welcome-screen.visible.sidebar-open {
-  width: calc(100% - 280px);
+  width: 100%;
 }
 
 .welcome-icon {
@@ -105,67 +106,107 @@
 
 @media (max-width: 1300px) {
   .chat-cards-grid {
+    width: 90%;
+    gap: 12px;
+  }
+
+  .welcome-title {
     width: 75%;
-    gap: 15px;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 0px;
+  }
+
+  .welcome-subtitle {
+    width: 70%;
   }
 }
 
 @media (max-width: 1024px) {
+  .welcome-screen {
+    min-height: calc(100vh - 250px);
+  }
+
   .welcome-title {
     font-size: 2.5rem;
-    width: 80%;
+    width: 85%;
   }
 
   .welcome-subtitle {
-    width: 75%;
+    width: 80%;
     font-size: 1.1rem;
   }
 
   .welcome-screen.visible {
-    justify-content: flex-start;
+    justify-content: center;
     max-width: 100%;
+    padding: 20px 15px;
+  }
+
+  .chat-cards-grid {
+    width: 95%;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
 
 @media (max-width: 768px) {
-  /* .welcome-title {
+  .welcome-screen {
+    padding: 20px 15px;
+    min-height: calc(100vh - 230px);
+  }
+
+  .welcome-title {
     font-size: 2rem;
-    width: 90%;
+    width: 95%;
   }
 
   .welcome-subtitle {
-    width: 85%;
+    width: 95%;
     font-size: 1rem;
   }
 
   .chat-cards-grid {
-    flex-direction: column;
-    width: 95%;
+    width: 100%;
+    gap: 10px;
   }
 
   .tip-banner {
-    flex-direction: column;
-    text-align: center;
-  } */
-
-  .chat-cards-grid {
-    width: 95%;
+    width: 100%;
+    max-width: 100%;
+    padding: 12px;
   }
 
-  .welcome-screen.visible {
+  .welcome-icon {
+    padding: 12px;
   }
 }
 
 @media (max-width: 480px) {
-  /* .welcome-title {
+  .welcome-screen {
+    min-height: calc(100vh - 215px);
+    padding: 15px 10px;
+    gap: 15px;
+  }
+
+  .welcome-title {
     font-size: 1.75rem;
-    flex-direction: column;
   }
 
   .welcome-subtitle {
     font-size: 0.95rem;
-  } */
+  }
+
+  .tip-banner {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 10px 12px;
+  }
+
+  .tip-label,
+  .tip-text {
+    font-size: 12.5px;
+  }
+
+  .welcome-icon svg {
+    width: 35px;
+    height: 35px;
+  }
 }

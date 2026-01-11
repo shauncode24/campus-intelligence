@@ -52,17 +52,33 @@
     transform: scale(1);
   }
 }
+/* Add these improvements */
+/* Update the media queries at the bottom */
+@media (max-width: 1300px) {
+  .message-list-container {
+    width: 80vw;
+  }
+}
 
 @media (max-width: 1024px) {
   .message-list-container {
-    width: 85vw;
+    width: 90vw;
   }
 }
+/* Update these media queries */
 
 @media (max-width: 768px) {
   .message-list-container {
     width: 95vw;
     padding: 5px;
-    margin-top: 80px;
+    margin-top: 0px;
+  }
+}
+
+@media (max-width: 480px) {
+  .message-list-container {
+    width: 98vw;
+    padding: 3px;
+    margin-top: 0px;
   }
 }

@@ -47,7 +47,10 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
       const data = await response.json();
 
       if (data.success) {
+        // Refresh chats list immediately
         await actions.fetchChats(userId);
+
+        // Navigate to the new chat
         navigate(`/student?chat=${data.chatId}`);
       }
     } catch (error) {

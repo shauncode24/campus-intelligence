@@ -347,11 +347,9 @@
 .sidebar::-webkit-scrollbar-thumb:hover {
   background: #bdc1c6;
 }
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
+/* Add/update these media queries */
+@media (max-width: 1024px) {
   .sidebar {
-    width: 280px;
     transform: translateX(-100%);
   }
 
@@ -368,51 +366,42 @@
   }
 
   .sidebar.open ~ .sidebar-toggle {
-    left: 280px;
+    left: 296px;
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
+  .sidebar {
+    width: 280px;
+    transform: translateX(-100%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
   .sidebar-toggle {
     left: 16px;
+    top: 20%;
   }
 
   .sidebar.open ~ .sidebar-toggle {
     left: 296px;
   }
 
-  .sidebar {
-    height: 100vh;
-  }
-}
-
-@media (max-width: 768px) {
-  /* .sidebar {
-    width: 260px;
-  }
-
-  .sidebar-toggle {
-    width: 28px;
-    height: 28px;
-  }
-
   .new-chat-btn {
     padding: 10px 14px;
     font-size: 0.9rem;
   }
-
-  .sidebar.open ~ .sidebar-toggle {
-    left: 260px;
-  } */
 }
 
 @media (max-width: 480px) {
-  /* .sidebar {
-    width: 240px;
+  .sidebar {
+    width: 260px;
   }
 
   .sidebar.open ~ .sidebar-toggle {
-    left: 240px;
+    left: 276px;
   }
 
   .logo-text {
@@ -421,5 +410,15 @@
 
   .sidebar-section-label {
     font-size: 0.65rem;
-  } */
+  }
+
+  .menu-item-label,
+  .recent-item-text {
+    font-size: 0.85rem;
+  }
+
+  .new-chat-btn {
+    font-size: 0.85rem;
+    padding: 10px 12px;
+  }
 }
