@@ -36,23 +36,50 @@ export default function Message({ message, userId, isStreaming }) {
 
   const formatTimestamp = (timestamp) => {
     const date = parseTimestamp(timestamp);
-    if (!date) return "Just now";
+    if (!date) return null;
 
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffMins = Math.floor(diffTime / 60000);
     const diffHours = Math.floor(diffTime / 3600000);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
+    // Get time in 12-hour format
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes < 10 ? `0${minutes}` : minutes;
+    const timeString = `${displayHours}:${displayMinutes} ${ampm}`;
+
+    // Determine what to show
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return date.toLocaleDateString();
+    if (diffHours < 24) return timeString;
+    if (diffDays === 1) return `Yesterday at ${timeString}`;
+    if (diffDays < 7) {
+      const dayNames = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+      return `${dayNames[date.getDay()]} at ${timeString}`;
+    }
+
+    // More than a week ago
+    return `${date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    })} at ${timeString}`;
   };
 
   const handleSave = async () => {
     try {
-      // Get the message data from props
-      const historyId = m.historyId; // You'll need to pass this from parent
+      const historyId = m.historyId;
 
       const response = await fetch(
         `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${historyId}/favorite`,
@@ -97,15 +124,17 @@ export default function Message({ message, userId, isStreaming }) {
     return "#DC2626";
   };
 
+  const timestampDisplay = formatTimestamp(m.timestamp);
+
   if (m.role === "user") {
     return (
       <div className="user-message-wrapper">
         <div className="user-message-container">
           <div className="user-message-header">
             <span className="user-label">You</span>
-            <span className="user-timestamp">
-              {m.timestamp ? formatTimestamp(m.timestamp) : "Just now"}
-            </span>{" "}
+            {timestampDisplay && (
+              <span className="user-timestamp">{timestampDisplay}</span>
+            )}
           </div>
           <div className="user-message-content">
             <div className="user-message-bubble">{m.text}</div>
@@ -115,7 +144,7 @@ export default function Message({ message, userId, isStreaming }) {
                 width="24"
                 height="24"
                 fill="white"
-                class="bi bi-person"
+                className="bi bi-person"
                 viewBox="0 0 16 16"
               >
                 <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z" />
@@ -142,6 +171,23 @@ export default function Message({ message, userId, isStreaming }) {
       </div>
 
       <div className="message-container message-container-ai">
+        {timestampDisplay && !isStreaming && (
+          <div className="ai-message-timestamp">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              fill="currentColor"
+              viewBox="0 0 16 16"
+              style={{ marginRight: "4px" }}
+            >
+              <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71z" />
+              <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0" />
+            </svg>
+            {timestampDisplay}
+          </div>
+        )}
+
         <div className="message-content">
           <div className="message-bubble bubble-ai">
             {!isStreaming &&
@@ -229,13 +275,13 @@ export default function Message({ message, userId, isStreaming }) {
                   width="13"
                   height="13"
                   fill="currentColor"
-                  class="bi bi-copy"
+                  className="bi bi-copy"
                   viewBox="0 0 16 16"
                   stroke="currentColor"
                   strokeWidth="0.6"
                 >
                   <path
-                    fill-rule="evenodd"
+                    fillRule="evenodd"
                     d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1z"
                   />
                 </svg>
@@ -252,7 +298,7 @@ export default function Message({ message, userId, isStreaming }) {
                 width="13"
                 height="13"
                 fill="currentColor"
-                class="bi bi-copy"
+                className="bi bi-copy"
                 viewBox="0 0 16 16"
                 stroke="currentColor"
                 strokeWidth="0.6"
@@ -271,7 +317,7 @@ export default function Message({ message, userId, isStreaming }) {
                 width="13"
                 height="13"
                 fill="currentColor"
-                class="bi bi-copy"
+                className="bi bi-copy"
                 viewBox="0 0 16 16"
                 stroke="currentColor"
                 strokeWidth="0.6"
@@ -291,7 +337,7 @@ export default function Message({ message, userId, isStreaming }) {
                   width="13"
                   height="13"
                   fill="currentColor"
-                  class="bi bi-copy"
+                  className="bi bi-copy"
                   viewBox="0 0 16 16"
                   stroke="currentColor"
                   strokeWidth="0.6"
@@ -304,7 +350,7 @@ export default function Message({ message, userId, isStreaming }) {
                   width="13"
                   height="13"
                   fill="currentColor"
-                  class="bi bi-copy"
+                  className="bi bi-copy"
                   viewBox="0 0 16 16"
                   stroke="currentColor"
                   strokeWidth="0.6"

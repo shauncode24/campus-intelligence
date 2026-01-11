@@ -35,6 +35,7 @@ export function useChat(chatId, userId) {
           const formatted = data.messages.map((msg) => ({
             role: msg.role,
             text: msg.content,
+            timestamp: msg.createdAt, // ✅ Add timestamp from Firebase
             ...(msg.metadata || {}),
           }));
           setMessages(formatted);
@@ -54,7 +55,6 @@ export function useChat(chatId, userId) {
 
     return () => {
       controller.abort();
-      // Clear state on unmount/chat switch
       setMessages([]);
       setStreamingMessage("");
       setStreamingMetadata(null);
@@ -73,10 +73,13 @@ export function useChat(chatId, userId) {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
+      // ✅ Create timestamp for user message
+      const userTimestamp = new Date().toISOString();
+
       const userMessage = {
         role: "user",
         text: input,
-        timestamp: new Date().toISOString(),
+        timestamp: userTimestamp,
       };
 
       setMessages((prev) => [...prev, userMessage]);
@@ -84,7 +87,7 @@ export function useChat(chatId, userId) {
       setStreamingMessage("");
       setStreamingMetadata(null);
 
-      // Save user message
+      // Save user message with timestamp
       try {
         await fetch(`${VITE_PYTHON_RAG_URL}/chats/messages/add`, {
           method: "POST",
@@ -93,7 +96,7 @@ export function useChat(chatId, userId) {
             chatId,
             role: "user",
             content: input,
-            metadata: {},
+            metadata: { timestamp: userTimestamp }, // ✅ Store timestamp
           }),
           signal: controller.signal,
         });
@@ -153,16 +156,20 @@ export function useChat(chatId, userId) {
                   metadata = data.data;
                   setStreamingMetadata(metadata);
                 } else if (data.type === "done") {
+                  // ✅ Create timestamp for bot message
+                  const botTimestamp = new Date().toISOString();
+
                   const botMessage = {
                     role: "bot",
                     text: accumulatedText,
+                    timestamp: botTimestamp,
                     ...metadata,
                   };
                   setMessages((prev) => [...prev, botMessage]);
                   setStreamingMessage("");
                   setStreamingMetadata(null);
 
-                  // Save bot message
+                  // Save bot message with timestamp
                   await fetch(`${VITE_PYTHON_RAG_URL}/chats/messages/add`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -170,7 +177,10 @@ export function useChat(chatId, userId) {
                       chatId,
                       role: "bot",
                       content: accumulatedText,
-                      metadata,
+                      metadata: {
+                        ...metadata,
+                        timestamp: botTimestamp, // ✅ Store timestamp
+                      },
                     }),
                   });
                 } else if (data.type === "error") {
@@ -185,11 +195,14 @@ export function useChat(chatId, userId) {
       } catch (error) {
         if (error.name !== "AbortError") {
           console.error("Error sending message:", error);
+
+          const errorTimestamp = new Date().toISOString();
           setMessages((prev) => [
             ...prev,
             {
               role: "bot",
               text: "Sorry, I encountered an error. Please try again.",
+              timestamp: errorTimestamp,
             },
           ]);
           setStreamingMessage("");

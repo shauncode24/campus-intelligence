@@ -143,10 +143,22 @@ async def get_chat_messages(
     try:
         messages = await chat_repository.get_chat_messages(chatId, limit)
         
+        # ✅ Ensure createdAt timestamp is included in response
+        formatted_messages = []
+        for msg in messages:
+            formatted_msg = {
+                'id': msg['id'],
+                'role': msg['role'],
+                'content': msg['content'],
+                'createdAt': msg['createdAt'],  # ✅ Include timestamp
+                'metadata': msg.get('metadata', {})
+            }
+            formatted_messages.append(formatted_msg)
+        
         return {
             "success": True,
-            "messages": messages,
-            "count": len(messages)
+            "messages": formatted_messages,
+            "count": len(formatted_messages)
         }
         
     except Exception as e:
@@ -157,6 +169,7 @@ async def get_chat_messages(
 async def add_message(request: AddMessageRequest):
     """Add a message to a chat"""
     try:
+        # ✅ Metadata already includes timestamp from frontend
         message_id = await chat_repository.add_message_to_chat(
             request.chatId,
             request.role,
