@@ -78,8 +78,22 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
         actions.removeChat(chatId);
         toast.success("Chat deleted successfully");
 
+        // ✅ FIX: If deleting current chat, navigate to most recent OR home
         if (currentChatId === chatId) {
-          await handleNewChat();
+          const remainingChats = state.chats.data.filter(
+            (c) => c.id !== chatId
+          );
+
+          if (remainingChats.length > 0) {
+            // Navigate to most recent remaining chat
+            navigate(`/student?chat=${remainingChats[0].id}`, {
+              replace: true,
+            });
+          } else {
+            // No chats left - just remove chat param from URL
+            // Dashboard will handle creating new chat if needed
+            navigate("/student", { replace: true });
+          }
         }
       }
     } catch (error) {

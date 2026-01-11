@@ -74,17 +74,18 @@ export default function StudentDashboard() {
         setCurrentChatId(chatIdFromUrl);
       }
     } else {
-      // No chat ID in URL
-      if (state.chats.data.length > 0) {
+      // ✅ FIX: No chat ID in URL - only create if NO chats exist
+      if (state.chats.data.length > 0 && !creatingChat) {
         // Use most recent chat
         const mostRecentChat = state.chats.data[0];
         navigate(`/student?chat=${mostRecentChat.id}`, { replace: true });
-      } else if (!creatingChat) {
-        // No chats exist - create one
+      } else if (state.chats.data.length === 0 && !creatingChat) {
+        // Only create new chat if NO chats exist
         handleNewChat();
       }
     }
-  }, [location.search, state.chats.data, userId, isInitialized.current]);
+  }, [location.search, state.chats.data.length, userId, isInitialized.current]);
+  // ✅ Changed: Use data.length instead of data to prevent infinite loops
 
   // ✅ FIX 3: Handle pending questions
   useEffect(() => {

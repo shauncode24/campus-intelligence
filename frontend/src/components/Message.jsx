@@ -7,6 +7,8 @@ import {
   validateConfidence,
   validateSources,
 } from "../utils/validation";
+import toast from "react-hot-toast";
+
 const { VITE_API_BASE_URL, VITE_PYTHON_RAG_URL } = import.meta.env;
 
 export default function Message({ message, userId, isStreaming }) {
@@ -15,6 +17,10 @@ export default function Message({ message, userId, isStreaming }) {
   const [thumbsUp, setThumbsUp] = useState(false);
   const [thumbsDown, setThumbsDown] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  useState(() => {
+    console.log("Messages, ", m);
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(m.text);
@@ -88,7 +94,7 @@ export default function Message({ message, userId, isStreaming }) {
       const historyId = m.historyId;
 
       const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${historyId}/favorite`,
+        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${id}/favorite`,
         { method: "PUT" }
       );
 
