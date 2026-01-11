@@ -1,17 +1,38 @@
 import "../styles/Header.css";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { useApp } from "../contexts/AppContext";
+import toast from "react-hot-toast";
 
 export default function Header(props) {
   const navigate = useNavigate();
+  const { isLoggedIn, isAdmin, logout, user } = useAuth();
+  const { state } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleNavigation = (path) => {
+  const displayName = state.user.displayName;
+
+  const handleNavigation = (path, requireAuth = false) => {
+    if (requireAuth && !isLoggedIn) {
+      toast.error("Please sign in to access this feature");
+      navigate("/user-login");
+      return;
+    }
     navigate(path);
-    setMenuOpen(false); // Close menu after navigation
+    setMenuOpen(false);
   };
 
-  // Close menu when clicking outside
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Logged out successfully");
+      navigate("/");
+    } catch (error) {
+      toast.error("Failed to logout");
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuOpen && !event.target.closest(".header-main")) {
@@ -50,7 +71,6 @@ export default function Header(props) {
           <div className="default header-left-header">Campus Intelligence</div>
         </div>
 
-        {/* Hamburger Menu Button */}
         <button
           className="hamburger-menu"
           onClick={(e) => {
@@ -71,7 +91,7 @@ export default function Header(props) {
             ) : (
               <path
                 fillRule="evenodd"
-                d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"
+                d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"
               />
             )}
           </svg>
@@ -93,11 +113,8 @@ export default function Header(props) {
             >
               Add Documents
             </span>
-            <span
-              className="default admin-option"
-              onClick={() => handleNavigation("/login")}
-            >
-              Exit Admin
+            <span className="default admin-option" onClick={handleLogout}>
+              Logout
             </span>
           </div>
         ) : (
@@ -112,7 +129,7 @@ export default function Header(props) {
             </span>
             <span
               className="default header-right-options"
-              onClick={() => handleNavigation("/history")}
+              onClick={() => handleNavigation("/history", true)}
             >
               History
             </span>
@@ -130,21 +147,30 @@ export default function Header(props) {
             </span>
             <span
               className="default header-right-options"
-              onClick={() => handleNavigation("/saved-answers")}
+              onClick={() => handleNavigation("/saved-answers", true)}
             >
               Saved
             </span>
-            <span
-              className="default admin-option"
-              onClick={() => handleNavigation("/login")}
-            >
-              Admin Login
-            </span>
+
+            {isLoggedIn ? (
+              <>
+                <span className="default user-display-name">{displayName}</span>
+                <span className="default admin-option" onClick={handleLogout}>
+                  Logout
+                </span>
+              </>
+            ) : (
+              <span
+                className="default admin-option"
+                onClick={() => handleNavigation("/user-login")}
+              >
+                Sign In
+              </span>
+            )}
           </div>
         )}
       </div>
 
-      {/* Overlay for mobile menu */}
       {menuOpen && (
         <div
           className="header-overlay"

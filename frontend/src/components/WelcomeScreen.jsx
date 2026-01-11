@@ -1,7 +1,11 @@
 import ChatCard from "./ChatCard";
 import "../styles/WelcomeScreen.css";
+import { useApp } from "../contexts/AppContext";
 
 export default function WelcomeScreen({ isVisible, sidebarOpen }) {
+  const { state } = useApp();
+  const displayName = state.user.displayName;
+
   return (
     <div
       className={`welcome-screen ${isVisible ? "visible" : "hidden"} ${
@@ -22,7 +26,7 @@ export default function WelcomeScreen({ isVisible, sidebarOpen }) {
       </div>
 
       <div className="welcome-title">
-        Welcome back, <span style={{ color: "#4285f4" }}>Alex!</span>
+        Welcome back, <span style={{ color: "#4285f4" }}>{displayName}!</span>
       </div>
 
       <div className="welcome-subtitle">

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Sidebar.css";
 import { useApp } from "../contexts/AppContext";
+import { useAuth } from "../contexts/AuthContext";
 import { parseTimestamp } from "../utils/validation";
 import { handleError } from "../utils/errors";
 import ChatListSkeleton from "../components/Loading/ChatListSkeleton";
@@ -12,7 +13,9 @@ const { VITE_PYTHON_RAG_URL } = import.meta.env;
 export default function Sidebar({ isOpen, onToggle, currentChatId }) {
   const navigate = useNavigate();
   const { state, actions } = useApp();
+  const { isLoggedIn } = useAuth();
   const userId = state.user.id;
+  const displayName = state.user.displayName;
   const recentChats = state.chats.data;
   const loadingChats = state.chats.loading;
   const savedCount = state.history.data.filter((h) => h.favorite).length;
@@ -20,14 +23,15 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
   const [deletingChatId, setDeletingChatId] = useState(null);
   const [editingChatId, setEditingChatId] = useState(null);
   const [editedTitle, setEditedTitle] = useState("");
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (userId) {
       actions.fetchChats(userId);
-      actions.fetchHistory(userId, true);
+      if (isLoggedIn) {
+        actions.fetchHistory(userId, true);
+      }
     }
-  }, [userId]);
+  }, [userId, isLoggedIn]);
 
   const handleNewChat = async () => {
     try {
@@ -69,12 +73,9 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
       const data = await response.json();
 
       if (data.success) {
-        // ✅ Remove from local state
         actions.removeChat(chatId);
-
         toast.success("Chat deleted successfully");
 
-        // ✅ If deleted chat was active, create new chat
         if (currentChatId === chatId) {
           await handleNewChat();
         }
@@ -87,7 +88,7 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
   };
 
   const handleChatClick = (chatId) => {
-    if (editingChatId === chatId) return; // Don't navigate while editing
+    if (editingChatId === chatId) return;
     navigate(`/student?chat=${chatId}`);
   };
 
@@ -156,6 +157,15 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
+  const handleSavedClick = () => {
+    if (!isLoggedIn) {
+      toast.error("Please sign in to access saved answers");
+      navigate("/user-login");
+      return;
+    }
+    navigate("/saved-answers");
+  };
+
   const menuItems = [
     {
       icon: (
@@ -187,8 +197,8 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
         </svg>
       ),
       label: "Saved Answers",
-      count: savedCount,
-      onClick: () => navigate("/saved-answers"),
+      count: isLoggedIn ? savedCount : 0,
+      onClick: handleSavedClick,
     },
   ];
 
@@ -304,7 +314,6 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
                           width="16"
                           height="16"
                           fill="currentColor"
-                          class="bi bi-check-lg"
                           viewBox="0 0 16 16"
                         >
                           <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z" />
@@ -386,10 +395,14 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
         </div>
 
         <div className="sidebar-profile">
-          <div className="profile-avatar">AS</div>
+          <div className="profile-avatar">
+            {displayName.charAt(0).toUpperCase()}
+          </div>
           <div className="default profile-info">
-            <div className="profile-name">Alex Student</div>
-            <div className="profile-detail">Engineering • Year 3</div>
+            <div className="profile-name">{displayName}</div>
+            <div className="profile-detail">
+              {isLoggedIn ? "Logged In" : "Guest User"}
+            </div>
           </div>
         </div>
       </div>

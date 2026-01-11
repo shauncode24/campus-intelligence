@@ -6,15 +6,19 @@ import {
   useRef,
   useCallback,
 } from "react";
-import { getUserId } from "../utils/validation";
+import { useAuth } from "./AuthContext";
+
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
+  const { user, isLoggedIn } = useAuth();
+
   const [state, setState] = useState({
     user: {
       id: null,
+      displayName: "Guest",
       loading: true,
     },
     chats: {
@@ -37,14 +41,34 @@ export function AppProvider({ children }) {
 
   const pendingRequests = useRef(new Map());
 
-  // Initialize user ONCE
+  // Generate consistent user ID based on auth state
+  const generateUserId = useCallback(() => {
+    if (isLoggedIn && user) {
+      // Use Firebase UID for logged-in users
+      return user.uid;
+    } else {
+      // Use localStorage for guest users (persistent across sessions)
+      let guestId = localStorage.getItem("campus_intel_guest_id");
+      if (!guestId) {
+        guestId = `guest_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`;
+        localStorage.setItem("campus_intel_guest_id", guestId);
+      }
+      return guestId;
+    }
+  }, [isLoggedIn, user]);
+
+  // Update user state when auth changes
   useEffect(() => {
-    const storedUserId = getUserId();
+    const userId = generateUserId();
+    const displayName = isLoggedIn && user ? user.displayName : "Guest";
+
     setState((prev) => ({
       ...prev,
-      user: { id: storedUserId, loading: false, error: null },
+      user: { id: userId, displayName, loading: false },
     }));
-  }, []);
+  }, [isLoggedIn, user, generateUserId]);
 
   const updateUser = (updates) => {
     setState((prev) => ({
@@ -80,12 +104,10 @@ export function AppProvider({ children }) {
 
       const key = `chats-${userId}`;
 
-      // Return existing promise if already fetching
       if (pendingRequests.current.has(key)) {
         return pendingRequests.current.get(key);
       }
 
-      // Don't fetch if already loading
       if (state.chats.loading && !forceRefresh) return;
 
       setState((prev) => ({
@@ -132,7 +154,6 @@ export function AppProvider({ children }) {
 
       const key = `history-${userId}-${favoritesOnly}`;
 
-      // Return existing promise if already fetching
       if (pendingRequests.current.has(key)) {
         return pendingRequests.current.get(key);
       }
@@ -214,18 +235,11 @@ export function AppProvider({ children }) {
   };
 
   const removeChat = (chatId) => {
-    console.log(`🗑️ Removing chat ${chatId} from state`);
     setState((prev) => ({
       ...prev,
       chats: {
         ...prev.chats,
-        data: prev.chats.data.filter((chat) => {
-          const shouldKeep = chat.id !== chatId;
-          if (!shouldKeep) {
-            console.log(`   Filtering out chat: ${chat.id} (${chat.title})`);
-          }
-          return shouldKeep;
-        }),
+        data: prev.chats.data.filter((chat) => chat.id !== chatId),
       },
     }));
   };
