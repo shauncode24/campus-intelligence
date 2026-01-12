@@ -2,241 +2,490 @@ import { useState } from "react";
 import { supabase } from "../app/supabase";
 import { db } from "../app/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import "../styles/UploadDocument.css";
 import toast from "react-hot-toast";
 import { handleError } from "../utils/errors";
+
+// Import sub-components
+import DragDropZone from "./Upload/DragDropZone";
+import FileCard from "./Upload/FileCard";
+import ProcessingView from "./Upload/ProcessingView";
+import SuccessSummary from "./Upload/SuccessSummary";
+import DuplicateWarning from "./Upload/DuplicateWarning";
+
 const { VITE_API_BASE_URL } = import.meta.env;
-import Spinner from "../components/Loading/Spinner";
 
 export default function UploadDocument() {
-  const [file, setFile] = useState(null);
-  const [name, setName] = useState("");
-  const [department, setDepartment] = useState("");
+  const [files, setFiles] = useState([]);
+  const [fileMetadata, setFileMetadata] = useState({});
+  const [uploadMode, setUploadMode] = useState("bulk");
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [processingStage, setProcessingStage] = useState("");
+  const [processingStates, setProcessingStates] = useState({});
+  const [uploadResults, setUploadResults] = useState(null);
+  const [duplicateWarnings, setDuplicateWarnings] = useState({});
 
-  const upload = async () => {
-    if (!file) {
-      toast.error("Please select a PDF");
+  const handleFilesSelected = (selectedFiles) => {
+    const newFiles = selectedFiles.filter(
+      (file) => !files.some((f) => f.name === file.name)
+    );
+
+    if (newFiles.length === 0) {
+      toast.error("Files already selected");
       return;
     }
 
-    setUploading(true);
-    updateProgress("uploading");
+    setFiles([...files, ...newFiles]);
+
+    // Initialize metadata for new files
+    const newMetadata = {};
+    newFiles.forEach((file) => {
+      newMetadata[file.name] = {
+        name: "",
+        department: "",
+        documentType: "",
+        academicYear: "",
+        programs: [],
+        years: [],
+        tags: "",
+        effectiveDate: "",
+        expiryDate: "",
+        version: "",
+        owner: "",
+        accessLevel: "Public",
+      };
+    });
+
+    setFileMetadata({ ...fileMetadata, ...newMetadata });
+
+    // Check for duplicates
+    newFiles.forEach((file) => {
+      checkDuplicate(file.name);
+    });
+  };
+
+  const checkDuplicate = async (fileName) => {
+    const metadata = fileMetadata[fileName];
+    if (!metadata || !metadata.name || !metadata.department) return;
 
     try {
-      const filePath = `${Date.now()}_${file.name}`;
-
-      const { error } = await supabase.storage
-        .from("documents")
-        .upload(filePath, file);
-
-      if (error) throw error;
-
-      updateProgress("extracting");
-
-      const { data } = supabase.storage
-        .from("documents")
-        .getPublicUrl(filePath);
-
-      const fileUrl = data.publicUrl;
-
-      const docRef = await addDoc(collection(db, "documents"), {
-        name,
-        department,
-        fileUrl,
-        uploadedAt: serverTimestamp(),
-        uploadedBy: "admin@test.com",
-        status: "Processing",
-        fileSize: file.size,
-      });
-
-      setUploading(false);
-      setProcessing(true);
-      updateProgress("embedding");
-
-      const processResponse = await fetch(
-        `${VITE_API_BASE_URL}/documents/process`,
+      const response = await fetch(
+        `${VITE_API_BASE_URL}/documents/check-duplicate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            documentId: docRef.id,
-            fileUrl: fileUrl,
+            name: metadata.name,
+            department: metadata.department,
           }),
         }
       );
 
-      updateProgress("storing");
+      const result = await response.json();
 
-      const processResult = await processResponse.json();
-
-      if (processResponse.ok) {
-        updateProgress("complete");
-        setTimeout(() => {
-          toast.success(
-            `Document processed: ${processResult.totalChunks} chunks created`
-          );
-          setFile(null);
-          setName("");
-          setDepartment("");
-          setUploadProgress(0);
-          setProcessingStage("");
-        }, 1000);
+      if (result.hasDuplicates) {
+        setDuplicateWarnings({
+          ...duplicateWarnings,
+          [fileName]: result.similarDocuments,
+        });
       } else {
-        throw new Error(processResult.message);
+        const newWarnings = { ...duplicateWarnings };
+        delete newWarnings[fileName];
+        setDuplicateWarnings(newWarnings);
       }
-    } catch (err) {
-      handleError(err, { customMessage: "Upload failed. Please try again." });
-      setUploadProgress(0);
-      setProcessingStage("");
-    } finally {
-      setUploading(false);
-      setProcessing(false);
+    } catch (error) {
+      console.error("Error checking duplicate:", error);
     }
   };
 
-  const progressStages = {
-    uploading: { percent: 20, message: "Uploading to storage..." },
-    extracting: { percent: 40, message: "Extracting text and images..." },
-    embedding: { percent: 70, message: "Generating embeddings..." },
-    storing: { percent: 90, message: "Storing in database..." },
-    complete: { percent: 100, message: "Processing complete!" },
+  const handleMetadataChange = (fileName, metadata) => {
+    setFileMetadata({
+      ...fileMetadata,
+      [fileName]: metadata,
+    });
+
+    // Recheck duplicates when name or department changes
+    if (metadata.name && metadata.department) {
+      checkDuplicate(fileName);
+    }
   };
 
-  const updateProgress = (stage) => {
-    const stageInfo = progressStages[stage];
-    setUploadProgress(stageInfo.percent);
-    setProcessingStage(stageInfo.message);
+  const handleRemoveFile = (fileName) => {
+    setFiles(files.filter((f) => f.name !== fileName));
+
+    const newMetadata = { ...fileMetadata };
+    delete newMetadata[fileName];
+    setFileMetadata(newMetadata);
+
+    const newWarnings = { ...duplicateWarnings };
+    delete newWarnings[fileName];
+    setDuplicateWarnings(newWarnings);
   };
 
-  const isDisabled = uploading || processing || !file || !name || !department;
+  const validateFile = (fileName) => {
+    const metadata = fileMetadata[fileName];
+    return metadata.name && metadata.department && metadata.documentType;
+  };
 
+  const validateAllFiles = () => {
+    if (files.length === 0) {
+      toast.error("Please select at least one file");
+      return false;
+    }
+
+    const invalidFiles = files.filter((f) => !validateFile(f.name));
+    if (invalidFiles.length > 0) {
+      toast.error(
+        `Please fill required fields for: ${invalidFiles
+          .map((f) => f.name)
+          .join(", ")}`
+      );
+      return false;
+    }
+
+    return true;
+  };
+
+  const updateProcessingState = (fileName, update) => {
+    setProcessingStates((prev) => ({
+      ...prev,
+      [fileName]: {
+        ...(prev[fileName] || {}),
+        ...update,
+        logs: [
+          ...(prev[fileName]?.logs || []),
+          ...(update.log
+            ? [
+                {
+                  time: new Date().toLocaleTimeString(),
+                  message: update.log,
+                },
+              ]
+            : []),
+        ],
+      },
+    }));
+  };
+
+  const uploadToSupabase = async (file) => {
+    const fileName = file.name;
+    updateProcessingState(fileName, {
+      stage: "uploading",
+      log: "Uploading file to storage...",
+    });
+
+    const filePath = `${Date.now()}_${file.name}`;
+    const { error } = await supabase.storage
+      .from("documents")
+      .upload(filePath, file);
+
+    if (error) throw error;
+
+    const { data } = supabase.storage.from("documents").getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
+  const createFirestoreDocument = async (file, fileUrl) => {
+    const metadata = fileMetadata[file.name];
+
+    const docData = {
+      name: metadata.name,
+      department: metadata.department,
+      documentType: metadata.documentType,
+      fileUrl,
+      uploadedAt: serverTimestamp(),
+      uploadedBy: "admin@test.com", // TODO: Get from auth
+      status: "Processing",
+      fileSize: file.size,
+      // Enhanced metadata
+      academicYear: metadata.academicYear || null,
+      programs: metadata.programs || [],
+      years: metadata.years || [],
+      tags: metadata.tags ? metadata.tags.split(",").map((t) => t.trim()) : [],
+      effectiveDate: metadata.effectiveDate || null,
+      expiryDate: metadata.expiryDate || null,
+      version: metadata.version || null,
+      owner: metadata.owner || null,
+      accessLevel: metadata.accessLevel || "Public",
+    };
+
+    const docRef = await addDoc(collection(db, "documents"), docData);
+    return docRef.id;
+  };
+
+  const processDocument = async (file) => {
+    const fileName = file.name;
+
+    try {
+      // Upload to Supabase
+      const fileUrl = await uploadToSupabase(file);
+
+      updateProcessingState(fileName, {
+        stage: "extracting",
+        log: "Creating database record...",
+      });
+
+      // Create Firestore document
+      const documentId = await createFirestoreDocument(file, fileUrl);
+
+      updateProcessingState(fileName, {
+        stage: "extracting",
+        log: "Extracting text and images...",
+      });
+
+      // Call Python RAG service
+      const response = await fetch(`${VITE_API_BASE_URL}/documents/process`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId,
+          fileUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Processing failed");
+      }
+
+      updateProcessingState(fileName, {
+        stage: "embedding",
+        log: "Generating embeddings...",
+      });
+
+      // Poll for completion or wait for response
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      updateProcessingState(fileName, {
+        stage: "storing",
+        log: "Storing in database...",
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      updateProcessingState(fileName, {
+        stage: "indexing",
+        log: "Creating search index...",
+      });
+
+      const processResult = await response.json();
+
+      updateProcessingState(fileName, {
+        stage: "complete",
+        log: "Processing complete!",
+      });
+
+      return {
+        status: "success",
+        fileName: file.name,
+        documentId,
+        chunksCreated: processResult.totalChunks || 0,
+        textChunks: processResult.textChunks || 0,
+        visualChunks: processResult.visualChunks || 0,
+      };
+    } catch (error) {
+      updateProcessingState(fileName, {
+        stage: "failed",
+        error: error.message,
+        log: `Error: ${error.message}`,
+      });
+
+      return {
+        status: "failed",
+        fileName: file.name,
+        error: error.message,
+      };
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!validateAllFiles()) return;
+
+    setUploading(true);
+    setProcessing(true);
+    setUploadResults(null);
+    setProcessingStates({});
+
+    toast.loading(`Processing ${files.length} document(s)...`, {
+      id: "upload-toast",
+    });
+
+    const results = [];
+
+    // Process files sequentially to avoid overwhelming the server
+    for (const file of files) {
+      const result = await processDocument(file);
+      results.push(result);
+    }
+
+    const successful = results.filter((r) => r.status === "success").length;
+    const failed = results.filter((r) => r.status === "failed").length;
+
+    toast.dismiss("upload-toast");
+
+    if (successful === files.length) {
+      toast.success(`All ${successful} documents processed successfully!`);
+    } else if (failed === files.length) {
+      toast.error(`All ${failed} documents failed to process`);
+    } else {
+      toast.success(`${successful} successful, ${failed} failed`, {
+        duration: 5000,
+      });
+    }
+
+    setUploadResults(results);
+    setUploading(false);
+    setProcessing(false);
+  };
+
+  const handleReset = () => {
+    setFiles([]);
+    setFileMetadata({});
+    setProcessingStates({});
+    setUploadResults(null);
+    setDuplicateWarnings({});
+    setUploading(false);
+    setProcessing(false);
+  };
+
+  const canUpload = () => {
+    return (
+      files.length > 0 &&
+      files.every((f) => validateFile(f.name)) &&
+      !uploading &&
+      !processing
+    );
+  };
+
+  // Show success summary
+  if (uploadResults) {
+    return <SuccessSummary results={uploadResults} onClose={handleReset} />;
+  }
+
+  // Show processing view
+  if (processing) {
+    return (
+      <ProcessingView
+        files={files}
+        processingStates={processingStates}
+        fileMetadata={fileMetadata}
+      />
+    );
+  }
+
+  // Main upload UI
   return (
-    <div className="upload-document-container">
-      <div className="upload-header">
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <div>
-            <h2 className="upload-title">Upload New Document</h2>
-            <p className="upload-subtitle">
-              Add a new official source to the knowledge base
-            </p>
-          </div>
-        </div>
+    <div className="upload-document-wrapper">
+      <div className="upload-mode-selector">
+        <button
+          className={`mode-btn ${uploadMode === "single" ? "active" : ""}`}
+          onClick={() => setUploadMode("single")}
+          disabled={uploading || processing}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+          </svg>
+          Single Upload
+        </button>
+        <button
+          className={`mode-btn ${uploadMode === "bulk" ? "active" : ""}`}
+          onClick={() => setUploadMode("bulk")}
+          disabled={uploading || processing}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+            <path d="M13 2v7h7" />
+            <path d="M8 13h8M8 17h8" />
+          </svg>
+          Bulk Upload (10-20 files)
+        </button>
       </div>
 
-      <div className="upload-card">
-        <div className="form-section">
-          <div className="form-inputs">
-            <input
-              className="form-input"
-              placeholder="Document Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={uploading || processing}
-            />
-            <input
-              className="form-input"
-              placeholder="Department"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              disabled={uploading || processing}
-            />
-          </div>
-        </div>
+      <DragDropZone
+        onFilesSelected={handleFilesSelected}
+        disabled={uploading || processing}
+        acceptMultiple={uploadMode === "bulk"}
+      />
 
-        <div className="form-section">
-          <h3 className="form-section-title">Source File</h3>
-          <div className="dropzone">
-            <div className="dropzone-icon">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="40"
-                height="40"
-                fill="currentColor"
-                className="bi bi-cloud-upload"
-                viewBox="0 0 16 16"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 4.579C14.758 4.804 16 6.137 16 7.773 16 9.569 14.502 11 12.687 11H10a.5.5 0 0 1 0-1h2.688C13.979 10 15 8.988 15 7.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 2.825 10.328 1 8 1a4.53 4.53 0 0 0-2.941 1.1c-.757.652-1.153 1.438-1.153 2.055v.448l-.445.049C2.064 4.805 1 5.952 1 7.318 1 8.785 2.23 10 3.781 10H6a.5.5 0 0 1 0 1H3.781C1.708 11 0 9.366 0 7.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383"
-                />
-                <path
-                  fillRule="evenodd"
-                  d="M7.646 4.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V14.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708z"
-                />
-              </svg>
-            </div>
-            <div className="dropzone-text">Drag and drop your PDF here</div>
-            <div className="dropzone-subtext">
-              or click to browse from your computer
-            </div>
-            <input
-              type="file"
-              accept="application/pdf"
-              className="file-input"
-              onChange={(e) => setFile(e.target.files[0])}
+      {files.length > 0 && (
+        <div className="files-section">
+          <div className="files-header">
+            <h3 className="files-title">Selected Files ({files.length})</h3>
+            <button
+              className="clear-all-btn"
+              onClick={handleReset}
               disabled={uploading || processing}
-            />
+            >
+              Clear All
+            </button>
           </div>
-          {file && <div className="selected-file">Selected: {file.name}</div>}
-        </div>
 
-        {(uploading || processing) && (
-          <div className="processing-status">
-            <div className="progress-bar-container">
-              <div
-                className="progress-bar-fill"
-                style={{ width: `${uploadProgress}%` }}
-              >
-                <span className="progress-percentage">{uploadProgress}%</span>
+          <div className="files-list">
+            {files.map((file) => (
+              <div key={file.name}>
+                <FileCard
+                  file={file}
+                  metadata={fileMetadata[file.name] || {}}
+                  onMetadataChange={(metadata) =>
+                    handleMetadataChange(file.name, metadata)
+                  }
+                  onRemove={() => handleRemoveFile(file.name)}
+                  disabled={uploading || processing}
+                />
+                {duplicateWarnings[file.name] && (
+                  <DuplicateWarning duplicates={duplicateWarnings[file.name]} />
+                )}
               </div>
-            </div>
-            <p className="processing-message">
-              <span className="processing-icon">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  class="bi bi-gear-fill"
-                  viewBox="0 0 16 16"
-                >
-                  <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z" />
-                </svg>
-              </span>
-              {processingStage}
-            </p>
+            ))}
           </div>
-        )}
 
-        <div className="form-actions">
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              setFile(null);
-              setName("");
-              setDepartment("");
-            }}
-            disabled={uploading || processing}
-          >
-            Cancel
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={upload}
-            disabled={isDisabled}
-          >
-            {uploading
-              ? "Uploading..."
-              : processing
-              ? "Processing..."
-              : "Upload & Process Document"}
-          </button>
+          <div className="upload-actions-fixed">
+            <div className="upload-summary">
+              <span className="file-count">
+                {files.length} file{files.length !== 1 ? "s" : ""} ready
+              </span>
+              {Object.keys(duplicateWarnings).length > 0 && (
+                <span className="warning-count">
+                  ⚠️ {Object.keys(duplicateWarnings).length} potential duplicate
+                  {Object.keys(duplicateWarnings).length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            <button
+              className="upload-btn"
+              onClick={handleUpload}
+              disabled={!canUpload()}
+            >
+              {uploading || processing ? (
+                <>
+                  <div className="btn-spinner" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Upload & Process {files.length} Document
+                  {files.length !== 1 ? "s" : ""}
+                </>
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

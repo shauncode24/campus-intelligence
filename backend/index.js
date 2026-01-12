@@ -178,6 +178,8 @@ app.use("/calendar", calendarRoutes);
 // Document processing routes
 app.use("/documents", documentRoutes);
 
+app.use("/api/documents", documentRoutes);
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 RAG backend running on ${PORT}`);

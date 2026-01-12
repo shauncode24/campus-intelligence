@@ -27,6 +27,8 @@ from utils.intent_detector import detect_intent
 from utils.deadline_extractor import extract_deadline_info
 from utils.confidence_calculator import calculate_confidence
 
+from typing import List, Optional
+
 # Models
 from models import (
     ProcessDocumentRequest,
@@ -41,6 +43,20 @@ from routes.chatRoutes import router as chat_router
 class UpdateNoteRequest(BaseModel):
     userId: str
     note: str
+
+class BulkProcessRequest(BaseModel):
+    documents: List[dict]
+
+class ProcessingStatus(BaseModel):
+    documentId: str
+    fileName: str
+    status: str
+    stage: str
+    progress: Optional[dict] = None
+    error: Optional[str] = None
+    chunksCreated: Optional[int] = None
+    textChunks: Optional[int] = None
+    visualChunks: Optional[int] = None
 
 # Validate configuration
 Config.validate()
@@ -415,6 +431,86 @@ async def update_personal_note(history_id: str, request: UpdateNoteRequest):
         print(f"❌ Error updating note: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/check-duplicate")
+async def check_duplicate_document(name: str, department: str):
+    """
+    Check if a document with similar name exists
+    """
+    try:
+        db = firebase_client.db
+        if not db:
+            raise HTTPException(status_code=500, detail="Firebase not initialized")
+        
+        # Query for documents with similar name and same department
+        docs_ref = db.collection('documents') \
+            .where('department', '==', department) \
+            .where('status', '==', 'Processed') \
+            .stream()
+        
+        similar_docs = []
+        name_lower = name.lower()
+        
+        for doc in docs_ref:
+            doc_data = doc.to_dict()
+            doc_name_lower = doc_data.get('name', '').lower()
+            
+            # Simple similarity check
+            if name_lower in doc_name_lower or doc_name_lower in name_lower:
+                similar_docs.append({
+                    'id': doc.id,
+                    'name': doc_data.get('name'),
+                    'uploadedAt': doc_data.get('uploadedAt'),
+                    'version': doc_data.get('version')
+                })
+        
+        return {
+            "hasDuplicates": len(similar_docs) > 0,
+            "similarDocuments": similar_docs
+        }
+        
+    except Exception as e:
+        print(f"❌ Error checking duplicates: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Enhance the existing update_document_status in storage_service.py
+async def update_document_status_enhanced(doc_id: str, all_docs: List[Document], metadata: dict):
+    """
+    Update document processing status with enhanced metadata
+    """
+    db = firebase_client.db
+    if not db:
+        return
+    
+    try:
+        doc_ref = db.collection("documents").document(doc_id)
+        
+        update_data = {
+            "status": "Processed",
+            "processedAt": firestore.SERVER_TIMESTAMP,
+            "chunksCount": len(all_docs),
+            "textChunks": len([d for d in all_docs if d.metadata.get("type") == "text"]),
+            "visualChunks": len([d for d in all_docs if d.metadata.get("type") == "image"]),
+            "isMultiModal": True,
+        }
+        
+        # Add enhanced metadata if provided
+        if metadata:
+            update_data.update({
+                'documentType': metadata.get('documentType'),
+                'academicYear': metadata.get('academicYear'),
+                'programs': metadata.get('programs', []),
+                'years': metadata.get('years', []),
+                'accessLevel': metadata.get('accessLevel', 'Public'),
+                'version': metadata.get('version'),
+                'owner': metadata.get('owner')
+            })
+        
+        doc_ref.update(update_data)
+        print(f"✅ Updated document status with enhanced metadata: {doc_id}")
+        
+    except Exception as e:
+        print(f"Error updating document status: {e}")
 
 if __name__ == "__main__":
     import uvicorn
