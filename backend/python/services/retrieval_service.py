@@ -13,14 +13,6 @@ class RetrievalService:
     def retrieve_multimodal(query_embedding, document_ids=None, k=None):
         """
         Retrieve relevant chunks from Firebase using CLIP similarity
-        
-        Args:
-            query_embedding: numpy.ndarray - Query embedding vector
-            document_ids: Optional[List[str]] - Filter by document IDs
-            k: int - Number of top results to return
-            
-        Returns:
-            List[Document]: Top k most relevant documents
         """
         if k is None:
             k = Config.TOP_K_RETRIEVAL
@@ -62,7 +54,7 @@ class RetrievalService:
                 chunk_embedding
             )
             
-            # Create Document object
+            # Create Document object - NO image data
             doc = Document(
                 page_content=chunk_data.get('content', ''),
                 metadata={
@@ -71,7 +63,7 @@ class RetrievalService:
                     'image_id': chunk_data.get('metadata', {}).get('imageId'),
                     'documentId': chunk_data.get('documentId'),
                     'similarity': float(similarity),
-                    'imageData': chunk_data.get('imageData')
+                    'xref': chunk_data.get('metadata', {}).get('xref')  # For re-extraction if needed
                 }
             )
             

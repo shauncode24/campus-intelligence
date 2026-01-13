@@ -10,15 +10,15 @@ from langchain_core.documents import Document
 class StorageService:
     @staticmethod
     async def store_chunks(doc_id: str, all_docs: List[Document], 
-                          all_embeddings: np.ndarray, image_data_store: Dict):
+                          all_embeddings: np.ndarray):
         """
         Store document chunks and embeddings in Firebase
+        NO image data stored - only embeddings and metadata
         
         Args:
             doc_id: str - Document identifier
             all_docs: List[Document] - Document chunks
             all_embeddings: np.ndarray - Chunk embeddings
-            image_data_store: Dict - Base64 image data
         """
         db = firebase_client.db
         if not db:
@@ -40,21 +40,16 @@ class StorageService:
                     'metadata': {
                         'pageNumber': doc.metadata.get('page'),
                         'imageId': doc.metadata.get('image_id'),
+                        'xref': doc.metadata.get('xref'),  # ✅ Store PyMuPDF xref for re-extraction
                     },
                     'createdAt': firestore.SERVER_TIMESTAMP,
                     'isMultiModal': True
                 }
                 
-                # Store base64 image data for image chunks
-                if doc.metadata.get('type') == 'image':
-                    image_id = doc.metadata.get('image_id')
-                    if image_id and image_id in image_data_store:
-                        chunk_data['imageData'] = image_data_store[image_id]
-                
                 batch.set(chunk_ref, chunk_data)
             
             batch.commit()
-            print(f"✅ Stored {len(all_docs)} chunks in Firebase")
+            print(f"✅ Stored {len(all_docs)} chunks in Firebase (embeddings only)")
             
         except Exception as e:
             print(f"❌ Error storing chunks: {e}")

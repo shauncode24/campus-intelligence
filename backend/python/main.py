@@ -65,6 +65,7 @@ app.include_router(chat_router, tags=["chats"])
 async def query_documents(request: QueryRequest):
     """
     Query the RAG system with caching and user history
+    Re-extracts images on-demand for multimodal responses
     """
     try:
         if not firebase_client.is_connected:
@@ -154,8 +155,8 @@ async def query_documents(request: QueryRequest):
         
         print(f"📚 Retrieved {len(context_docs)} documents")
         
-        # Create multimodal message
-        message = llm_service.create_multimodal_message(request.question, context_docs)
+        # ✅ Create multimodal message with re-extracted images (async)
+        message = await llm_service.create_multimodal_message(request.question, context_docs)
         
         # Generate answer
         answer = llm_service.generate_answer(message)
@@ -212,7 +213,6 @@ async def query_documents(request: QueryRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/process-document")
 async def process_document(request: ProcessDocumentRequest):
     """Process a document and store in Firebase"""
@@ -228,18 +228,17 @@ async def process_document(request: ProcessDocumentRequest):
         
         print(f"✅ Downloaded PDF: {len(pdf_bytes)} bytes")
         
-        # Process PDF
-        all_docs, all_embeddings, image_data_store = pdf_processor.process_pdf(
+        # Process PDF - returns (docs, embeddings) only
+        all_docs, all_embeddings = pdf_processor.process_pdf(
             pdf_bytes,
             request.documentId
         )
         
-        # Store in Firebase
+        # Store in Firebase - no image data
         await storage_service.store_chunks(
             request.documentId,
             all_docs,
-            all_embeddings,
-            image_data_store
+            all_embeddings
         )
         
         # Update document status
@@ -251,6 +250,7 @@ async def process_document(request: ProcessDocumentRequest):
             "totalChunks": len(all_docs),
             "textChunks": len([d for d in all_docs if d.metadata.get("type") == "text"]),
             "visualChunks": len([d for d in all_docs if d.metadata.get("type") == "image"]),
+            "note": "Images stored as embeddings only"
         }
         
     except Exception as e:
@@ -258,8 +258,6 @@ async def process_document(request: ProcessDocumentRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
-
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""

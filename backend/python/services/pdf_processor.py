@@ -5,7 +5,6 @@ import fitz  # PyMuPDF
 import tempfile
 import os
 import io
-import base64
 import numpy as np
 from PIL import Image
 from langchain_core.documents import Document
@@ -23,17 +22,17 @@ class PDFProcessor:
     def process_pdf(self, pdf_bytes: bytes, doc_id: str):
         """
         Process PDF and extract text chunks and images with embeddings
+        Images are NOT stored - only their embeddings
         
         Args:
             pdf_bytes: PDF file as bytes
             doc_id: Document identifier
             
         Returns:
-            tuple: (documents, embeddings, image_data_store)
+            tuple: (documents, embeddings)
         """
         all_docs = []
         all_embeddings = []
-        image_data_store = {}
         
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
             tmp_file.write(pdf_bytes)
@@ -55,13 +54,12 @@ class PDFProcessor:
                     all_docs.extend(text_docs)
                     all_embeddings.extend(text_embeddings)
                 
-                # Process images
-                image_docs, image_embeddings, page_images = self._process_images(
+                # Process images - only embeddings
+                image_docs, image_embeddings = self._process_images(
                     page, doc, page_num, doc_id
                 )
                 all_docs.extend(image_docs)
                 all_embeddings.extend(image_embeddings)
-                image_data_store.update(page_images)
             
             doc.close()
             print(f"✅ Processing complete: {len(all_docs)} chunks created")
@@ -69,7 +67,7 @@ class PDFProcessor:
         finally:
             os.unlink(tmp_path)
         
-        return all_docs, np.array(all_embeddings), image_data_store
+        return all_docs, np.array(all_embeddings)
     
     def _process_text(self, text: str, page_num: int, doc_id: str):
         """Process text content from a page"""
@@ -91,10 +89,12 @@ class PDFProcessor:
         return docs, embeddings
     
     def _process_images(self, page, doc, page_num: int, doc_id: str):
-        """Process images from a page"""
+        """
+        Process images from a page
+        Only store embeddings - NOT the actual image data
+        """
         docs = []
         embeddings = []
-        image_store = {}
         
         for img_index, img in enumerate(page.get_images(full=True)):
             try:
@@ -108,34 +108,29 @@ class PDFProcessor:
                 # Create unique identifier
                 image_id = f"{doc_id}_page_{page_num}_img_{img_index}"
                 
-                # Store image as base64
-                buffered = io.BytesIO()
-                pil_image.save(buffered, format="PNG")
-                img_base64 = base64.b64encode(buffered.getvalue()).decode()
-                image_store[image_id] = img_base64
-                
-                # Embed image using CLIP
+                # ✅ Embed image using CLIP
                 embedding = embedding_service.embed_image(pil_image)
                 embeddings.append(embedding)
                 
-                # Create document for image
+                # ✅ Create document with metadata only (no image data)
                 image_doc = Document(
-                    page_content=f"[Image: {image_id}]",
+                    page_content=f"[Image on page {page_num + 1}]",
                     metadata={
                         "page": page_num,
                         "type": "image",
                         "image_id": image_id,
+                        "xref": xref,  # Store xref for potential re-extraction
                         "documentId": doc_id
                     }
                 )
                 docs.append(image_doc)
-                print(f"      ✅ Processed image {img_index}")
+                print(f"      ✅ Processed image {img_index} (embedding only)")
                 
             except Exception as e:
                 print(f"      ⚠️ Error processing image {img_index}: {e}")
                 continue
         
-        return docs, embeddings, image_store
+        return docs, embeddings
 
 # Singleton instance
 pdf_processor = PDFProcessor()
