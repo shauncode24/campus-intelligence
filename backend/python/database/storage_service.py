@@ -11,15 +11,15 @@ from langchain_core.documents import Document
 class StorageService:
     @staticmethod
     async def store_chunks(doc_id: str, all_docs: List[Document], 
-                          all_embeddings: np.ndarray, image_data_store: Dict):
+                          all_embeddings: np.ndarray):
         """
         Store document chunks and embeddings in Firebase
+        NO image data stored - only embeddings and metadata
         
         Args:
             doc_id: str - Document identifier
             all_docs: List[Document] - Document chunks
             all_embeddings: np.ndarray - Chunk embeddings
-            image_data_store: Dict - Base64 image data (NOT STORED - only used for embeddings)
         """
         db = firebase_client.db
         if not db:
@@ -45,14 +45,11 @@ class StorageService:
                     'metadata': {
                         'pageNumber': doc.metadata.get('page'),
                         'imageId': doc.metadata.get('image_id'),
+                        'xref': doc.metadata.get('xref'),  # ✅ Store PyMuPDF xref for re-extraction
                     },
                     'createdAt': firestore.SERVER_TIMESTAMP,
                     'isMultiModal': True
                 }
-                
-                # NOTE: We do NOT store imageData to avoid Firestore's 1MB field limit
-                # Image chunks only store embeddings and metadata for semantic search
-                # If you need to display images, store them in Supabase Storage separately
                 
                 batch.set(chunk_ref, chunk_data)
                 batch_count += 1
