@@ -45,20 +45,32 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      // Fetch user profile from Firestore
-      const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-      const userData = userDoc.data();
+      // Admin status is the server-granted `admin` custom claim on the ID
+      // token. It is NOT read from the Firestore profile, which a user could
+      // edit. (The UI uses this only to show/hide things; the backend and the
+      // Firestore rules enforce it independently.)
+      const tokenResult = await firebaseUser.getIdTokenResult();
+      const adminClaim = tokenResult.claims.admin === true;
+
+      // Profile (display name etc.) from Firestore
+      let userData;
+      try {
+        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+        userData = userDoc.data();
+      } catch (error) {
+        console.error("Failed to load user profile:", error);
+      }
 
       setUser({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
         displayName: userData?.displayName || firebaseUser.email.split("@")[0],
-        role: userData?.role || "user",
+        role: adminClaim ? "admin" : "user",
         isAnonymous: false,
         createdAt: userData?.createdAt || new Date(),
       });
 
-      setIsAdmin(userData?.role === "admin");
+      setIsAdmin(adminClaim);
       setLoading(false);
     });
 

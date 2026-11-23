@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../app/supabase";
-import { db } from "../app/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { apiFetch } from "../utils/api";
 import toast from "react-hot-toast";
 import { handleError } from "../utils/errors";
 
@@ -68,7 +67,7 @@ export default function UploadDocument() {
     if (!metadata || !metadata.name || !metadata.department) return;
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${VITE_API_BASE_URL}/documents/check-duplicate`,
         {
           method: "POST",
@@ -188,29 +187,25 @@ export default function UploadDocument() {
   const createFirestoreDocument = async (file, fileUrl) => {
     const metadata = fileMetadata[file.name];
 
-    const docData = {
-      name: metadata.name,
-      department: metadata.department,
-      documentType: metadata.documentType,
-      fileUrl,
-      uploadedAt: serverTimestamp(),
-      uploadedBy: "admin@test.com", // TODO: Get from auth
-      status: "Processing",
-      fileSize: file.size,
-      // Enhanced metadata
-      academicYear: metadata.academicYear || null,
-      programs: metadata.programs || [],
-      years: metadata.years || [],
-      tags: metadata.tags ? metadata.tags.split(",").map((t) => t.trim()) : [],
-      effectiveDate: metadata.effectiveDate || null,
-      expiryDate: metadata.expiryDate || null,
-      version: metadata.version || null,
-      owner: metadata.owner || null,
-      accessLevel: metadata.accessLevel || "Public",
-    };
+    // The admin API creates the record; `uploadedBy` and the timestamp are set
+    // server-side from the verified admin token.
+    const response = await apiFetch(`${VITE_API_BASE_URL}/documents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileUrl, fileSize: file.size, metadata }),
+    });
 
-    const docRef = await addDoc(collection(db, "documents"), docData);
-    return docRef.id;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.errors?.join(", ") ||
+          errorData.error ||
+          "Failed to create document record"
+      );
+    }
+
+    const { documentId } = await response.json();
+    return documentId;
   };
 
   const processDocument = async (file) => {
@@ -234,7 +229,7 @@ export default function UploadDocument() {
       });
 
       // Call Python RAG service
-      const response = await fetch(`${VITE_API_BASE_URL}/documents/process`, {
+      const response = await apiFetch(`${VITE_API_BASE_URL}/documents/process`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

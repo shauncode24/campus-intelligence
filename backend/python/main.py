@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 # Configuration and database
 from config import Config
-from auth import get_current_user_id
+from auth import get_current_user_id, require_admin
 from database.firebase_client import firebase_client
 from database.cache_repository import cache_repository
 from database.storage_service import storage_service
@@ -233,8 +233,11 @@ async def query_documents(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/process-document")
-async def process_document(request: ProcessDocumentRequest):
-    """Process a document and store in Firebase"""
+async def process_document(
+    request: ProcessDocumentRequest,
+    admin_id: str = Depends(require_admin),
+):
+    """Process a document and store in Firebase (admin only)"""
     try:
         print(f"📄 Processing document: {request.documentId}")
         
@@ -443,9 +446,13 @@ async def update_personal_note(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/check-duplicate")
-async def check_duplicate_document(name: str, department: str):
+async def check_duplicate_document(
+    name: str,
+    department: str,
+    admin_id: str = Depends(require_admin),
+):
     """
-    Check if a document with similar name exists
+    Check if a document with similar name exists (admin only)
     """
     try:
         db = firebase_client.db

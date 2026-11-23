@@ -2,9 +2,115 @@ import express from "express";
 import { db } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
 import fetch from "node-fetch";
+import { requireAdmin } from "../middleware/auth.js";
 
 const router = express.Router();
 const PYTHON_RAG_URL = process.env.PYTHON_RAG_URL || "http://localhost:8000";
+
+// Every route in this file is admin-only (Firebase custom claim `admin: true`).
+router.use(requireAdmin);
+
+/** Headers for calling the Python service as the (verified) admin. */
+function pythonHeaders(req) {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${req.authToken}`,
+  };
+}
+
+/** Validate admin-supplied document metadata. Returns a list of error strings. */
+function validateMetadata(metadata) {
+  const errors = [];
+  if (!metadata || typeof metadata !== "object") return ["metadata is required"];
+
+  if (typeof metadata.name !== "string" || metadata.name.trim() === "") {
+    errors.push("Document name is required");
+  }
+  if (!metadata.department) errors.push("Department is required");
+  if (!metadata.documentType) errors.push("Document type is required");
+
+  if (metadata.effectiveDate && metadata.expiryDate) {
+    if (new Date(metadata.expiryDate) <= new Date(metadata.effectiveDate)) {
+      errors.push("Expiry date must be after effective date");
+    }
+  }
+  if (metadata.version && !/^v?\d+(\.\d+)*$/.test(metadata.version)) {
+    errors.push("Version must be in format: v1.0 or 1.0");
+  }
+  return errors;
+}
+
+/**
+ * POST /documents
+ * Create the Firestore record for an uploaded document. Replaces the browser
+ * writing to Firestore directly; `uploadedBy` comes from the verified token.
+ */
+router.post("/", async (req, res) => {
+  try {
+    const { fileUrl, fileSize, metadata } = req.body || {};
+
+    if (typeof fileUrl !== "string" || !fileUrl) {
+      return res.status(400).json({ error: "fileUrl is required" });
+    }
+    const errors = validateMetadata(metadata);
+    if (errors.length > 0) {
+      return res.status(400).json({ error: "Invalid metadata", errors });
+    }
+
+    const tags = Array.isArray(metadata.tags)
+      ? metadata.tags
+      : typeof metadata.tags === "string" && metadata.tags
+      ? metadata.tags.split(",").map((t) => t.trim()).filter(Boolean)
+      : [];
+
+    const docData = {
+      name: metadata.name.trim(),
+      department: metadata.department,
+      documentType: metadata.documentType,
+      fileUrl,
+      uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+      uploadedBy: req.email || req.uid,
+      status: "Processing",
+      fileSize: Number.isFinite(fileSize) ? fileSize : null,
+      academicYear: metadata.academicYear || null,
+      programs: Array.isArray(metadata.programs) ? metadata.programs : [],
+      years: Array.isArray(metadata.years) ? metadata.years : [],
+      tags,
+      effectiveDate: metadata.effectiveDate || null,
+      expiryDate: metadata.expiryDate || null,
+      version: metadata.version || null,
+      owner: metadata.owner || null,
+      accessLevel: metadata.accessLevel || "Public",
+    };
+
+    const docRef = await db.collection("documents").add(docData);
+    res.status(201).json({ success: true, documentId: docRef.id });
+  } catch (error) {
+    console.error("❌ Error creating document:", error);
+    res.status(500).json({ error: "Failed to create document" });
+  }
+});
+
+/**
+ * DELETE /documents/:documentId
+ * Delete the Firestore record. Replaces the browser deleting it directly.
+ * NOTE: chunk / storage / cache cleanup is tracked separately as P0-6.
+ */
+router.delete("/:documentId", async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const ref = db.collection("documents").doc(documentId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+    await ref.delete();
+    res.json({ success: true });
+  } catch (error) {
+    console.error("❌ Error deleting document:", error);
+    res.status(500).json({ error: "Failed to delete document" });
+  }
+});
 
 /**
  * POST /documents/process
@@ -32,9 +138,7 @@ router.post("/process", async (req, res) => {
     // Call Python RAG service
     const response = await fetch(`${PYTHON_RAG_URL}/process-document`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: pythonHeaders(req),
       body: JSON.stringify({
         documentId: documentId,
         fileUrl: fileUrl,
@@ -109,9 +213,7 @@ router.post("/reprocess", async (req, res) => {
     // Call Python RAG service
     const response = await fetch(`${PYTHON_RAG_URL}/process-document`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: pythonHeaders(req),
       body: JSON.stringify({
         documentId: documentId,
         fileUrl: docData.fileUrl,
@@ -191,9 +293,7 @@ router.post("/process-bulk", async (req, res) => {
     // Call Python RAG service for bulk processing
     const response = await fetch(`${PYTHON_RAG_URL}/process-document-bulk`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: pythonHeaders(req),
       body: JSON.stringify({
         documents: documents,
       }),
@@ -260,6 +360,7 @@ router.post("/check-duplicate", async (req, res) => {
       )}&department=${encodeURIComponent(department)}`,
       {
         method: "POST",
+        headers: pythonHeaders(req),
       }
     );
 

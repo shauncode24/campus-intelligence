@@ -1,0 +1,57 @@
+rules_version = '2';
+
+// Firestore security rules.
+//
+// Principle: the browser may only touch what it genuinely needs. Everything
+// else (chunks, questions, chats, history, calendar tokens, ...) is read and
+// written exclusively by the backend through the Admin SDK, which bypasses
+// these rules.
+//
+// Admin status is the Firebase custom claim `admin: true`, which can only be
+// granted server-side (backend/scripts/setAdminClaim.js). It must never be
+// derived from a Firestore document a client can write.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    // Profile document created at sign-up. Users may read and edit their own
+    // profile but can never grant themselves a role.
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(
+             ['email', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && request.resource.data.role == 'user';
+
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(
+             ['email', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && request.resource.data.role == resource.data.role;
+
+      allow delete: if false;
+    }
+
+    // Document records. The public library lists only fully processed
+    // documents; admins can read everything. All writes go through the admin
+    // API (backend/routes/documentRoutes.js), never from the browser.
+    match /documents/{docId} {
+      allow read: if isAdmin() || resource.data.status == 'Processed';
+      allow write: if false;
+    }
+
+    // Default deny for every other collection.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

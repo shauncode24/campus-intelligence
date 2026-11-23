@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Spinner from "../components/Loading/Spinner";
 import ProtectedRoute from "../components/ProtectedRoute";
+import AdminRoute from "../components/AdminRoute";
 
 // Lazy load all pages
 const Homepage = lazy(() => import("../pages/Homepage"));
@@ -63,8 +64,22 @@ export default function AppRoutes() {
           />
 
           {/* Admin routes */}
-          <Route path="/admin/add-document" element={<AddDocument />} />
-          <Route path="/admin/documents" element={<DocumentManagement />} />
+          <Route
+            path="/admin/add-document"
+            element={
+              <AdminRoute>
+                <AddDocument />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/documents"
+            element={
+              <AdminRoute>
+                <DocumentManagement />
+              </AdminRoute>
+            }
+          />
 
           {/* Catch all - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />

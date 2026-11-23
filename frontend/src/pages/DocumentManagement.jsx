@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "../app/firebase";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
+import { apiFetch } from "../utils/api";
 import "./DocumentManagement.css";
 import Header from "../components/Header";
 const { VITE_API_BASE_URL } = import.meta.env;
@@ -36,7 +37,11 @@ export default function DocumentManagement() {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this document?")) {
       try {
-        await deleteDoc(doc(db, "documents", id));
+        const response = await apiFetch(
+          `${VITE_API_BASE_URL}/documents/${id}`,
+          { method: "DELETE" }
+        );
+        if (!response.ok) throw new Error("Delete failed");
         setDocuments(documents.filter((d) => d.id !== id));
         toast.success("Document deleted successfully");
       } catch (err) {
@@ -63,7 +68,7 @@ export default function DocumentManagement() {
       );
       setDocuments(updatedDocs);
 
-      const response = await fetch(`${VITE_API_BASE_URL}/documents/reprocess`, {
+      const response = await apiFetch(`${VITE_API_BASE_URL}/documents/reprocess`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ documentId: id }),

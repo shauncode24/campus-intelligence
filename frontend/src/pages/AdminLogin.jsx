@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  signOut,
 } from "firebase/auth";
 import { auth } from "../app/firebase";
 import { useNavigate } from "react-router-dom";
@@ -23,7 +24,16 @@ export default function AdminLogin() {
   const login = async () => {
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+
+      // Force-refresh so a freshly granted admin claim is picked up.
+      const tokenResult = await credential.user.getIdTokenResult(true);
+      if (tokenResult.claims.admin !== true) {
+        await signOut(auth);
+        toast.error("This account does not have admin access.");
+        return;
+      }
+
       toast.success("Admin access granted");
       navigate("/admin/add-document");
     } catch (err) {
