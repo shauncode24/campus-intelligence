@@ -10,6 +10,39 @@ from langchain_core.documents import Document
 
 class StorageService:
     @staticmethod
+    def delete_stale_chunks(doc_id: str, keep_ids: set) -> int:
+        """
+        Delete every chunk of `doc_id` whose id is not in `keep_ids`.
+
+        Chunks used to get random ids, so re-processing a document appended a
+        second copy of everything. Chunks now have deterministic ids
+        (`{doc_id}_{index}`), so a re-run overwrites the same documents, and
+        this removes whatever is left over: chunks from an earlier, longer run
+        and legacy random-id chunks.
+        """
+        db = firebase_client.db
+        if not db:
+            return 0
+
+        deleted = 0
+        batch = db.batch()
+        pending = 0
+        # select(['documentId']) keeps the query from downloading embeddings
+        for snap in db.collection('chunks').where('documentId', '==', doc_id).select(['documentId']).stream():
+            if snap.id in keep_ids:
+                continue
+            batch.delete(snap.reference)
+            pending += 1
+            deleted += 1
+            if pending >= 450:  # Firestore batch limit is 500
+                batch.commit()
+                batch = db.batch()
+                pending = 0
+        if pending:
+            batch.commit()
+        return deleted
+
+    @staticmethod
     async def store_chunks(doc_id: str, all_docs: List[Document], 
                           all_embeddings: np.ndarray):
         """
@@ -30,11 +63,15 @@ class StorageService:
             batch = db.batch()
             batch_count = 0
             max_batch_size = 500  # Firestore batch limit
+            keep_ids = set()
             
             print(f"📦 Storing {len(all_docs)} chunks in Firestore...")
             
             for idx, (doc, embedding) in enumerate(zip(all_docs, all_embeddings)):
-                chunk_ref = db.collection('chunks').document()
+                # Deterministic id: re-processing overwrites instead of duplicating
+                chunk_id = f"{doc_id}_{idx}"
+                keep_ids.add(chunk_id)
+                chunk_ref = db.collection('chunks').document(chunk_id)
                 
                 chunk_data = {
                     'documentId': doc_id,
@@ -66,6 +103,11 @@ class StorageService:
                 batch.commit()
                 print(f"  ✅ Committed final batch of {batch_count} chunks")
             
+            # Remove chunks left over from a previous run of this document
+            stale = StorageService.delete_stale_chunks(doc_id, keep_ids)
+            if stale:
+                print(f"  🧹 Removed {stale} stale chunks from a previous run")
+
             print(f"✅ Stored {len(all_docs)} chunks in Firebase (embeddings only)")
             
         except Exception as e:

@@ -4,6 +4,8 @@ import admin from "firebase-admin";
 import fetch from "node-fetch";
 import { requireAdmin } from "../middleware/auth.js";
 import { validateFileUrl } from "../utils/fileUrl.js";
+import { deleteChunksForDocument, invalidateCachedAnswers } from "../services/documentCleanup.js";
+import { deleteDocumentFile } from "../services/fileStorage.js";
 
 const router = express.Router();
 const PYTHON_RAG_URL = process.env.PYTHON_RAG_URL || "http://localhost:8000";
@@ -95,8 +97,17 @@ router.post("/", async (req, res) => {
 
 /**
  * DELETE /documents/:documentId
- * Delete the Firestore record. Replaces the browser deleting it directly.
- * NOTE: chunk / storage / cache cleanup is tracked separately as P0-6.
+ *
+ * Removes a document and everything derived from it, in an order that is safe
+ * to retry if any step fails:
+ *   1. mark it "Deleting" (retrieval ignores anything not "Processed", so it
+ *      stops being used for answers immediately)
+ *   2. delete its chunks (batched; no 500-operation limit problem)
+ *   3. delete cached answers that cite it (they also feed the FAQ)
+ *   4. delete the stored file (best effort; reported, never blocks)
+ *   5. delete the record itself
+ * If steps 2-3 throw, the record stays as "Deleting" and the admin can simply
+ * call this again.
  */
 router.delete("/:documentId", async (req, res) => {
   try {
@@ -106,11 +117,29 @@ router.delete("/:documentId", async (req, res) => {
     if (!snap.exists) {
       return res.status(404).json({ error: "Document not found" });
     }
+    const { fileUrl } = snap.data();
+
+    await ref.update({
+      status: "Deleting",
+      deletingAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const chunksDeleted = await deleteChunksForDocument(db, documentId);
+    const cacheEntriesRemoved = await invalidateCachedAnswers(db, documentId);
+    const file = await deleteDocumentFile(fileUrl);
+    if (!file.deleted) {
+      console.warn(`⚠️ File for ${documentId} not removed from storage: ${file.reason}`);
+    }
+
     await ref.delete();
-    res.json({ success: true });
+
+    res.json({ success: true, chunksDeleted, cacheEntriesRemoved, file });
   } catch (error) {
     console.error("❌ Error deleting document:", error);
-    res.status(500).json({ error: "Failed to delete document" });
+    res.status(500).json({
+      error: "Failed to delete document",
+      message: "Deletion did not finish. The document is hidden from answers; try deleting it again.",
+    });
   }
 });
 
@@ -229,15 +258,35 @@ router.post("/reprocess", async (req, res) => {
 
     const result = await response.json();
 
+    // The re-indexed content may differ, so cached answers citing this
+    // document are no longer trustworthy.
+    const cacheEntriesRemoved = await invalidateCachedAnswers(db, documentId);
+
     console.log(`✅ Reprocessing complete:`, result);
 
     res.json({
       success: true,
       message: "Document reprocessed successfully",
       ...result,
+      cacheEntriesRemoved,
     });
   } catch (error) {
     console.error("❌ Error reprocessing document:", error);
+
+    // Never leave the document stuck in "Processing" (it would stay hidden
+    // from answers forever): record the failure like /process does.
+    if (req.body && typeof req.body.documentId === "string") {
+      try {
+        await db.collection("documents").doc(req.body.documentId).update({
+          status: "Error",
+          errorMessage: error.message,
+          errorAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (updateError) {
+        console.error("Failed to update error status:", updateError);
+      }
+    }
+
     res.status(500).json({
       error: "Failed to reprocess document",
       message: error.message,
@@ -497,17 +546,9 @@ router.delete("/cancel-processing/:documentId", async (req, res) => {
       cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Delete any chunks that may have been created
-    const chunksRef = db
-      .collection("chunks")
-      .where("documentId", "==", documentId);
-    const chunksSnapshot = await chunksRef.get();
-
-    const batch = db.batch();
-    chunksSnapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-    await batch.commit();
+    // Delete any chunks that may have been created (batched: Firestore allows
+    // at most 500 operations per batch, so a large document used to fail here)
+    await deleteChunksForDocument(db, documentId);
 
     console.log(`🚫 Cancelled processing for document: ${documentId}`);
 

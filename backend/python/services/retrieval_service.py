@@ -10,6 +10,18 @@ from config import Config
 
 class RetrievalService:
     @staticmethod
+    def processed_document_ids(db) -> set:
+        """
+        Ids of documents that are fully processed and live. Chunks of any other
+        document (deleted, still processing, errored, being deleted) must never
+        be used to answer a question. Nothing but the id is downloaded.
+        """
+        return {
+            d.id
+            for d in db.collection('documents').where('status', '==', 'Processed').select(['status']).stream()
+        }
+
+    @staticmethod
     def retrieve_multimodal(query_embedding, document_ids=None, k=None):
         """
         Retrieve relevant chunks from Firebase using CLIP similarity
@@ -32,6 +44,9 @@ class RetrievalService:
             query = chunks_ref
         
         chunks_snapshot = query.stream()
+
+        # Only chunks of fully processed, still-existing documents may be used
+        processed_ids = RetrievalService.processed_document_ids(db)
         
         # Score all chunks
         scored_chunks = []
@@ -40,6 +55,9 @@ class RetrievalService:
             chunk_data = chunk_doc.to_dict()
             
             if 'embedding' not in chunk_data:
+                continue
+
+            if chunk_data.get('documentId') not in processed_ids:
                 continue
             
             # Filter by document IDs if list is too large for 'in' query

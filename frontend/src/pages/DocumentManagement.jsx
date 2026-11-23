@@ -41,9 +41,21 @@ export default function DocumentManagement() {
           `${VITE_API_BASE_URL}/documents/${id}`,
           { method: "DELETE" }
         );
-        if (!response.ok) throw new Error("Delete failed");
+        if (!response.ok) {
+          // The server hides the document from answers first, so a failed
+          // delete is safe to retry.
+          fetchDocuments();
+          throw new Error("Delete failed");
+        }
+        const result = await response.json();
         setDocuments(documents.filter((d) => d.id !== id));
         toast.success("Document deleted successfully");
+        if (result.file && result.file.deleted === false) {
+          toast(
+            `The file is still in storage (${result.file.reason}). Remove it manually if needed.`,
+            { duration: 8000 }
+          );
+        }
       } catch (err) {
         handleError(err, { customMessage: "Failed to delete document" });
       }
@@ -55,7 +67,7 @@ export default function DocumentManagement() {
   const handleReprocess = async (id) => {
     if (
       !window.confirm(
-        "Are you sure you want to reprocess this document? This will delete existing chunks and embeddings."
+        "Are you sure you want to reprocess this document? Its existing chunks and embeddings will be replaced, and it will not be used to answer questions until processing finishes."
       )
     ) {
       return;
@@ -79,8 +91,8 @@ export default function DocumentManagement() {
       if (response.ok) {
         alert(
           `✅ Document reprocessed successfully!\n\n` +
-            `📊 Chunks created: ${result.chunksCount}\n` +
-            `🔢 Embeddings generated: ${result.embeddedCount}`
+            `📊 Chunks created: ${result.totalChunks}\n` +
+            `📝 Text: ${result.textChunks} · 🖼️ Images: ${result.visualChunks}`
         );
         // Refresh documents list
         fetchDocuments();
