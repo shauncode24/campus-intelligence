@@ -157,7 +157,12 @@ async def query_documents(
         print(f"🎯 Detected intent: {intent}")
         
         # Embed the query
-        query_embedding = embedding_service.embed_text(request.question)
+        query_embedding = embedding_service.embed_query(request.question)
+        # CLIP vector of the question, used only to look for relevant images
+        image_query_embedding = (
+            embedding_service.embed_image_query(request.question)
+            if embedding_service.supports_images else None
+        )
         print("✅ Query embedded")
         
         # Check cache first
@@ -206,7 +211,8 @@ async def query_documents(
         # Retrieve relevant chunks
         context_docs = retrieval_service.retrieve_multimodal(
             query_embedding,
-            request.documentIds
+            request.documentIds,
+            image_query_embedding=image_query_embedding
         )
         
         # Only show the model chunks that are plausibly relevant. If nothing is,
@@ -335,7 +341,8 @@ async def process_document(
         await storage_service.store_chunks(
             request.documentId,
             all_docs,
-            all_embeddings
+            all_embeddings,
+            embedding_model=embedding_service.model_id
         )
         
         # Update document status
@@ -373,7 +380,7 @@ async def health_check():
     return HealthResponse(
         status="healthy",
         chunks_in_firebase=chunk_count,
-        model="CLIP + Gemini Vision",
+        model=f"{embedding_service.model_id} + {Config.GEMINI_MODEL_NAME}",
         firebase_connected=firebase_client.is_connected
     )
 

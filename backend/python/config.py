@@ -35,7 +35,21 @@ class Config:
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
     
     # Model Configuration
+    # Embedding backend: "bge-small" (default, text retrieval model) or "clip"
+    # (the original embedder, kept for comparison). Vectors from different
+    # backends are not comparable, so changing this means re-processing every
+    # document (see scripts/reindex_all.py).
+    EMBEDDING_BACKEND = os.getenv("EMBEDDING_BACKEND", "bge-small").strip().lower()
+    BGE_MODEL_NAME = "BAAI/bge-small-en-v1.5"
     CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
+
+    # Image search. Images are embedded with CLIP and searched with a CLIP
+    # embedding of the question (a different similarity scale from text), so
+    # they get their own ranking and relevance floor. Retrieved images are
+    # re-extracted from the PDF and shown to Gemini as pixels.
+    IMAGE_RETRIEVAL = os.getenv("IMAGE_RETRIEVAL", "true").lower() in ("1", "true", "yes")
+    IMAGE_TOP_K = int(os.getenv("IMAGE_TOP_K", "3"))
+    MIN_IMAGE_SCORE = float(os.getenv("MIN_IMAGE_SCORE", "0.26"))
     GEMINI_MODEL_NAME = "gemini-2.5-flash"
     GEMINI_TEMPERATURE = 0.2
     
@@ -50,7 +64,15 @@ class Config:
     # relevant from irrelevant text only weakly, so this is a coarse safety
     # floor, not the main defence (that is the grounded prompt + refusal).
     # Tune it on a real evaluation set (audit P1-1) via the env var.
-    MIN_RETRIEVAL_SCORE = float(os.getenv("MIN_RETRIEVAL_SCORE", "0.70"))
+    # The right floor depends on the embedding model (each has its own score
+    # scale), so the default is per backend. bge: 0.50 sits below the lowest
+    # answerable top score seen on the (synthetic, easy) demo set (0.59) with
+    # margin; clip: 0.70 as before. Both are PROVISIONAL until measured on a real
+    # question set (eval/). Override with the MIN_RETRIEVAL_SCORE env var.
+    MIN_RETRIEVAL_SCORE = float(os.getenv(
+        "MIN_RETRIEVAL_SCORE",
+        {"bge-small": "0.50", "clip": "0.70"}.get(EMBEDDING_BACKEND, "0.50"),
+    ))
 
     # Shown to the user when the documents do not contain the answer
     NO_ANSWER_MESSAGE = (

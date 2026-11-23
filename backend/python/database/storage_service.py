@@ -44,7 +44,7 @@ class StorageService:
 
     @staticmethod
     async def store_chunks(doc_id: str, all_docs: List[Document], 
-                          all_embeddings: np.ndarray):
+                          all_embeddings: np.ndarray, embedding_model: str = None):
         """
         Store document chunks and embeddings in Firebase
         NO image data stored - only embeddings and metadata
@@ -53,6 +53,9 @@ class StorageService:
             doc_id: str - Document identifier
             all_docs: List[Document] - Document chunks
             all_embeddings: np.ndarray - Chunk embeddings
+            embedding_model: str - id of the model that produced the embeddings. Stored
+                with every chunk: vectors from different models cannot be compared, so
+                retrieval ignores chunks produced by any other model.
         """
         db = firebase_client.db
         if not db:
@@ -79,6 +82,8 @@ class StorageService:
                     'content': doc.page_content,
                     'type': doc.metadata.get('type', 'text'),
                     'embedding': embedding.tolist(),
+                    'embeddingModel': doc.metadata.get('embedding_model') or embedding_model,
+                    'embeddingDim': int(len(embedding)),
                     'metadata': {
                         'pageNumber': doc.metadata.get('page'),
                         'imageId': doc.metadata.get('image_id'),

@@ -72,6 +72,10 @@ class CacheRepository:
                 if "embedding" not in data:
                     continue
                 
+                # Vectors from another embedding model are not comparable
+                if (data.get("embeddingModel") or Config.CLIP_MODEL_NAME) != embedding_service.model_id:
+                    continue
+                
                 # 🚫 Entity mismatch = hard reject
                 if not entities_match(entities, data.get("entities", {})):
                     continue
@@ -127,6 +131,7 @@ class CacheRepository:
                 "fingerprint": fingerprint,
                 "entities": entities,
                 "embedding": embedding.tolist(),
+                "embeddingModel": embedding_service.model_id,
                 "answer": answer,
                 "intent": intent,
                 "confidence": {

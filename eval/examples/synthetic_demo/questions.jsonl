@@ -1,0 +1,35 @@
+# SYNTHETIC demo questions, written by the same author as the corpus (so easier than real student questions).
+{"id": "q01", "question": "What is the late fee if I pay my tuition after the deadline?", "type": "numeric", "answerable": true, "gold": [{"doc": "fee_policy", "page": 1}], "must_include": ["Rs. 200 per day"]}
+{"id": "q02", "question": "Is there a cap on how much late fee I can be charged in one semester?", "type": "numeric", "answerable": true, "gold": [{"doc": "fee_policy", "page": 1}], "must_include": ["Rs. 5,000"]}
+{"id": "q03", "question": "By what day of the month must semester tuition be cleared?", "type": "deadline", "answerable": true, "gold": [{"doc": "fee_policy", "page": 1}], "must_include": ["15th"]}
+{"id": "q04", "question": "Can I pay my fees from my phone instead of going to the office?", "type": "procedure", "answerable": true, "gold": [{"doc": "fee_policy", "page": 1}], "must_include": ["student portal"]}
+{"id": "q05", "question": "My family is struggling financially. Can I pay tuition in parts, and what form do I need?", "type": "procedure", "answerable": true, "gold": [{"doc": "fee_policy", "page": 2}], "must_include": ["Form F-7"]}
+{"id": "q06", "question": "If I cancel my admission before classes begin, how much money comes back?", "type": "numeric", "answerable": true, "gold": [{"doc": "fee_policy", "page": 2}], "must_include": ["90 percent"]}
+{"id": "q07", "question": "What percentage of classes must I attend to be allowed in the final exam?", "type": "eligibility", "answerable": true, "gold": [{"doc": "attendance_rules", "page": 1}], "must_include": ["75 percent"]}
+{"id": "q08", "question": "I fell sick and missed too many classes. What papers do I need to submit?", "type": "procedure", "answerable": true, "gold": [{"doc": "attendance_rules", "page": 2}], "must_include": ["medical certificate", "Condonation Form AR-3"]}
+{"id": "q09", "question": "How much do I have to pay to get my attendance shortage condoned?", "type": "numeric", "answerable": true, "gold": [{"doc": "attendance_rules", "page": 2}], "must_include": ["Rs. 1,000"]}
+{"id": "q10", "question": "I only have 70 percent attendance in one course. Can I still write the exam and what will it cost me?", "type": "multi_doc", "answerable": true, "gold": [{"doc": "attendance_rules", "page": 1}, {"doc": "attendance_rules", "page": 2}], "must_include": ["Rs. 1,000"]}
+{"id": "q11", "question": "I represent the college in a sports tournament. Will those days be counted as absent?", "type": "fact", "answerable": true, "gold": [{"doc": "attendance_rules", "page": 2}], "must_include": ["counted as present"]}
+{"id": "q12", "question": "When can I submit my hostel application?", "type": "deadline", "answerable": true, "gold": [{"doc": "hostel_rules", "page": 1}], "must_include": ["1 June", "30 June"]}
+{"id": "q13", "question": "What do I pay for hostel accommodation for the whole year?", "type": "numeric", "answerable": true, "gold": [{"doc": "hostel_rules", "page": 1}], "must_include": ["Rs. 60,000"]}
+{"id": "q14", "question": "How late can first year students come back to the hostel in the evening?", "type": "fact", "answerable": true, "gold": [{"doc": "hostel_rules", "page": 2}], "must_include": ["10:00 PM"]}
+{"id": "q15", "question": "How much is the hostel security deposit and how long until I get it back?", "type": "numeric", "answerable": true, "gold": [{"doc": "hostel_rules", "page": 2}], "must_include": ["Rs. 10,000", "30 days"]}
+{"id": "q16", "question": "Can I keep an induction cooktop in my hostel room?", "type": "fact", "answerable": true, "gold": [{"doc": "hostel_rules", "page": 2}], "must_include": ["not permitted"]}
+{"id": "q17", "question": "How many days after results do I have to ask for my paper to be rechecked?", "type": "deadline", "answerable": true, "gold": [{"doc": "exam_regulations", "page": 2}], "must_include": ["seven days"]}
+{"id": "q18", "question": "What does it cost to get one answer sheet re-evaluated?", "type": "numeric", "answerable": true, "gold": [{"doc": "exam_regulations", "page": 2}], "must_include": ["Rs. 500"]}
+{"id": "q19", "question": "From when can I download my hall ticket?", "type": "fact", "answerable": true, "gold": [{"doc": "exam_regulations", "page": 1}], "must_include": ["seven days before"]}
+{"id": "q20", "question": "What grade average do I need to qualify for the merit scholarship?", "type": "eligibility", "answerable": true, "gold": [{"doc": "scholarships", "page": 1}], "must_include": ["9.0"]}
+{"id": "q21", "question": "Up to what family income can a student apply for need-based scholarship?", "type": "eligibility", "answerable": true, "gold": [{"doc": "scholarships", "page": 2}], "must_include": ["Rs. 4,00,000"]}
+{"id": "q22", "question": "Until what date can I sign up for campus recruitment?", "type": "deadline", "answerable": true, "gold": [{"doc": "placement_policy", "page": 1}], "must_include": ["31 August"]}
+{"id": "q23", "question": "I have a pending backlog. Am I allowed to appear for company drives?", "type": "eligibility", "answerable": true, "gold": [{"doc": "placement_policy", "page": 1}], "must_include": ["active backlog"]}
+{"id": "q24", "question": "Can I spread my exam fee over instalments, and what do I pay to get a paper re-evaluated?", "type": "multi_doc", "answerable": true, "gold": [{"doc": "fee_policy", "page": 2}, {"doc": "exam_regulations", "page": 2}], "must_include": ["Rs. 500", "not covered"]}
+{"id": "u01", "question": "How much does it cost to park my motorcycle on campus?", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "u02", "question": "How many weeks of summer vacation do students get?", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "u03", "question": "How can I change my branch after the first year?", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "u04", "question": "What is the fine for a lost library book?", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "u05", "question": "What is the monthly gym membership fee?", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "u06", "question": "Is there a dress code for attending lectures?", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "u07", "question": "What is the weather forecast for tomorrow?", "type": "out_of_scope", "answerable": false, "gold": [], "must_include": []}
+{"id": "u08", "question": "Who won the cricket match last night?", "type": "out_of_scope", "answerable": false, "gold": [], "must_include": []}
+{"id": "u09", "question": "Write a python function that sorts a list of numbers.", "type": "out_of_scope", "answerable": false, "gold": [], "must_include": []}
+{"id": "u10", "question": "What is the capital of France?", "type": "out_of_scope", "answerable": false, "gold": [], "must_include": []}

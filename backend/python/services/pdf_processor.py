@@ -30,7 +30,8 @@ class PDFProcessor:
             doc_id: Document identifier
             
         Returns:
-            tuple: (documents, embeddings)
+            tuple: (documents, embeddings) with one vector per document. Each document's
+            metadata['embedding_model'] says which model produced its vector.
         """
         all_docs = []
         all_embeddings = []
@@ -74,7 +75,8 @@ class PDFProcessor:
         finally:
             os.unlink(tmp_path)
         
-        return all_docs, np.array(all_embeddings)
+        # a list, not one array: text vectors and image vectors have different sizes
+        return all_docs, all_embeddings
     
     def _process_text(self, text: str, page_num: int, doc_id: str):
         """Process text content from a page"""
@@ -88,9 +90,14 @@ class PDFProcessor:
         
         text_chunks = self.text_splitter.split_documents([temp_doc])
         
-        for chunk in text_chunks:
-            embedding = embedding_service.embed_text(chunk.page_content)
-            embeddings.append(embedding)
+        if not text_chunks:
+            return docs, embeddings
+        
+        # Embed the whole page's chunks in one batch (much faster than one by one)
+        vectors = embedding_service.embed_texts([c.page_content for c in text_chunks])
+        for chunk, vector in zip(text_chunks, vectors):
+            chunk.metadata["embedding_model"] = embedding_service.model_id
+            embeddings.append(vector)
             docs.append(chunk)
         
         return docs, embeddings
@@ -102,6 +109,10 @@ class PDFProcessor:
         """
         docs = []
         embeddings = []
+        
+        # Images are embedded with CLIP; skipped only if image search is disabled
+        if not embedding_service.supports_images:
+            return docs, embeddings
         
         for img_index, img in enumerate(page.get_images(full=True)):
             try:
@@ -127,6 +138,7 @@ class PDFProcessor:
                         "type": "image",
                         "image_id": image_id,
                         "xref": xref,  # Store xref for potential re-extraction
+                        "embedding_model": embedding_service.image_model_id,
                         "documentId": doc_id
                     }
                 )

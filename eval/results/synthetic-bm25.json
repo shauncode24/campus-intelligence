@@ -1,0 +1,2743 @@
+{
+  "meta": {
+    "name": "synthetic-bm25",
+    "date": "2026-11-24 00:48",
+    "git_commit": "2404c00",
+    "dataset_fingerprint": "f2f4cb840c86",
+    "n_pages": 12,
+    "synthetic": true,
+    "warnings": [
+      "Only 24 answerable questions (recommended minimum 30). Differences between runs are likely to be noise; look at the confidence intervals.",
+      "Only 10 unanswerable questions (recommended minimum 15). Refusal/abstention figures are very rough."
+    ]
+  },
+  "results": {
+    "counts": {
+      "answerable": 24,
+      "unanswerable": 10
+    },
+    "retrieval": {
+      "mrr": {
+        "mean": 0.8624999999999999,
+        "ci95": [
+          0.7541666666666668,
+          0.9583333333333334
+        ]
+      },
+      "hit@1": {
+        "mean": 0.75,
+        "ci95": [
+          0.5833333333333334,
+          0.9166666666666666
+        ]
+      },
+      "hit@3": {
+        "mean": 0.9583333333333334,
+        "ci95": [
+          0.875,
+          1.0
+        ]
+      },
+      "hit@5": {
+        "mean": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "hit@10": {
+        "mean": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "recall@1": {
+        "mean": 0.7291666666666666,
+        "ci95": [
+          0.5416666666666666,
+          0.8958333333333334
+        ]
+      },
+      "recall@3": {
+        "mean": 0.9375,
+        "ci95": [
+          0.8333333333333334,
+          1.0
+        ]
+      },
+      "recall@5": {
+        "mean": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "recall@10": {
+        "mean": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "ndcg@1": {
+        "mean": 0.75,
+        "ci95": [
+          0.5833333333333334,
+          0.9166666666666666
+        ]
+      },
+      "ndcg@3": {
+        "mean": 0.8712738258966821,
+        "ci95": [
+          0.757925578727887,
+          0.9590742733669165
+        ]
+      },
+      "ndcg@5": {
+        "mean": 0.897275930896842,
+        "ci95": [
+          0.8157111123626595,
+          0.9689575113989707
+        ]
+      },
+      "ndcg@10": {
+        "mean": 0.897275930896842,
+        "ci95": [
+          0.8157111123626595,
+          0.9689575113989707
+        ]
+      }
+    },
+    "by_type": {
+      "deadline": {
+        "n": 4,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.875
+      },
+      "eligibility": {
+        "n": 4,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "fact": {
+        "n": 4,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "multi_doc": {
+        "n": 2,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.75
+      },
+      "numeric": {
+        "n": 7,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.9285714285714286
+      },
+      "procedure": {
+        "n": 3,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.39999999999999997
+      }
+    },
+    "abstention": {
+      "auc": 0.9833333333333333,
+      "answerable_top_score": {
+        "min": 3.309630381030892,
+        "median": 5.926458016986231,
+        "max": 16.144149311606814
+      },
+      "unanswerable_top_score": {
+        "min": 0.0,
+        "median": 2.013149265422848,
+        "max": 3.9306569700498883
+      },
+      "sweep": []
+    },
+    "failures": [],
+    "latency_ms": {
+      "p50": 0.1401999998051906,
+      "p95": 0.2226800010248554
+    },
+    "build_seconds": 0.002015699999901699,
+    "retriever": {
+      "retriever": "bm25",
+      "k1": 1.5,
+      "b": 0.75,
+      "chunk_size": 500,
+      "chunk_overlap": 100,
+      "num_chunks": 23
+    },
+    "per_question": [
+      {
+        "id": "q01",
+        "question": "What is the late fee if I pay my tuition after the deadline?",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "fee_policy",
+            1
+          ]
+        ],
+        "top_score": 8.247328464235183,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            8.2473
+          ],
+          [
+            "fee_policy",
+            1,
+            6.8808
+          ],
+          [
+            "fee_policy",
+            2,
+            4.2607
+          ],
+          [
+            "exam_regulations",
+            2,
+            2.3825
+          ],
+          [
+            "scholarships",
+            1,
+            1.8792
+          ],
+          [
+            "scholarships",
+            2,
+            1.786
+          ],
+          [
+            "scholarships",
+            1,
+            1.6056
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.5547
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.5239
+          ],
+          [
+            "placement_policy",
+            2,
+            1.1551
+          ]
+        ],
+        "latency_ms": 0.1979000007850118,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q02",
+        "question": "Is there a cap on how much late fee I can be charged in one semester?",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "fee_policy",
+            1
+          ]
+        ],
+        "top_score": 8.66587127401177,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            8.6659
+          ],
+          [
+            "fee_policy",
+            1,
+            6.7127
+          ],
+          [
+            "placement_policy",
+            2,
+            3.3096
+          ],
+          [
+            "exam_regulations",
+            1,
+            1.9103
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.7045
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.5547
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.5239
+          ],
+          [
+            "attendance_rules",
+            1,
+            1.2761
+          ],
+          [
+            "exam_regulations",
+            2,
+            1.1197
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.0541
+          ]
+        ],
+        "latency_ms": 0.18769999951473437,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q03",
+        "question": "By what day of the month must semester tuition be cleared?",
+        "type": "deadline",
+        "answerable": true,
+        "gold": [
+          [
+            "fee_policy",
+            1
+          ]
+        ],
+        "top_score": 5.654475407724805,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            5.6545
+          ],
+          [
+            "fee_policy",
+            1,
+            4.6461
+          ],
+          [
+            "fee_policy",
+            2,
+            4.2901
+          ],
+          [
+            "scholarships",
+            1,
+            2.6042
+          ],
+          [
+            "exam_regulations",
+            1,
+            2.3514
+          ],
+          [
+            "attendance_rules",
+            2,
+            2.2875
+          ],
+          [
+            "scholarships",
+            1,
+            2.0163
+          ],
+          [
+            "attendance_rules",
+            1,
+            1.9244
+          ],
+          [
+            "scholarships",
+            2,
+            1.786
+          ],
+          [
+            "scholarships",
+            2,
+            1.4608
+          ]
+        ],
+        "latency_ms": 0.16820000018924475,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q04",
+        "question": "Can I pay my fees from my phone instead of going to the office?",
+        "type": "procedure",
+        "answerable": true,
+        "gold": [
+          [
+            "fee_policy",
+            1
+          ]
+        ],
+        "top_score": 4.61845335365928,
+        "ranked": [
+          [
+            "fee_policy",
+            2,
+            4.6185
+          ],
+          [
+            "fee_policy",
+            1,
+            4.1212
+          ],
+          [
+            "fee_policy",
+            1,
+            2.3949
+          ],
+          [
+            "scholarships",
+            2,
+            1.786
+          ],
+          [
+            "fee_policy",
+            2,
+            1.6249
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.5537
+          ],
+          [
+            "scholarships",
+            1,
+            1.0645
+          ],
+          [
+            "scholarships",
+            2,
+            1.0541
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.14509999891743064,
+        "metrics": {
+          "mrr": 0.5,
+          "hit@1": 0.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.6309297535714575,
+          "ndcg@5": 0.6309297535714575,
+          "ndcg@10": 0.6309297535714575
+        }
+      },
+      {
+        "id": "q05",
+        "question": "My family is struggling financially. Can I pay tuition in parts, and what form do I need?",
+        "type": "procedure",
+        "answerable": true,
+        "gold": [
+          [
+            "fee_policy",
+            2
+          ]
+        ],
+        "top_score": 6.674395559960525,
+        "ranked": [
+          [
+            "scholarships",
+            2,
+            6.6744
+          ],
+          [
+            "fee_policy",
+            2,
+            4.6185
+          ],
+          [
+            "fee_policy",
+            1,
+            2.5826
+          ],
+          [
+            "fee_policy",
+            1,
+            2.3949
+          ],
+          [
+            "scholarships",
+            1,
+            1.8792
+          ],
+          [
+            "scholarships",
+            2,
+            1.786
+          ],
+          [
+            "scholarships",
+            1,
+            1.6056
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.5537
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.5387
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.14559999908669852,
+        "metrics": {
+          "mrr": 0.5,
+          "hit@1": 0.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.6309297535714575,
+          "ndcg@5": 0.6309297535714575,
+          "ndcg@10": 0.6309297535714575
+        }
+      },
+      {
+        "id": "q06",
+        "question": "If I cancel my admission before classes begin, how much money comes back?",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "fee_policy",
+            2
+          ]
+        ],
+        "top_score": 4.732230276266343,
+        "ranked": [
+          [
+            "fee_policy",
+            2,
+            4.7322
+          ],
+          [
+            "exam_regulations",
+            2,
+            2.2516
+          ],
+          [
+            "hostel_rules",
+            1,
+            2.2374
+          ],
+          [
+            "attendance_rules",
+            1,
+            1.959
+          ],
+          [
+            "exam_regulations",
+            1,
+            1.4652
+          ],
+          [
+            "fee_policy",
+            1,
+            1.3378
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.1387999982398469,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q07",
+        "question": "What percentage of classes must I attend to be allowed in the final exam?",
+        "type": "eligibility",
+        "answerable": true,
+        "gold": [
+          [
+            "attendance_rules",
+            1
+          ]
+        ],
+        "top_score": 4.274843445335243,
+        "ranked": [
+          [
+            "attendance_rules",
+            1,
+            4.2748
+          ],
+          [
+            "placement_policy",
+            1,
+            3.435
+          ],
+          [
+            "fee_policy",
+            2,
+            2.7195
+          ],
+          [
+            "exam_regulations",
+            1,
+            2.4208
+          ],
+          [
+            "placement_policy",
+            1,
+            2.3159
+          ],
+          [
+            "hostel_rules",
+            1,
+            2.2915
+          ],
+          [
+            "hostel_rules",
+            2,
+            2.1891
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.9603
+          ],
+          [
+            "exam_regulations",
+            2,
+            1.6503
+          ],
+          [
+            "scholarships",
+            1,
+            0.7249
+          ]
+        ],
+        "latency_ms": 0.15349999739555642,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q08",
+        "question": "I fell sick and missed too many classes. What papers do I need to submit?",
+        "type": "procedure",
+        "answerable": true,
+        "gold": [
+          [
+            "attendance_rules",
+            2
+          ]
+        ],
+        "top_score": 3.382868469140509,
+        "ranked": [
+          [
+            "scholarships",
+            2,
+            3.3829
+          ],
+          [
+            "fee_policy",
+            2,
+            2.7195
+          ],
+          [
+            "attendance_rules",
+            1,
+            1.959
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.8252
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.8076
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.26870000147027895,
+        "metrics": {
+          "mrr": 0.2,
+          "hit@1": 0.0,
+          "hit@3": 0.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.0,
+          "ndcg@5": 0.38685280723454163,
+          "ndcg@10": 0.38685280723454163
+        }
+      },
+      {
+        "id": "q09",
+        "question": "How much do I have to pay to get my attendance shortage condoned?",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "attendance_rules",
+            2
+          ]
+        ],
+        "top_score": 6.471532266248836,
+        "ranked": [
+          [
+            "attendance_rules",
+            2,
+            6.4715
+          ],
+          [
+            "attendance_rules",
+            1,
+            2.8438
+          ],
+          [
+            "attendance_rules",
+            2,
+            2.6167
+          ],
+          [
+            "fee_policy",
+            1,
+            2.3949
+          ],
+          [
+            "attendance_rules",
+            1,
+            2.3273
+          ],
+          [
+            "fee_policy",
+            1,
+            1.5387
+          ],
+          [
+            "fee_policy",
+            2,
+            1.5239
+          ],
+          [
+            "scholarships",
+            1,
+            1.3642
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.2709000000322703,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q10",
+        "question": "I only have 70 percent attendance in one course. Can I still write the exam and what will it cost me?",
+        "type": "multi_doc",
+        "answerable": true,
+        "gold": [
+          [
+            "attendance_rules",
+            1
+          ],
+          [
+            "attendance_rules",
+            2
+          ]
+        ],
+        "top_score": 5.831057758115193,
+        "ranked": [
+          [
+            "attendance_rules",
+            2,
+            5.8311
+          ],
+          [
+            "attendance_rules",
+            1,
+            5.486
+          ],
+          [
+            "placement_policy",
+            2,
+            5.4834
+          ],
+          [
+            "attendance_rules",
+            1,
+            4.6546
+          ],
+          [
+            "attendance_rules",
+            2,
+            3.0088
+          ],
+          [
+            "scholarships",
+            1,
+            2.5033
+          ],
+          [
+            "hostel_rules",
+            2,
+            2.1946
+          ],
+          [
+            "scholarships",
+            1,
+            1.3333
+          ],
+          [
+            "scholarships",
+            2,
+            1.2672
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7944
+          ]
+        ],
+        "latency_ms": 0.19139999858452938,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.5,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q11",
+        "question": "I represent the college in a sports tournament. Will those days be counted as absent?",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "attendance_rules",
+            2
+          ]
+        ],
+        "top_score": 7.371683674983661,
+        "ranked": [
+          [
+            "attendance_rules",
+            2,
+            7.3717
+          ],
+          [
+            "exam_regulations",
+            1,
+            1.2104
+          ],
+          [
+            "attendance_rules",
+            1,
+            1.1493
+          ],
+          [
+            "exam_regulations",
+            1,
+            1.0719
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.0602
+          ],
+          [
+            "fee_policy",
+            2,
+            1.0283
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7086
+          ],
+          [
+            "fee_policy",
+            1,
+            0.6607
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.6607
+          ],
+          [
+            "fee_policy",
+            2,
+            0.6543
+          ]
+        ],
+        "latency_ms": 0.14179999925545417,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q12",
+        "question": "When can I submit my hostel application?",
+        "type": "deadline",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            1
+          ]
+        ],
+        "top_score": 5.81786049630831,
+        "ranked": [
+          [
+            "hostel_rules",
+            1,
+            5.8179
+          ],
+          [
+            "hostel_rules",
+            2,
+            2.3923
+          ],
+          [
+            "exam_regulations",
+            2,
+            1.9387
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.8895
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.8076
+          ],
+          [
+            "fee_policy",
+            2,
+            1.7715
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.7535
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.13760000001639128,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q13",
+        "question": "What do I pay for hostel accommodation for the whole year?",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            1
+          ]
+        ],
+        "top_score": 6.820949105584607,
+        "ranked": [
+          [
+            "hostel_rules",
+            1,
+            6.8209
+          ],
+          [
+            "hostel_rules",
+            1,
+            4.1295
+          ],
+          [
+            "hostel_rules",
+            2,
+            3.5585
+          ],
+          [
+            "fee_policy",
+            2,
+            3.2954
+          ],
+          [
+            "fee_policy",
+            1,
+            2.3949
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.8895
+          ],
+          [
+            "scholarships",
+            1,
+            1.811
+          ],
+          [
+            "fee_policy",
+            1,
+            1.5387
+          ],
+          [
+            "scholarships",
+            2,
+            1.1889
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.1343000003544148,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q14",
+        "question": "How late can first year students come back to the hostel in the evening?",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_score": 6.849005562496557,
+        "ranked": [
+          [
+            "hostel_rules",
+            2,
+            6.849
+          ],
+          [
+            "hostel_rules",
+            1,
+            6.4968
+          ],
+          [
+            "hostel_rules",
+            1,
+            6.379
+          ],
+          [
+            "fee_policy",
+            2,
+            3.9479
+          ],
+          [
+            "fee_policy",
+            1,
+            3.0217
+          ],
+          [
+            "scholarships",
+            2,
+            2.9844
+          ],
+          [
+            "scholarships",
+            1,
+            2.4303
+          ],
+          [
+            "fee_policy",
+            1,
+            1.9414
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.8895
+          ],
+          [
+            "exam_regulations",
+            1,
+            1.5844
+          ]
+        ],
+        "latency_ms": 0.1526000014564488,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q15",
+        "question": "How much is the hostel security deposit and how long until I get it back?",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_score": 7.690895402515363,
+        "ranked": [
+          [
+            "hostel_rules",
+            2,
+            7.6909
+          ],
+          [
+            "hostel_rules",
+            2,
+            5.9728
+          ],
+          [
+            "fee_policy",
+            1,
+            2.2158
+          ],
+          [
+            "hostel_rules",
+            1,
+            2.1675
+          ],
+          [
+            "fee_policy",
+            2,
+            1.7715
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.7535
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.1415999977325555,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q16",
+        "question": "Can I keep an induction cooktop in my hostel room?",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_score": 6.377175727281366,
+        "ranked": [
+          [
+            "hostel_rules",
+            2,
+            6.3772
+          ],
+          [
+            "hostel_rules",
+            1,
+            2.1675
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.8895
+          ],
+          [
+            "fee_policy",
+            1,
+            1.8076
+          ],
+          [
+            "fee_policy",
+            2,
+            1.7715
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.7535
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.1311999985773582,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q17",
+        "question": "How many days after results do I have to ask for my paper to be rechecked?",
+        "type": "deadline",
+        "answerable": true,
+        "gold": [
+          [
+            "exam_regulations",
+            2
+          ]
+        ],
+        "top_score": 5.172989029773162,
+        "ranked": [
+          [
+            "exam_regulations",
+            2,
+            5.173
+          ],
+          [
+            "exam_regulations",
+            1,
+            3.3675
+          ],
+          [
+            "exam_regulations",
+            2,
+            3.0422
+          ],
+          [
+            "exam_regulations",
+            1,
+            2.3615
+          ],
+          [
+            "placement_policy",
+            2,
+            2.3102
+          ],
+          [
+            "fee_policy",
+            1,
+            1.8381
+          ],
+          [
+            "fee_policy",
+            1,
+            1.8327
+          ],
+          [
+            "fee_policy",
+            2,
+            1.8205
+          ],
+          [
+            "scholarships",
+            2,
+            1.1889
+          ],
+          [
+            "attendance_rules",
+            1,
+            1.1493
+          ]
+        ],
+        "latency_ms": 0.15169999824138358,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q18",
+        "question": "What does it cost to get one answer sheet re-evaluated?",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "exam_regulations",
+            2
+          ]
+        ],
+        "top_score": 3.309630381030892,
+        "ranked": [
+          [
+            "placement_policy",
+            2,
+            3.3096
+          ],
+          [
+            "exam_regulations",
+            2,
+            3.0422
+          ],
+          [
+            "exam_regulations",
+            2,
+            2.8874
+          ],
+          [
+            "scholarships",
+            2,
+            2.2374
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.15220000204863027,
+        "metrics": {
+          "mrr": 0.5,
+          "hit@1": 0.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.6309297535714575,
+          "ndcg@5": 0.6309297535714575,
+          "ndcg@10": 0.6309297535714575
+        }
+      },
+      {
+        "id": "q19",
+        "question": "From when can I download my hall ticket?",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "exam_regulations",
+            1
+          ]
+        ],
+        "top_score": 6.0218582758572685,
+        "ranked": [
+          [
+            "exam_regulations",
+            1,
+            6.0219
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.12000000060652383,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q20",
+        "question": "What grade average do I need to qualify for the merit scholarship?",
+        "type": "eligibility",
+        "answerable": true,
+        "gold": [
+          [
+            "scholarships",
+            1
+          ]
+        ],
+        "top_score": 6.368593235094778,
+        "ranked": [
+          [
+            "scholarships",
+            1,
+            6.3686
+          ],
+          [
+            "scholarships",
+            2,
+            5.8456
+          ],
+          [
+            "scholarships",
+            1,
+            2.4083
+          ],
+          [
+            "scholarships",
+            2,
+            2.2888
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.15900000289548188,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q21",
+        "question": "Up to what family income can a student apply for need-based scholarship?",
+        "type": "eligibility",
+        "answerable": true,
+        "gold": [
+          [
+            "scholarships",
+            2
+          ]
+        ],
+        "top_score": 16.144149311606814,
+        "ranked": [
+          [
+            "scholarships",
+            2,
+            16.1441
+          ],
+          [
+            "scholarships",
+            2,
+            5.3813
+          ],
+          [
+            "scholarships",
+            1,
+            3.6343
+          ],
+          [
+            "attendance_rules",
+            2,
+            2.893
+          ],
+          [
+            "exam_regulations",
+            2,
+            2.6473
+          ],
+          [
+            "scholarships",
+            1,
+            2.4083
+          ],
+          [
+            "attendance_rules",
+            2,
+            2.3391
+          ],
+          [
+            "fee_policy",
+            1,
+            2.0823
+          ],
+          [
+            "fee_policy",
+            2,
+            1.7903
+          ],
+          [
+            "exam_regulations",
+            1,
+            1.2104
+          ]
+        ],
+        "latency_ms": 0.16039999900385737,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q22",
+        "question": "Until what date can I sign up for campus recruitment?",
+        "type": "deadline",
+        "answerable": true,
+        "gold": [
+          [
+            "placement_policy",
+            1
+          ]
+        ],
+        "top_score": 3.914951012074548,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            3.915
+          ],
+          [
+            "placement_policy",
+            1,
+            3.6775
+          ],
+          [
+            "fee_policy",
+            1,
+            3.3932
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.9366
+          ],
+          [
+            "fee_policy",
+            2,
+            1.8327
+          ],
+          [
+            "scholarships",
+            2,
+            1.3509
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.3378
+          ],
+          [
+            "fee_policy",
+            2,
+            1.1662
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.1388000018778257,
+        "metrics": {
+          "mrr": 0.5,
+          "hit@1": 0.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.6309297535714575,
+          "ndcg@5": 0.6309297535714575,
+          "ndcg@10": 0.6309297535714575
+        }
+      },
+      {
+        "id": "q23",
+        "question": "I have a pending backlog. Am I allowed to appear for company drives?",
+        "type": "eligibility",
+        "answerable": true,
+        "gold": [
+          [
+            "placement_policy",
+            1
+          ]
+        ],
+        "top_score": 4.360422097066495,
+        "ranked": [
+          [
+            "placement_policy",
+            1,
+            4.3604
+          ],
+          [
+            "placement_policy",
+            2,
+            3.3096
+          ],
+          [
+            "exam_regulations",
+            1,
+            1.9797
+          ],
+          [
+            "scholarships",
+            1,
+            1.8432
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.7903
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.12910000077681616,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "q24",
+        "question": "Can I spread my exam fee over instalments, and what do I pay to get a paper re-evaluated?",
+        "type": "multi_doc",
+        "answerable": true,
+        "gold": [
+          [
+            "exam_regulations",
+            2
+          ],
+          [
+            "fee_policy",
+            2
+          ]
+        ],
+        "top_score": 4.2466916402164125,
+        "ranked": [
+          [
+            "hostel_rules",
+            1,
+            4.2467
+          ],
+          [
+            "fee_policy",
+            2,
+            4.2434
+          ],
+          [
+            "fee_policy",
+            1,
+            4.0198
+          ],
+          [
+            "fee_policy",
+            1,
+            3.1208
+          ],
+          [
+            "exam_regulations",
+            2,
+            3.0583
+          ],
+          [
+            "exam_regulations",
+            2,
+            3.0422
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.0541
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.0439
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.14759999976377003,
+        "metrics": {
+          "mrr": 0.5,
+          "hit@1": 0.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 0.5,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.38685280723454163,
+          "ndcg@5": 0.6240505200038379,
+          "ndcg@10": 0.6240505200038379
+        }
+      },
+      {
+        "id": "u01",
+        "question": "How much does it cost to park my motorcycle on campus?",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 2.401432708931754,
+        "ranked": [
+          [
+            "placement_policy",
+            1,
+            2.4014
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.13219999891589396
+      },
+      {
+        "id": "u02",
+        "question": "How many weeks of summer vacation do students get?",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 2.8679163363218834,
+        "ranked": [
+          [
+            "exam_regulations",
+            1,
+            2.8679
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.8126
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.7413
+          ],
+          [
+            "scholarships",
+            2,
+            0.7413
+          ],
+          [
+            "hostel_rules",
+            2,
+            0.7326
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.7006
+          ],
+          [
+            "scholarships",
+            2,
+            0.689
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.6483
+          ],
+          [
+            "placement_policy",
+            1,
+            0.6483
+          ],
+          [
+            "fee_policy",
+            1,
+            0.6268
+          ]
+        ],
+        "latency_ms": 0.13499999840860255
+      },
+      {
+        "id": "u03",
+        "question": "How can I change my branch after the first year?",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 3.9306569700498883,
+        "ranked": [
+          [
+            "hostel_rules",
+            1,
+            3.9307
+          ],
+          [
+            "exam_regulations",
+            2,
+            3.6394
+          ],
+          [
+            "hostel_rules",
+            1,
+            3.4702
+          ],
+          [
+            "fee_policy",
+            2,
+            2.7368
+          ],
+          [
+            "scholarships",
+            2,
+            2.243
+          ],
+          [
+            "hostel_rules",
+            2,
+            2.2001
+          ],
+          [
+            "fee_policy",
+            1,
+            1.8327
+          ],
+          [
+            "scholarships",
+            1,
+            1.811
+          ],
+          [
+            "fee_policy",
+            1,
+            1.1774
+          ],
+          [
+            "placement_policy",
+            2,
+            1.1551
+          ]
+        ],
+        "latency_ms": 0.13179999950807542
+      },
+      {
+        "id": "u04",
+        "question": "What is the fine for a lost library book?",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 0.0,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.11079999967478216
+      },
+      {
+        "id": "u05",
+        "question": "What is the monthly gym membership fee?",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 1.624865821913942,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            1.6249
+          ],
+          [
+            "fee_policy",
+            1,
+            1.5821
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.5547
+          ],
+          [
+            "exam_regulations",
+            2,
+            1.1197
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.0541
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.0439
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.1253000009455718
+      },
+      {
+        "id": "u06",
+        "question": "Is there a dress code for attending lectures?",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 2.401432708931754,
+        "ranked": [
+          [
+            "attendance_rules",
+            1,
+            2.4014
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.11749999976018444
+      },
+      {
+        "id": "u07",
+        "question": "What is the weather forecast for tomorrow?",
+        "type": "out_of_scope",
+        "answerable": false,
+        "gold": [],
+        "top_score": 0.0,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.10870000187424012
+      },
+      {
+        "id": "u08",
+        "question": "Who won the cricket match last night?",
+        "type": "out_of_scope",
+        "answerable": false,
+        "gold": [],
+        "top_score": 3.3115012610853753,
+        "ranked": [
+          [
+            "exam_regulations",
+            1,
+            3.3115
+          ],
+          [
+            "exam_regulations",
+            1,
+            2.9327
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.12129999959142879
+      },
+      {
+        "id": "u09",
+        "question": "Write a python function that sorts a list of numbers.",
+        "type": "out_of_scope",
+        "answerable": false,
+        "gold": [],
+        "top_score": 0.0,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.12150000111432746
+      },
+      {
+        "id": "u10",
+        "question": "What is the capital of France?",
+        "type": "out_of_scope",
+        "answerable": false,
+        "gold": [],
+        "top_score": 0.0,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.10860000111279078
+      }
+    ]
+  }
+}
