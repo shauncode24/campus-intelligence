@@ -7,13 +7,14 @@ import {
   useCallback,
 } from "react";
 import { useAuth } from "./AuthContext";
+import { apiFetch } from "../utils/api";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, loading: authLoading } = useAuth();
 
   const [state, setState] = useState({
     user: {
@@ -42,32 +43,34 @@ export function AppProvider({ children }) {
   const pendingRequests = useRef(new Map());
   const isFetchingChats = useRef(false);
 
-  // Generate consistent user ID based on auth state
-  const generateUserId = useCallback(() => {
-    if (isLoggedIn && user) {
-      return user.uid;
-    } else {
-      let guestId = localStorage.getItem("campus_intel_guest_id");
-      if (!guestId) {
-        guestId = `guest_${Date.now()}_${Math.random()
-          .toString(36)
-          .substr(2, 9)}`;
-        localStorage.setItem("campus_intel_guest_id", guestId);
-      }
-      return guestId;
-    }
-  }, [isLoggedIn, user]);
+  // The user id is the Firebase uid (real account or anonymous guest). It is
+  // used client-side only (cache keys, "is ready" checks); it is never sent to
+  // the backend, which derives identity from the verified ID token.
+  const lastUserId = useRef(null);
 
   // Update user state when auth changes
   useEffect(() => {
-    const userId = generateUserId();
+    const userId = user ? user.uid : null;
     const displayName = isLoggedIn && user ? user.displayName : "Guest";
+
+    // Different account (login / logout / guest -> member): drop the previous
+    // account's cached chats and history so they never show for the new one.
+    if (lastUserId.current && lastUserId.current !== userId) {
+      isFetchingChats.current = false;
+      pendingRequests.current.clear();
+      setState((prev) => ({
+        ...prev,
+        chats: { data: [], loading: false, lastFetch: null },
+        history: { data: [], loading: false, favoritesOnly: false },
+      }));
+    }
+    lastUserId.current = userId;
 
     setState((prev) => ({
       ...prev,
-      user: { id: userId, displayName, loading: false },
+      user: { id: userId, displayName, loading: authLoading },
     }));
-  }, [isLoggedIn, user, generateUserId]);
+  }, [user, isLoggedIn, authLoading]);
 
   const updateUser = (updates) => {
     setState((prev) => ({
@@ -131,9 +134,7 @@ export function AppProvider({ children }) {
         chats: { ...prev.chats, loading: true },
       }));
 
-      const promise = fetch(
-        `${VITE_PYTHON_RAG_URL}/chats/user/${userId}?limit=10`
-      )
+      const promise = apiFetch(`${VITE_PYTHON_RAG_URL}/chats?limit=10`)
         .then((response) => response.json())
         .then((data) => {
           setState((prev) => ({
@@ -191,10 +192,10 @@ export function AppProvider({ children }) {
       }));
 
       const url = favoritesOnly
-        ? `${VITE_PYTHON_RAG_URL}/history/${userId}?limit=100&favorites_only=true`
-        : `${VITE_PYTHON_RAG_URL}/history/${userId}?limit=100`;
+        ? `${VITE_PYTHON_RAG_URL}/history?limit=100&favorites_only=true`
+        : `${VITE_PYTHON_RAG_URL}/history?limit=100`;
 
-      const promise = fetch(url)
+      const promise = apiFetch(url)
         .then((response) => response.json())
         .then((data) => {
           setState((prev) => ({

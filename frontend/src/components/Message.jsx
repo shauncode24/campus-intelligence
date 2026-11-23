@@ -8,10 +8,11 @@ import {
   validateSources,
 } from "../utils/validation";
 import toast from "react-hot-toast";
+import { apiFetch } from "../utils/api";
 
 const { VITE_API_BASE_URL, VITE_PYTHON_RAG_URL } = import.meta.env;
 
-export default function Message({ message, userId, isStreaming }) {
+export default function Message({ message, isStreaming }) {
   const m = message;
   const [copied, setCopied] = useState(false);
   const [thumbsUp, setThumbsUp] = useState(false);
@@ -91,8 +92,8 @@ export default function Message({ message, userId, isStreaming }) {
         return;
       }
 
-      const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${m.historyId}/favorite`,
+      const response = await apiFetch(
+        `${VITE_PYTHON_RAG_URL}/history/${m.historyId}/favorite`,
         { method: "PUT" }
       );
 
@@ -248,7 +249,6 @@ export default function Message({ message, userId, isStreaming }) {
               <div className="message-calendar-container">
                 <CalendarButton
                   deadline={m.deadline}
-                  userId={userId}
                   onSuccess={(event) => {
                     console.log("Event created:", event);
                   }}

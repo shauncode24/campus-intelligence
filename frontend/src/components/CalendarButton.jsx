@@ -6,12 +6,13 @@ import toast from "react-hot-toast";
 import { lazy, Suspense } from "react";
 const CalendarPreviewModal = lazy(() => import("./CalendarPreviewModal"));
 import { handleError } from "../utils/errors";
+import { apiFetch } from "../utils/api";
 import Spinner from "../components/Loading/Spinner";
 const preloadModal = () => {
   import("./CalendarPreviewModal");
 };
 
-export default function CalendarButton({ deadline, userId, onSuccess }) {
+export default function CalendarButton({ deadline, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
@@ -28,9 +29,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
 
     try {
       // Get auth URL from backend
-      const response = await fetch(
-        `${VITE_API_BASE_URL}/calendar/auth?userId=${userId}`
-      );
+      const response = await apiFetch(`${VITE_API_BASE_URL}/calendar/auth`);
       const data = await response.json();
 
       if (data.authUrl) {
@@ -66,9 +65,7 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
 
   const checkConnectionStatus = async () => {
     try {
-      const response = await fetch(
-        `${VITE_API_BASE_URL}/calendar/status?userId=${userId}`
-      );
+      const response = await apiFetch(`${VITE_API_BASE_URL}/calendar/status`);
       const data = await response.json();
       setConnected(data.connected);
     } catch (err) {
@@ -82,13 +79,12 @@ export default function CalendarButton({ deadline, userId, onSuccess }) {
     setError(null);
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${VITE_API_BASE_URL}/calendar/create-event`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId,
             eventData: {
               title: deadline.title,
               date: deadline.date,

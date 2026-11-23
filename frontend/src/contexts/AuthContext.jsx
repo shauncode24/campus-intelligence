@@ -7,6 +7,7 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import { ensureSignedIn } from "../utils/api";
 
 const AuthContext = createContext(null);
 
@@ -17,25 +18,47 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Fetch user profile from Firestore
-        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-        const userData = userDoc.data();
-
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName:
-            userData?.displayName || firebaseUser.email.split("@")[0],
-          role: userData?.role || "user",
-          createdAt: userData?.createdAt || new Date(),
-        });
-
-        setIsAdmin(userData?.role === "admin");
-      } else {
+      if (!firebaseUser) {
+        // Nobody signed in: give the visitor an anonymous (guest) Firebase
+        // account so the backend can verify a real uid. Stay in `loading`
+        // until that account arrives via the next auth-state callback.
         setUser(null);
         setIsAdmin(false);
+        ensureSignedIn().catch((error) => {
+          console.error("Guest sign-in failed:", error);
+          setLoading(false);
+        });
+        return;
       }
+
+      if (firebaseUser.isAnonymous) {
+        setUser({
+          uid: firebaseUser.uid,
+          email: null,
+          displayName: "Guest",
+          role: "user",
+          isAnonymous: true,
+          createdAt: new Date(),
+        });
+        setIsAdmin(false);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch user profile from Firestore
+      const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+      const userData = userDoc.data();
+
+      setUser({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: userData?.displayName || firebaseUser.email.split("@")[0],
+        role: userData?.role || "user",
+        isAnonymous: false,
+        createdAt: userData?.createdAt || new Date(),
+      });
+
+      setIsAdmin(userData?.role === "admin");
       setLoading(false);
     });
 
@@ -73,7 +96,8 @@ export function AuthProvider({ children }) {
     login,
     signup,
     logout,
-    isLoggedIn: !!user,
+    // Guests (anonymous Firebase accounts) are NOT "logged in"
+    isLoggedIn: !!user && !user.isAnonymous,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

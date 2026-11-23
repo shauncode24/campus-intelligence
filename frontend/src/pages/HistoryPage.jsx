@@ -10,6 +10,7 @@ import { useApp } from "../contexts/AppContext";
 import { handleError } from "../utils/errors";
 import { parseTimestamp, validateConfidence } from "../utils/validation";
 import Spinner from "../components/Loading/Spinner";
+import { apiFetch } from "../utils/api";
 
 const VITE_PYTHON_RAG_URL =
   import.meta.env.VITE_PYTHON_RAG_URL || "http://localhost:8000";
@@ -312,8 +313,8 @@ export default function HistoryPage() {
 
   const toggleFavorite = async (id) => {
     try {
-      const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${id}/favorite`,
+      const response = await apiFetch(
+        `${VITE_PYTHON_RAG_URL}/history/${id}/favorite`,
         { method: "PUT" }
       );
 
@@ -334,8 +335,8 @@ export default function HistoryPage() {
       return;
 
     try {
-      const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${historyId}`,
+      const response = await apiFetch(
+        `${VITE_PYTHON_RAG_URL}/history/${historyId}`,
         { method: "DELETE" }
       );
 

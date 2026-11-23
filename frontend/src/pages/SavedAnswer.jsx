@@ -6,6 +6,7 @@ const { VITE_PYTHON_RAG_URL } = import.meta.env;
 import { useApp } from "../contexts/AppContext";
 import { parseTimestamp } from "../utils/validation";
 import { handleError } from "../utils/errors";
+import { apiFetch } from "../utils/api";
 
 export default function SavedAnswers() {
   const { state, actions } = useApp();
@@ -62,8 +63,8 @@ export default function SavedAnswers() {
     }
 
     try {
-      const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/history/user/${userId}/question/${historyId}/favorite`,
+      const response = await apiFetch(
+        `${VITE_PYTHON_RAG_URL}/history/${historyId}/favorite`,
         { method: "PUT" }
       );
 
@@ -83,12 +84,12 @@ export default function SavedAnswers() {
 
   const handleSaveNote = async (id) => {
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${VITE_PYTHON_RAG_URL}/history/${id}/note`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: userId, note: noteText }),
+          body: JSON.stringify({ note: noteText }),
         }
       );
 

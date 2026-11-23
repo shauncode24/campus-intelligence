@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "crypto";
 import {
   getAuthUrl,
   getTokensFromCode,
@@ -8,32 +9,38 @@ import {
 import { db } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
 import dotenv from "dotenv";
+import { requireAuth } from "../middleware/auth.js";
 
 dotenv.config();
 
 const router = express.Router();
 
 const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+// OAuth `state` is a random single-use nonce stored server-side and bound to the
+// authenticated uid. It is NOT the user id, so an attacker cannot forge it to
+// attach their Google account to someone else's uid.
+const STATE_COLLECTION = "calendar_oauth_states";
+const STATE_TTL_MS = 10 * 60 * 1000;
+const STATE_PATTERN = /^[a-f0-9]{48}$/;
+
 /**
  * Step 1: Initiate OAuth flow
- * GET /calendar/auth
+ * GET /calendar/auth   (requires Firebase ID token)
  */
-router.get("/auth", (req, res) => {
+router.get("/auth", requireAuth, async (req, res) => {
   try {
-    const { userId } = req.query;
+    const nonce = crypto.randomBytes(24).toString("hex");
 
-    if (!userId) {
-      return res.status(400).json({ error: "userId required" });
-    }
+    await db
+      .collection(STATE_COLLECTION)
+      .doc(nonce)
+      .set({
+        uid: req.uid,
+        expiresAt: Date.now() + STATE_TTL_MS,
+      });
 
-    // Generate auth URL
-    const authUrl = getAuthUrl();
-
-    // Store userId in session (you could also use state parameter)
-    // For now, we'll include it in the redirect
-    const urlWithState = `${authUrl}&state=${userId}`;
-
-    res.json({ authUrl: urlWithState });
+    res.json({ authUrl: getAuthUrl(nonce) });
   } catch (error) {
     console.error("Auth URL generation error:", error);
     res.status(500).json({ error: "Failed to generate auth URL" });
@@ -41,27 +48,49 @@ router.get("/auth", (req, res) => {
 });
 
 /**
- * Step 2: OAuth callback
+ * Atomically consume a state nonce. Returns the uid it was issued to, or null
+ * if it is unknown, already used, or expired.
+ */
+async function consumeState(state) {
+  if (typeof state !== "string" || !STATE_PATTERN.test(state)) return null;
+
+  const ref = db.collection(STATE_COLLECTION).doc(state);
+  return db.runTransaction(async (t) => {
+    const snap = await t.get(ref);
+    if (!snap.exists) return null;
+    t.delete(ref); // single use, even if expired
+    const { uid, expiresAt } = snap.data();
+    return expiresAt > Date.now() ? uid : null;
+  });
+}
+
+/**
+ * Step 2: OAuth callback (browser redirect from Google; no bearer token here,
+ * identity is established by the server-issued `state` nonce)
  * GET /calendar/callback
  */
 router.get("/callback", async (req, res) => {
   try {
-    const { code, state: userId } = req.query;
+    const { code, state } = req.query;
 
     if (!code) {
       return res.status(400).send("Authorization code missing");
     }
 
+    const uid = await consumeState(state);
+    if (!uid) {
+      console.warn("OAuth callback rejected: invalid, used or expired state");
+      return res.redirect(`${frontendUrl}/calendar/error`);
+    }
+
     // Exchange code for tokens
     const tokens = await getTokensFromCode(code);
 
-    // Store tokens in Firestore (encrypted in production!)
-    if (userId) {
-      await db.collection("user_calendar_tokens").doc(userId).set({
-        tokens,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    }
+    // Store tokens in Firestore (still plaintext: encryption is tracked as P2-9)
+    await db.collection("user_calendar_tokens").doc(uid).set({
+      tokens,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
     // Redirect to frontend with success
     res.redirect(`${frontendUrl}/calendar/success`);
@@ -73,13 +102,14 @@ router.get("/callback", async (req, res) => {
 
 /**
  * Step 3: Create calendar event
- * POST /calendar/create-event
+ * POST /calendar/create-event   (requires Firebase ID token)
  */
-router.post("/create-event", async (req, res) => {
+router.post("/create-event", requireAuth, async (req, res) => {
   try {
-    const { userId, eventData } = req.body;
+    const { eventData } = req.body;
+    const userId = req.uid;
 
-    if (!userId || !eventData) {
+    if (!eventData) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -93,7 +123,7 @@ router.post("/create-event", async (req, res) => {
       });
     }
 
-    // Get user's tokens
+    // Get the authenticated user's tokens
     const tokenDoc = await db
       .collection("user_calendar_tokens")
       .doc(userId)
@@ -147,20 +177,14 @@ router.post("/create-event", async (req, res) => {
 });
 
 /**
- * Check if user has connected calendar
- * GET /calendar/status
+ * Check if the authenticated user has connected a calendar
+ * GET /calendar/status   (requires Firebase ID token)
  */
-router.get("/status", async (req, res) => {
+router.get("/status", requireAuth, async (req, res) => {
   try {
-    const { userId } = req.query;
-
-    if (!userId) {
-      return res.status(400).json({ error: "userId required" });
-    }
-
     const tokenDoc = await db
       .collection("user_calendar_tokens")
-      .doc(userId)
+      .doc(req.uid)
       .get();
 
     res.json({
@@ -174,18 +198,12 @@ router.get("/status", async (req, res) => {
 });
 
 /**
- * Disconnect calendar
- * DELETE /calendar/disconnect
+ * Disconnect the authenticated user's calendar
+ * DELETE /calendar/disconnect   (requires Firebase ID token)
  */
-router.delete("/disconnect", async (req, res) => {
+router.delete("/disconnect", requireAuth, async (req, res) => {
   try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: "userId required" });
-    }
-
-    await db.collection("user_calendar_tokens").doc(userId).delete();
+    await db.collection("user_calendar_tokens").doc(req.uid).delete();
 
     res.json({ success: true, message: "Calendar disconnected" });
   } catch (error) {

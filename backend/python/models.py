@@ -9,9 +9,10 @@ class ProcessDocumentRequest(BaseModel):
     fileUrl: str
 
 class QueryRequest(BaseModel):
+    # NOTE: the caller's identity comes from the verified Firebase ID token,
+    # never from the request body.
     question: str
     documentIds: Optional[List[str]] = None
-    userId: Optional[str] = "anonymous"
 
 class SourceInfo(BaseModel):
     page: Optional[int]
@@ -64,5 +65,4 @@ class HistoryItem(BaseModel):
     askedAt: Any
 
 class UpdateNoteRequest(BaseModel):
-    userId: str
     note: str

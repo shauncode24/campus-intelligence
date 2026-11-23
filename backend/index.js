@@ -5,6 +5,7 @@ import fetch from "node-fetch";
 import { getFAQ, getUserHistory } from "./services/questionCache.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
+import { requireAuth } from "./middleware/auth.js";
 
 dotenv.config();
 
@@ -25,15 +26,17 @@ app.use(
 app.use(express.json());
 app.set("trust proxy", 1);
 
-app.post("/document/query", async (req, res) => {
+app.post("/document/query", requireAuth, async (req, res) => {
   try {
-    const { question, userId } = req.body;
+    // Identity comes from the verified token only (req.uid); a userId in the
+    // body is ignored.
+    const { question } = req.body;
 
     if (!question) {
       return res.status(400).json({ error: "Question required" });
     }
 
-    const effectiveUserId = userId || "anonymous";
+    const effectiveUserId = req.uid;
 
     // Set headers for SSE
     res.setHeader("Content-Type", "text/event-stream");
@@ -45,16 +48,19 @@ app.post("/document/query", async (req, res) => {
     console.log(`👤 User: ${effectiveUserId}`);
     console.log(`🔗 Python RAG URL: ${pythonRagUrl}`);
 
-    // Build request body
+    // Build request body (no user id: Python derives it from the token)
     const requestBody = {
       question: question,
-      userId: effectiveUserId, // ✅ Pass userId to Python
     };
 
-    // Call Python RAG service with proper error handling
+    // Call Python RAG service, forwarding the caller's token so Python
+    // verifies identity itself.
     const pythonResponse = await fetch(`${pythonRagUrl}/query`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${req.authToken}`,
+      },
       body: JSON.stringify(requestBody),
     });
 
@@ -158,13 +164,12 @@ app.get("/faq", async (req, res) => {
   }
 });
 
-// Get user history endpoint
-app.get("/history/:userId", async (req, res) => {
+// Get the authenticated user's history (uid comes from the token, not the URL)
+app.get("/history", requireAuth, async (req, res) => {
   try {
-    const { userId } = req.params;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 200);
 
-    const history = await getUserHistory(userId, limit);
+    const history = await getUserHistory(req.uid, limit);
     res.json({ history });
   } catch (err) {
     console.error(err);
@@ -190,7 +195,7 @@ app.listen(PORT, () => {
     "  POST   /document/query             - Query Python RAG (with caching!)"
   );
   console.log("  GET    /faq                        - Get FAQs");
-  console.log("  GET    /history/:userId            - Get user history");
+  console.log("  GET    /history                    - Get user history (auth)");
   console.log("  GET    /calendar/auth              - Google Calendar OAuth");
   console.log("  GET    /calendar/callback          - OAuth callback");
   console.log("  POST   /calendar/create-event      - Create calendar event");

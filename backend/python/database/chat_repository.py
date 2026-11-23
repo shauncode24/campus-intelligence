@@ -7,6 +7,25 @@ from typing import List, Dict, Optional
 
 class ChatRepository:
     @staticmethod
+    async def user_owns_chat(user_id: str, chat_id: str) -> bool:
+        """
+        Return True only if the chat exists AND belongs to user_id.
+
+        Deliberately does not distinguish "missing" from "someone else's" so
+        callers can answer both with the same 404 and not leak chat existence.
+        Firestore errors propagate to the caller (they are NOT treated as
+        "not owner").
+        """
+        db = firebase_client.db
+        if not db:
+            raise RuntimeError("Firebase not available")
+
+        chat_doc = db.collection('chats').document(chat_id).get()
+        if not chat_doc.exists:
+            return False
+        return chat_doc.to_dict().get('userId') == user_id
+
+    @staticmethod
     async def create_chat(user_id: str, title: str = "New Chat") -> Optional[str]:
         """
         Create a new chat session

@@ -1,7 +1,7 @@
 """
 Main FastAPI application for the RAG service
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 import warnings
 import aiohttp
@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 # Configuration and database
 from config import Config
+from auth import get_current_user_id
 from database.firebase_client import firebase_client
 from database.cache_repository import cache_repository
 from database.storage_service import storage_service
@@ -41,7 +42,6 @@ from models import (
 from routes.chatRoutes import router as chat_router
 
 class UpdateNoteRequest(BaseModel):
-    userId: str
     note: str
 
 class BulkProcessRequest(BaseModel):
@@ -78,16 +78,19 @@ app.include_router(chat_router, tags=["chats"])
 
 
 @app.post("/query", response_model=QueryResponse)
-async def query_documents(request: QueryRequest):
+async def query_documents(
+    request: QueryRequest,
+    user_id: str = Depends(get_current_user_id),
+):
     """
     Query the RAG system with caching and user history
     """
     try:
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
-        
+
         print(f"\n🔍 Query: {request.question}")
-        print(f"👤 User: {request.userId}")
+        print(f"👤 User: {user_id}")
         
         # Detect intent
         intent = detect_intent(request.question)
@@ -112,7 +115,7 @@ async def query_documents(request: QueryRequest):
             
             # Store user question with full data
             await cache_repository.store_user_question(
-                request.userId,
+                user_id,
                 cached_question['id'],
                 request.question,
                 answer=cached_question['answer'],
@@ -157,7 +160,7 @@ async def query_documents(request: QueryRequest):
             
             # Still store in history even if no answer
             await cache_repository.store_user_question(
-                request.userId,
+                user_id,
                 "no_answer",
                 request.question,
                 answer=response.answer,
@@ -202,7 +205,7 @@ async def query_documents(request: QueryRequest):
         # Store user question history with full data
         if question_id:
             await cache_repository.store_user_question(
-                request.userId,
+                user_id,
                 question_id,
                 request.question,
                 answer=answer,
@@ -307,18 +310,24 @@ async def get_faq(limit: int = 10):
     return {"faqs": faqs}
 
 
-@app.get("/history/{userId}")
-async def get_user_history(userId: str, limit: int = 100, favorites_only: bool = False):
-    """Get user's question history with optional favorites filter"""
+@app.get("/history")
+async def get_user_history(
+    limit: int = Query(default=100, ge=1, le=200),
+    favorites_only: bool = False,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Get the authenticated user's question history with optional favorites filter"""
     try:
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
-        
-        print(f"📖 Fetching history for user: {userId} (limit: {limit}, favorites_only: {favorites_only})")
-        history = await cache_repository.get_user_history(userId, limit, favorites_only)
+
+        print(f"📖 Fetching history for user: {user_id} (limit: {limit}, favorites_only: {favorites_only})")
+        history = await cache_repository.get_user_history(user_id, limit, favorites_only)
         print(f"✅ Returning {len(history)} history items")
-        
+
         return {"history": history}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Error fetching history: {e}")
         import traceback
@@ -326,16 +335,16 @@ async def get_user_history(userId: str, limit: int = 100, favorites_only: bool =
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.put("/history/user/{userId}/question/{historyId}/favorite")
-async def toggle_favorite(userId: str, historyId: str):
-    """Toggle favorite status for a question in user's history"""
+@app.put("/history/{historyId}/favorite")
+async def toggle_favorite(historyId: str, user_id: str = Depends(get_current_user_id)):
+    """Toggle favorite status for a question in the authenticated user's history"""
     try:
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
-        
-        print(f"⭐ Toggling favorite for history {historyId} (user: {userId})")
-        
-        new_status = await cache_repository.toggle_favorite(userId, historyId)
+
+        print(f"⭐ Toggling favorite for history {historyId} (user: {user_id})")
+
+        new_status = await cache_repository.toggle_favorite(user_id, historyId)
         
         if new_status is None:
             raise HTTPException(status_code=404, detail="History item not found or unauthorized")
@@ -352,16 +361,16 @@ async def toggle_favorite(userId: str, historyId: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete("/history/user/{userId}/question/{historyId}")
-async def delete_user_question(userId: str, historyId: str):
-    """Delete a specific question from user's history"""
+@app.delete("/history/{historyId}")
+async def delete_user_question(historyId: str, user_id: str = Depends(get_current_user_id)):
+    """Delete a specific question from the authenticated user's history"""
     try:
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
-        
-        print(f"🗑️ Attempting to delete history {historyId} for user {userId}")
-        
-        success = await cache_repository.delete_user_question(userId, historyId)
+
+        print(f"🗑️ Attempting to delete history {historyId} for user {user_id}")
+
+        success = await cache_repository.delete_user_question(user_id, historyId)
         
         if not success:
             raise HTTPException(status_code=404, detail="History item not found or unauthorized")
@@ -399,16 +408,20 @@ async def check_document_exists(documentId: str):
     
 
 @app.put("/history/{history_id}/note")
-async def update_personal_note(history_id: str, request: UpdateNoteRequest):
+async def update_personal_note(
+    history_id: str,
+    request: UpdateNoteRequest,
+    user_id: str = Depends(get_current_user_id),
+):
     """
-    Update personal note for a history item
+    Update personal note for a history item owned by the authenticated user
     """
     try:
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
-        
+
         success = await cache_repository.update_personal_note(
-            request.userId,
+            user_id,
             history_id,
             request.note
         )

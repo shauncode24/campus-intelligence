@@ -4,6 +4,7 @@ import "../styles/Sidebar.css";
 import { useApp } from "../contexts/AppContext";
 import { useAuth } from "../contexts/AuthContext";
 import { parseTimestamp } from "../utils/validation";
+import { apiFetch } from "../utils/api";
 import { handleError } from "../utils/errors";
 import ChatListSkeleton from "../components/Loading/ChatListSkeleton";
 import toast from "react-hot-toast";
@@ -37,11 +38,10 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
 
   const handleNewChat = async () => {
     try {
-      const response = await fetch(`${VITE_PYTHON_RAG_URL}/chats/create`, {
+      const response = await apiFetch(`${VITE_PYTHON_RAG_URL}/chats/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: userId,
           title: "New Chat",
         }),
       });
@@ -67,8 +67,8 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
     setDeletingChatId(chatId);
 
     try {
-      const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/chats/${chatId}?userId=${userId}`,
+      const response = await apiFetch(
+        `${VITE_PYTHON_RAG_URL}/chats/${chatId}`,
         { method: "DELETE" }
       );
 
@@ -123,8 +123,8 @@ export default function Sidebar({ isOpen, onToggle, currentChatId }) {
     }
 
     try {
-      const response = await fetch(
-        `${VITE_PYTHON_RAG_URL}/chats/${chatId}/user/${userId}/title`,
+      const response = await apiFetch(
+        `${VITE_PYTHON_RAG_URL}/chats/${chatId}/title`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

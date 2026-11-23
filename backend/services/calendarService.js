@@ -15,15 +15,17 @@ const oauth2Client = new google.auth.OAuth2(
 
 /**
  * Generate OAuth URL for user authorization
+ * @param {string} state - Opaque, single-use server-side nonce (see calendarRoutes)
  * @returns {string} Authorization URL
  */
-export function getAuthUrl() {
+export function getAuthUrl(state) {
   const scopes = ['https://www.googleapis.com/auth/calendar.events'];
-  
+
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: scopes,
-    prompt: 'consent'
+    prompt: 'consent',
+    state
   });
 }
 

@@ -8,6 +8,7 @@ import { useChat } from "../hooks/useChat";
 import { useApp } from "../contexts/AppContext";
 import { usePageTitle } from "../components/usePageTitle";
 import { handleError } from "../utils/errors";
+import { apiFetch } from "../utils/api";
 import "./StudentDashboard.css";
 import Header from "./../components/Header";
 
@@ -105,11 +106,10 @@ export default function StudentDashboard() {
     setCreatingChat(true);
 
     try {
-      const response = await fetch(`${VITE_PYTHON_RAG_URL}/chats/create`, {
+      const response = await apiFetch(`${VITE_PYTHON_RAG_URL}/chats/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: userId,
           title: "New Chat",
         }),
       });

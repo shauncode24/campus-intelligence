@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { apiFetch } from "../utils/api";
 
 const { VITE_API_BASE_URL, VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -25,7 +26,7 @@ export function useChat(chatId, userId) {
 
     async function loadMessages() {
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `${VITE_PYTHON_RAG_URL}/chats/${chatId}/messages?limit=100`,
           { signal: controller.signal }
         );
@@ -89,7 +90,7 @@ export function useChat(chatId, userId) {
 
       // Save user message with timestamp
       try {
-        await fetch(`${VITE_PYTHON_RAG_URL}/chats/messages/add`, {
+        await apiFetch(`${VITE_PYTHON_RAG_URL}/chats/messages/add`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -103,7 +104,7 @@ export function useChat(chatId, userId) {
 
         // Auto-generate title for first message
         if (isFirstMessage) {
-          await fetch(`${VITE_PYTHON_RAG_URL}/chats/${chatId}/auto-title`, {
+          await apiFetch(`${VITE_PYTHON_RAG_URL}/chats/${chatId}/auto-title`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ firstMessage: input }),
@@ -118,10 +119,10 @@ export function useChat(chatId, userId) {
       }
 
       try {
-        const response = await fetch(`${VITE_API_BASE_URL}/document/query`, {
+        const response = await apiFetch(`${VITE_API_BASE_URL}/document/query`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: input, userId }),
+          body: JSON.stringify({ question: input }),
           signal: controller.signal,
         });
 
@@ -160,7 +161,7 @@ export function useChat(chatId, userId) {
                   const botTimestamp = new Date().toISOString();
 
                   // Save bot message FIRST and get historyId
-                  const saveResponse = await fetch(
+                  const saveResponse = await apiFetch(
                     `${VITE_PYTHON_RAG_URL}/chats/messages/add`,
                     {
                       method: "POST",
