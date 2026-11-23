@@ -1,0 +1,42 @@
+# Repository-wide ignore rules. Sub-folders (backend/, frontend/, ...) have
+# their own .gitignore for tooling-specific entries.
+
+# ---- Secrets: never commit these ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+serviceAccountKey*.json
+*-firebase-adminsdk-*.json
+supabase.env
+supabase.key
+
+# ---- Dependencies & build output ----
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.pyc
+dist/
+build/
+.firebase/
+
+# ---- Logs, caches, temp ----
+*.log
+firestore-debug.log
+firebase-debug.log
+backend/temp/
+tmp/
+
+# ---- Large media (keep demo videos out of git; use Git LFS or a release asset) ----
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

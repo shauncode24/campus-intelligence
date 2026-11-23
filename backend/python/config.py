@@ -4,7 +4,16 @@ Configuration and environment variables for the RAG service
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Secrets normally come from backend/.env. To keep them out of a synced project
+# folder (OneDrive/Dropbox), set ENV_FILE to the full path of an env file stored
+# elsewhere. If it is set but missing we stop rather than run without secrets.
+_env_file = os.getenv("ENV_FILE")
+if _env_file:
+    if not os.path.isfile(_env_file):
+        raise RuntimeError(f"ENV_FILE is set to {_env_file!r} but that file does not exist")
+    load_dotenv(_env_file)
+else:
+    load_dotenv()
 
 def _int_env(name: str, default: int) -> int:
     try:

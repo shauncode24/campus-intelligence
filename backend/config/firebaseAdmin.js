@@ -1,6 +1,5 @@
+import "./loadEnv.js"; // loads backend/.env or $ENV_FILE before the credentials are read
 import admin from "firebase-admin";
-import dotenv from "dotenv";
-dotenv.config();
 
 const serviceAccount = {
   type: "service_account",

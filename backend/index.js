@@ -1,7 +1,7 @@
+import "./config/loadEnv.js"; // must be first: loads backend/.env or $ENV_FILE
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
 import fetch from "node-fetch";
 import { getUserHistory } from "./services/questionCache.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
@@ -10,8 +10,6 @@ import faqAdminRoutes from "./routes/faqAdminRoutes.js";
 import { requireAuth } from "./middleware/auth.js";
 import { ipLimiter, queryIpLimiter, queryUserLimiter } from "./middleware/rateLimit.js";
 import { failInternal, logError } from "./utils/httpErrors.js";
-
-dotenv.config();
 
 const app = express();
 
