@@ -106,6 +106,7 @@ app.post("/document/query", requireAuth, async (req, res) => {
         type: "metadata",
         data: {
           cached: result.cached || false,
+          answered: result.answered !== false,
           similarity: result.similarity,
           // No confidence value is sent: the previous number was derived from
           // the count of retrieved chunks (always the same), so it said nothing

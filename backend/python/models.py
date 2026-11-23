@@ -42,6 +42,8 @@ class QueryResponse(BaseModel):
     sources: List[Dict[str, Any]]
     hasVisualContent: bool
     cached: bool = False
+    # False when the documents did not contain an answer (a refusal)
+    answered: bool = True
     similarity: Optional[float] = None
     deadline: Optional[Dict[str, Any]] = None
     confidence: Optional[ConfidenceInfo] = None

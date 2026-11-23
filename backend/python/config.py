@@ -27,6 +27,21 @@ class Config:
     CHUNK_SIZE = 500
     CHUNK_OVERLAP = 100
     TOP_K_RETRIEVAL = 5
+
+    # Relevance floor for TEXT chunks (raw cosine similarity). Chunks below it
+    # are not given to the model; if none remain the question is declined
+    # without calling the LLM. NOTE: CLIP text-to-text similarity separates
+    # relevant from irrelevant text only weakly, so this is a coarse safety
+    # floor, not the main defence (that is the grounded prompt + refusal).
+    # Tune it on a real evaluation set (audit P1-1) via the env var.
+    MIN_RETRIEVAL_SCORE = float(os.getenv("MIN_RETRIEVAL_SCORE", "0.70"))
+
+    # Shown to the user when the documents do not contain the answer
+    NO_ANSWER_MESSAGE = (
+        "I couldn't find this in the uploaded campus documents, so I can't "
+        "answer it reliably. Please check with the relevant office, or try "
+        "rephrasing your question."
+    )
     SIMILARITY_THRESHOLD = 0.90
     
     # Document file safety (SSRF / resource limits)

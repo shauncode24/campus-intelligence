@@ -80,6 +80,27 @@ class RetrievalService:
         return top_chunks
     
     @staticmethod
+    def filter_relevant(docs, min_score=None):
+        """
+        Drop chunks that are too dissimilar to the question to be worth showing
+        the model. Only TEXT chunks are scored against the threshold (image
+        chunks live on a different similarity scale); image chunks are kept only
+        if at least one text chunk is relevant. Returns [] if nothing is
+        relevant, which callers treat as "not in the documents".
+        """
+        if min_score is None:
+            min_score = Config.MIN_RETRIEVAL_SCORE
+
+        kept = [
+            d for d in docs
+            if d.metadata.get('type', 'text') != 'text'
+            or d.metadata.get('similarity', 0) >= min_score
+        ]
+        if not any(d.metadata.get('type', 'text') == 'text' for d in kept):
+            return []
+        return kept
+
+    @staticmethod
     def prepare_sources(context_docs):
         """
         Prepare source information from retrieved documents

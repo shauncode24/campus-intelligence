@@ -20,7 +20,7 @@ from database.storage_service import storage_service
 from services.embedding_service import embedding_service
 from services.pdf_processor import pdf_processor
 from services.retrieval_service import retrieval_service
-from services.llm_service import llm_service
+from services.llm_service import llm_service, is_not_found
 
 # Utilities
 from utils.intent_detector import detect_intent
@@ -81,6 +81,32 @@ app.add_middleware(
 
 # Include chat routes WITHOUT /api prefix - mount at root level
 app.include_router(chat_router, tags=["chats"])
+
+
+async def _decline(user_id: str, question: str, intent: str, reason: str) -> QueryResponse:
+    """
+    The documents do not contain an answer. Say so plainly, show no sources,
+    record it in the user's history, and do NOT cache it (a refusal must never
+    be served back as if it were a verified answer).
+    """
+    print(f"🚫 Declining to answer ({reason})")
+    response = QueryResponse(
+        answer=Config.NO_ANSWER_MESSAGE,
+        sources=[],
+        hasVisualContent=False,
+        cached=False,
+        answered=False,
+    )
+    await cache_repository.store_user_question(
+        user_id,
+        "no_answer",
+        question,
+        answer=response.answer,
+        intent=intent,
+        confidence=None,
+        sources=[]
+    )
+    return response
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -156,41 +182,38 @@ async def query_documents(
             request.documentIds
         )
         
-        if not context_docs:
-            response = QueryResponse(
-                answer="I couldn't find any relevant information in the documents.",
-                sources=[],
-                hasVisualContent=False,
-                cached=False,
-                confidence={"level": "Low", "score": 0, "reasoning": "No relevant sources found"}
-            )
-            
-            # Still store in history even if no answer
-            await cache_repository.store_user_question(
-                user_id,
-                "no_answer",
-                request.question,
-                answer=response.answer,
-                intent=intent,
-                confidence=response.confidence,
-                sources=[]
-            )
-            
-            return response
-        
-        print(f"📚 Retrieved {len(context_docs)} documents")
-        
-        # ✅ Create multimodal message with re-extracted images (async)
-        message = await llm_service.create_multimodal_message(request.question, context_docs)
-        
-        # Generate answer
+        # Only show the model chunks that are plausibly relevant. If nothing is,
+        # decline without calling the LLM.
+        relevant_docs = retrieval_service.filter_relevant(context_docs)
+        if context_docs:
+            top = max((d.metadata.get('similarity', 0) for d in context_docs), default=0)
+            print(f"🎯 Top similarity {top:.3f} (floor {Config.MIN_RETRIEVAL_SCORE}); "
+                  f"{len(relevant_docs)}/{len(context_docs)} chunks kept")
+
+        if not relevant_docs:
+            return await _decline(user_id, request.question, intent, "no relevant chunks")
+
+        print(f"📚 Using {len(relevant_docs)} relevant chunks")
+
+        # Sources first: they carry the document titles used to label the context
+        sources = retrieval_service.prepare_sources(relevant_docs)
+        doc_names = {s_['documentId']: s_['documentName'] for s_ in sources}
+
+        # Create multimodal message with labelled excerpts (async: re-extracts images)
+        message = await llm_service.create_multimodal_message(
+            request.question, relevant_docs, doc_names
+        )
+
+        # Generate answer (grounded: the model must reply NOT_FOUND if unsupported)
         answer = llm_service.generate_answer(message)
-        
-        # Prepare sources
-        sources = retrieval_service.prepare_sources(context_docs)
-        
-        has_visual = any(doc.metadata.get('type') == 'image' for doc in context_docs)
-        
+
+        if is_not_found(answer):
+            return await _decline(
+                user_id, request.question, intent, "model found no support in context"
+            )
+
+        has_visual = any(doc.metadata.get('type') == 'image' for doc in relevant_docs)
+
         # Calculate confidence
         confidence = calculate_confidence(sources)
         print(f"📊 Confidence: {confidence.get('level')} ({confidence.get('score')}%)")
