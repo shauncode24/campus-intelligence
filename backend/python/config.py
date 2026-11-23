@@ -29,6 +29,20 @@ class Config:
     TOP_K_RETRIEVAL = 5
     SIMILARITY_THRESHOLD = 0.90
     
+    # Document file safety (SSRF / resource limits)
+    # Exact hostnames the server may download documents from (comma-separated
+    # env var). Defaults to this project's Supabase storage host.
+    ALLOWED_FILE_HOSTS = [
+        h.strip().lower()
+        for h in os.getenv(
+            "ALLOWED_FILE_HOSTS", "qqdonjhgvuyjfusplexf.supabase.co"
+        ).split(",")
+        if h.strip()
+    ]
+    MAX_PDF_BYTES = int(os.getenv("MAX_PDF_BYTES", str(50 * 1024 * 1024)))
+    MAX_PDF_PAGES = int(os.getenv("MAX_PDF_PAGES", "500"))
+    DOWNLOAD_TIMEOUT_SECONDS = int(os.getenv("DOWNLOAD_TIMEOUT_SECONDS", "60"))
+
     # CORS Configuration
     CORS_ORIGINS = ["*"]
     

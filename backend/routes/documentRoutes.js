@@ -3,6 +3,7 @@ import { db } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
 import fetch from "node-fetch";
 import { requireAdmin } from "../middleware/auth.js";
+import { validateFileUrl } from "../utils/fileUrl.js";
 
 const router = express.Router();
 const PYTHON_RAG_URL = process.env.PYTHON_RAG_URL || "http://localhost:8000";
@@ -49,8 +50,9 @@ router.post("/", async (req, res) => {
   try {
     const { fileUrl, fileSize, metadata } = req.body || {};
 
-    if (typeof fileUrl !== "string" || !fileUrl) {
-      return res.status(400).json({ error: "fileUrl is required" });
+    const urlCheck = validateFileUrl(fileUrl);
+    if (!urlCheck.ok) {
+      return res.status(400).json({ error: "Invalid fileUrl", message: urlCheck.reason });
     }
     const errors = validateMetadata(metadata);
     if (errors.length > 0) {
@@ -118,19 +120,26 @@ router.delete("/:documentId", async (req, res) => {
  */
 router.post("/process", async (req, res) => {
   try {
-    const { documentId, fileUrl } = req.body;
+    // Only the id is accepted. The file URL is read from the stored record by
+    // the Python service, never taken from the request (SSRF).
+    const { documentId } = req.body;
 
-    if (!documentId || !fileUrl) {
+    if (typeof documentId !== "string" || !documentId) {
       return res.status(400).json({
         error: "Missing required fields",
-        message: "documentId and fileUrl are required",
+        message: "documentId is required",
       });
+    }
+
+    const docRef = db.collection("documents").doc(documentId);
+    if (!(await docRef.get()).exists) {
+      return res.status(404).json({ error: "Document not found" });
     }
 
     console.log(`📄 Starting processing for document: ${documentId}`);
 
     // Update status to processing
-    await db.collection("documents").doc(documentId).update({
+    await docRef.update({
       status: "Processing",
       processingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -139,10 +148,7 @@ router.post("/process", async (req, res) => {
     const response = await fetch(`${PYTHON_RAG_URL}/process-document`, {
       method: "POST",
       headers: pythonHeaders(req),
-      body: JSON.stringify({
-        documentId: documentId,
-        fileUrl: fileUrl,
-      }),
+      body: JSON.stringify({ documentId }),
     });
 
     if (!response.ok) {
@@ -214,10 +220,7 @@ router.post("/reprocess", async (req, res) => {
     const response = await fetch(`${PYTHON_RAG_URL}/process-document`, {
       method: "POST",
       headers: pythonHeaders(req),
-      body: JSON.stringify({
-        documentId: documentId,
-        fileUrl: docData.fileUrl,
-      }),
+      body: JSON.stringify({ documentId }),
     });
 
     if (!response.ok) {
@@ -295,7 +298,7 @@ router.post("/process-bulk", async (req, res) => {
       method: "POST",
       headers: pythonHeaders(req),
       body: JSON.stringify({
-        documents: documents,
+        documents: documents.map((d) => ({ documentId: d.documentId })),
       }),
     });
 

@@ -232,10 +232,8 @@ export default function UploadDocument() {
       const response = await apiFetch(`${VITE_API_BASE_URL}/documents/process`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documentId,
-          fileUrl,
-        }),
+        // Only the id: the server reads the file URL from the stored record
+        body: JSON.stringify({ documentId }),
       });
 
       if (!response.ok) {

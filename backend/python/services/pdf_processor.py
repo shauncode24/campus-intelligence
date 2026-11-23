@@ -11,6 +11,7 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import Config
 from services.embedding_service import embedding_service
+from utils.file_security import InvalidPdf
 
 class PDFProcessor:
     def __init__(self):
@@ -40,6 +41,12 @@ class PDFProcessor:
         
         try:
             doc = fitz.open(tmp_path)
+            if len(doc) > Config.MAX_PDF_PAGES:
+                page_count = len(doc)
+                doc.close()
+                raise InvalidPdf(
+                    f"PDF has {page_count} pages; the limit is {Config.MAX_PDF_PAGES}"
+                )
             print(f"📄 Processing {len(doc)} pages...")
             
             for page_num, page in enumerate(doc):

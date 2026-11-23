@@ -5,8 +5,9 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
 class ProcessDocumentRequest(BaseModel):
+    # Only the id is accepted. The file URL is always read from the stored
+    # document record, never from the request (SSRF).
     documentId: str
-    fileUrl: str
 
 class QueryRequest(BaseModel):
     # NOTE: the caller's identity comes from the verified Firebase ID token,

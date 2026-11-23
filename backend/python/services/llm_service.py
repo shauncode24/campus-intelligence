@@ -4,11 +4,11 @@ LLM service for Gemini Vision integration
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from config import Config
-import aiohttp
 import tempfile
 import os
 import fitz
 import base64
+from utils.file_security import download_pdf
 
 class LLMService:
     _instance = None
@@ -41,13 +41,8 @@ class LLMService:
             str: Base64 encoded image
         """
         try:
-            # Download PDF
-            async with aiohttp.ClientSession() as session:
-                async with session.get(file_url) as response:
-                    if response.status != 200:
-                        print(f"⚠️ Failed to download PDF: {response.status}")
-                        return None
-                    pdf_bytes = await response.read()
+            # Download PDF (allow-listed host, no redirects, size/time capped)
+            pdf_bytes = await download_pdf(file_url)
             
             # Extract image
             with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:

@@ -4,7 +4,6 @@ Main FastAPI application for the RAG service
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 import warnings
-import aiohttp
 
 warnings.filterwarnings('ignore')
 
@@ -27,6 +26,13 @@ from services.llm_service import llm_service
 from utils.intent_detector import detect_intent
 from utils.deadline_extractor import extract_deadline_info
 from utils.confidence_calculator import calculate_confidence
+from utils.file_security import (
+    download_pdf,
+    UnsafeFileUrl,
+    FileTooLarge,
+    InvalidPdf,
+    DownloadFailed,
+)
 
 from typing import List, Optional
 
@@ -240,22 +246,39 @@ async def process_document(
     """Process a document and store in Firebase (admin only)"""
     try:
         print(f"📄 Processing document: {request.documentId}")
-        
-        # Download PDF
-        async with aiohttp.ClientSession() as session:
-            async with session.get(request.fileUrl) as response:
-                if response.status != 200:
-                    raise HTTPException(status_code=400, detail="Failed to download PDF")
-                pdf_bytes = await response.read()
-        
+
+        if not firebase_client.is_connected:
+            raise HTTPException(status_code=500, detail="Firebase not initialized")
+
+        # The file URL comes from the stored record, never from the request
+        doc_snapshot = firebase_client.db.collection('documents').document(request.documentId).get()
+        if not doc_snapshot.exists:
+            raise HTTPException(status_code=404, detail="Document not found")
+        file_url = doc_snapshot.to_dict().get('fileUrl')
+
+        # Download PDF (allow-listed host, no redirects, size/time capped)
+        try:
+            pdf_bytes = await download_pdf(file_url)
+        except UnsafeFileUrl as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except FileTooLarge as e:
+            raise HTTPException(status_code=413, detail=str(e))
+        except InvalidPdf as e:
+            raise HTTPException(status_code=415, detail=str(e))
+        except DownloadFailed as e:
+            raise HTTPException(status_code=502, detail=str(e))
+
         print(f"✅ Downloaded PDF: {len(pdf_bytes)} bytes")
-        
+
         # Process PDF - returns (docs, embeddings) only
-        all_docs, all_embeddings = pdf_processor.process_pdf(
-            pdf_bytes,
-            request.documentId
-        )
-        
+        try:
+            all_docs, all_embeddings = pdf_processor.process_pdf(
+                pdf_bytes,
+                request.documentId
+            )
+        except InvalidPdf as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
         # Store in Firebase - no image data
         await storage_service.store_chunks(
             request.documentId,
@@ -275,6 +298,8 @@ async def process_document(
             "note": "Images stored as embeddings only"
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Error processing document: {e}")
         import traceback
