@@ -116,8 +116,8 @@ export default function FAQHeader({
   ];
 
   const sortOptions = [
-    { id: "popular", label: "Most Popular" },
-    { id: "recent", label: "Recent" },
+    { id: "featured", label: "Featured" },
+    { id: "recent", label: "Recently updated" },
     { id: "category", label: "By Category" },
   ];
 
@@ -127,7 +127,7 @@ export default function FAQHeader({
         <div className="faq-title-section">
           <h1 className="faq-title">Frequently Asked Questions</h1>
           <p className="faq-subtitle">
-            Find answers to the most commonly asked questions by students
+            Answers to common questions about campus life, written by campus staff from official documents
           </p>
           <div className="faq-stats">
             <span className="faq-stat">

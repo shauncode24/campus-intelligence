@@ -9,7 +9,7 @@ export default function FAQEmpty({ activeFilter }) {
       return {
         title: "No FAQs Available Yet",
         message:
-          "Be the first to ask a question and help build our knowledge base!",
+          "Staff have not published any FAQs yet. You can still ask the assistant a question.",
         icon: "📚",
       };
     }

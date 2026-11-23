@@ -14,6 +14,7 @@ const FAQPage = lazy(() => import("../pages/FAQPage"));
 const HistoryPage = lazy(() => import("../pages/HistoryPage"));
 const CalendarCallback = lazy(() => import("../pages/CalendarCallback"));
 const DocumentManagement = lazy(() => import("../pages/DocumentManagement"));
+const FAQManagement = lazy(() => import("../pages/FAQManagement"));
 const DocumentLibrary = lazy(() => import("../pages/DocumentLibrary"));
 const SavedAnswers = lazy(() => import("../pages/SavedAnswer"));
 
@@ -69,6 +70,14 @@ export default function AppRoutes() {
             element={
               <AdminRoute>
                 <AddDocument />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/faq"
+            element={
+              <AdminRoute>
+                <FAQManagement />
               </AdminRoute>
             }
           />

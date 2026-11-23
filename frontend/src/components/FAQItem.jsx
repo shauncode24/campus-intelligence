@@ -5,11 +5,9 @@ import { getDisplayPage } from "../utils/validation";
 
 export default function FAQItem({
   faq,
-  rank,
   isExpanded,
   onToggle,
   viewMode,
-  globalRank,
 }) {
   const [copySuccess, setCopySuccess] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
@@ -106,25 +104,6 @@ export default function FAQItem({
     return configs[intent] || configs.general;
   };
 
-  const getRankDisplay = () => {
-    if (globalRank === 1)
-      return {
-        icon: "https://cdn-icons-png.flaticon.com/512/625/625394.png",
-        class: "gold",
-      };
-    if (globalRank === 2)
-      return {
-        icon: "https://cdn-icons-png.flaticon.com/512/744/744956.png",
-        class: "silver",
-      };
-    if (globalRank === 3)
-      return {
-        icon: "https://cdn-icons-png.flaticon.com/512/625/625396.png",
-        class: "bronze",
-      };
-    return { icon: `#${rank}`, class: "normal" };
-  };
-
   const formatTimestamp = (timestamp) => {
     const date = parseTimestamp(timestamp);
     if (!date) return "Recently";
@@ -182,7 +161,6 @@ export default function FAQItem({
   };
 
   const intentConfig = getIntentConfig(faq.intent);
-  const rankDisplay = getRankDisplay();
 
   return (
     <div
@@ -194,10 +172,6 @@ export default function FAQItem({
     >
       <div className="faq-question-header" onClick={onToggle}>
         <div className="faq-question-content">
-          <span className={`faq-rank ${rankDisplay.class}`}>
-            <img src={rankDisplay.icon} style={{ height: "60%" }}></img>
-          </span>
-
           <div className="faq-question-text-container">
             <h3 className="faq-question-text">{faq.question}</h3>
 
@@ -213,20 +187,6 @@ export default function FAQItem({
                 <span className="intent-label">{intentConfig.label}</span>
               </span>
 
-              <span className="faq-count">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
-                  fill="currentColor"
-                  viewBox="0 0 16 16"
-                >
-                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-                  <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94" />
-                </svg>
-                Asked {faq.count} {faq.count === 1 ? "time" : "times"}
-              </span>
-
               <span className="faq-updated">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -238,7 +198,7 @@ export default function FAQItem({
                   <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71z" />
                   <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0" />
                 </svg>
-                {formatTimestamp(faq.lastAskedAt || faq.createdAt)}
+                {formatTimestamp(faq.updatedAt || faq.createdAt)}
               </span>
             </div>
           </div>

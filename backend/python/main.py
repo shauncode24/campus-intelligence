@@ -26,6 +26,7 @@ from utils.rate_limit import (
 )
 from database.firebase_client import firebase_client
 from database.cache_repository import cache_repository
+from database.faq_repository import faq_repository
 from database.storage_service import storage_service
 
 # Services
@@ -378,13 +379,15 @@ async def health_check():
 
 
 @app.get("/faq")
-async def get_faq(limit: int = 10):
-    """Get frequently asked questions"""
+async def get_faq(limit: int = Query(default=50, ge=1, le=100)):
+    """
+    Public FAQ: only entries an administrator wrote and published. It is never
+    built from users' questions (see database/faq_repository.py).
+    """
     if not firebase_client.is_connected:
         raise HTTPException(status_code=500, detail="Firebase not initialized")
-    
-    faqs = await cache_repository.get_faq(limit)
-    return {"faqs": faqs}
+
+    return {"faqs": faq_repository.get_published(limit)}
 
 
 @app.get("/history", dependencies=[Depends(general_user_limit)])

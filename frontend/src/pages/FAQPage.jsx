@@ -9,6 +9,7 @@ import FAQSkeleton from "../components/FAQSkelton";
 import { usePageTitle } from "../components/usePageTitle";
 import "./FAQPage.css";
 import { handleError } from "../utils/errors";
+import { parseTimestamp } from "../utils/validation";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -20,7 +21,7 @@ export default function FAQPage() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("popular");
+  const [sortBy, setSortBy] = useState("featured");
   const [viewMode, setViewMode] = useState("normal"); // normal | compact
 
   useEffect(() => {
@@ -53,13 +54,13 @@ export default function FAQPage() {
 
     // Apply sorting
     switch (sortBy) {
-      case "popular":
-        filtered.sort((a, b) => b.count - a.count);
+      case "featured":
+        // Keep the order the editors chose (the server already sorts by it)
         break;
       case "recent":
         filtered.sort((a, b) => {
-          const dateA = a.lastAskedAt?._seconds || a.createdAt?._seconds || 0;
-          const dateB = b.lastAskedAt?._seconds || b.createdAt?._seconds || 0;
+          const dateA = parseTimestamp(a.updatedAt || a.createdAt)?.getTime() || 0;
+          const dateB = parseTimestamp(b.updatedAt || b.createdAt)?.getTime() || 0;
           return dateB - dateA;
         });
         break;
@@ -123,15 +124,13 @@ export default function FAQPage() {
           {filteredFaqs.length === 0 ? (
             <FAQEmpty activeFilter={activeFilter} />
           ) : (
-            filteredFaqs.map((faq, index) => (
+            filteredFaqs.map((faq) => (
               <FAQItem
                 key={faq.id}
                 faq={faq}
-                rank={index + 1}
                 isExpanded={expandedId === faq.id}
                 onToggle={() => toggleExpand(faq.id)}
                 viewMode={viewMode}
-                globalRank={faqs.findIndex((f) => f.id === faq.id) + 1}
               />
             ))
           )}

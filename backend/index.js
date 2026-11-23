@@ -3,9 +3,10 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
-import { getFAQ, getUserHistory } from "./services/questionCache.js";
+import { getUserHistory } from "./services/questionCache.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
+import faqAdminRoutes from "./routes/faqAdminRoutes.js";
 import { requireAuth } from "./middleware/auth.js";
 import { ipLimiter, queryIpLimiter, queryUserLimiter } from "./middleware/rateLimit.js";
 import { failInternal, logError } from "./utils/httpErrors.js";
@@ -194,17 +195,6 @@ app.post(
   }
 );
 
-// Get FAQ endpoint
-app.get("/faq", async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 10;
-    const faqs = await getFAQ(limit);
-    res.json({ faqs });
-  } catch (err) {
-    failInternal(res, err, "Failed to load FAQ");
-  }
-});
-
 // Get the authenticated user's history (uid comes from the token, not the URL)
 app.get("/history", requireAuth, async (req, res) => {
   try {
@@ -223,7 +213,28 @@ app.use("/calendar", calendarRoutes);
 // Document processing routes
 app.use("/documents", documentRoutes);
 
+// Admin-curated FAQ management (the public FAQ is served by the RAG service)
+app.use("/admin/faq", faqAdminRoutes);
+
 app.use("/api/documents", documentRoutes);
+
+// Last-resort error handler. Without it Express answers errors that escape a
+// route (e.g. malformed JSON) with an HTML page containing the stack trace and
+// file paths whenever NODE_ENV is not "production".
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  if (err.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "Invalid JSON body" });
+  }
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({ error: "Request body too large" });
+  }
+  const ref = logError(err, "unhandled error");
+  res.status(500).json({
+    error: "Internal server error",
+    message: `Something went wrong (ref ${ref})`,
+  });
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
@@ -234,7 +245,7 @@ app.listen(PORT, () => {
   console.log(
     "  POST   /document/query             - Query Python RAG (with caching!)"
   );
-  console.log("  GET    /faq                        - Get FAQs");
+  console.log("  *      /admin/faq                  - Manage curated FAQs (admin)");
   console.log("  GET    /history                    - Get user history (auth)");
   console.log("  GET    /calendar/auth              - Google Calendar OAuth");
   console.log("  GET    /calendar/callback          - OAuth callback");
@@ -252,9 +263,7 @@ app.listen(PORT, () => {
   console.log(
     "  POST   http://localhost:8000/process-document - Process document"
   );
-  console.log(
-    "  GET    http://localhost:8000/faq            - Get FAQs from Python"
-  );
+  console.log("  GET    http://localhost:8000/faq            - Public curated FAQ");
   console.log(
     "  GET    http://localhost:8000/history/{userId} - Get history from Python"
   );

@@ -113,6 +113,12 @@ export default function Header(props) {
             >
               Add Documents
             </span>
+            <span
+              className="default header-right-options"
+              onClick={() => handleNavigation("/admin/faq")}
+            >
+              FAQs
+            </span>
             <span className="default admin-option" onClick={handleLogout}>
               Logout
             </span>

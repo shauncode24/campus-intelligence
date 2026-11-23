@@ -296,43 +296,6 @@ class CacheRepository:
             return False
     
     @staticmethod
-    async def get_faq(limit: int = 10):
-        """Get frequently asked questions with full data"""
-        db = firebase_client.db
-        if not db:
-            print("⚠️ Firebase not available for getting FAQ")
-            return []
-        
-        try:
-            questions_ref = db.collection('questions') \
-                .order_by('count', direction=firestore.Query.DESCENDING) \
-                .limit(limit)
-            questions = questions_ref.stream()
-            
-            faqs = []
-            for doc in questions:
-                data = doc.to_dict()
-                faqs.append({
-                    "id": doc.id,
-                    "question": data.get('question'),
-                    "answer": data.get('answer'),
-                    "count": data.get('count', 0),
-                    "intent": data.get('intent', 'general'),
-                    "confidence": data.get('confidence'),
-                    "sources": data.get('sources', []),
-                    "deadline": data.get('deadline'),
-                    "createdAt": data.get('createdAt'),
-                    "lastAskedAt": data.get('lastAskedAt'),
-                })
-            
-            print(f"📋 Retrieved {len(faqs)} FAQs")
-            return faqs
-            
-        except Exception as e:
-            print(f"❌ Error fetching FAQs: {e}")
-            return []
-    
-    @staticmethod
     async def get_user_history(user_id: str, limit: int = 20, favorites_only: bool = False):
         """Get user's question history with proper data including personal notes"""
         db = firebase_client.db

@@ -17,12 +17,12 @@ export default function FAQFooterNote() {
         </svg>
         <div className="faq-footer-text">
           <p className="faq-footer-main">
-            All answers are generated from official campus documents and
-            verified sources
+            These answers are written and reviewed by campus staff from official
+            documents
           </p>
           <p className="faq-footer-sub">
-            Rankings are based on question popularity. Answers are regularly
-            updated as new information becomes available.
+            Can't find what you need? Ask the assistant on the dashboard, or
+            check with the relevant office.
           </p>
         </div>
       </div>

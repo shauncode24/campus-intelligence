@@ -1,38 +1,6 @@
 import { db } from "../config/firebaseAdmin.js";
 
 /**
- * Get FAQ - most frequently asked questions
- * @param {number} limit - Number of FAQs to retrieve
- * @returns {Array} - Array of FAQ objects
- */
-export async function getFAQ(limit = 10) {
-  try {
-    const snapshot = await db
-      .collection("questions")
-      .orderBy("count", "desc")
-      .limit(limit)
-      .get();
-
-    const faqs = [];
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      faqs.push({
-        id: doc.id,
-        question: data.question,
-        answer: data.answer,
-        count: data.count,
-        intent: data.intent,
-      });
-    });
-
-    return faqs;
-  } catch (error) {
-    console.error("Error fetching FAQs:", error);
-    return [];
-  }
-}
-
-/**
  * Get user's question history
  * @param {string} userId - User identifier
  * @param {number} limit - Number of history items to retrieve
