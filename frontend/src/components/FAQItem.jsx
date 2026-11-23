@@ -1,6 +1,7 @@
 import { useState } from "react";
 import "../styles/FAQItem.css";
 import { parseTimestamp } from "../utils/validation";
+import { getDisplayPage } from "../utils/validation";
 
 export default function FAQItem({
   faq,
@@ -339,7 +340,8 @@ export default function FAQItem({
                     </svg>
                     <span className="source-name">
                       {source.documentName || "Document"}
-                      {source.page && ` (Page ${source.page})`}
+                      {getDisplayPage(source) !== null &&
+                        ` (Page ${getDisplayPage(source)})`}
                     </span>
                   </div>
                 ))}

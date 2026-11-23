@@ -10,6 +10,11 @@ import fitz
 import base64
 from utils.file_security import download_pdf
 
+def _page_label(page) -> str:
+    """1-based page number shown to the model and the user (chunks store 0-based)."""
+    return str(page + 1) if isinstance(page, int) else "unknown"
+
+
 class LLMService:
     _instance = None
     
@@ -100,7 +105,7 @@ class LLMService:
         # Add text context
         if text_docs:
             text_context = "\n\n".join([
-                f"[Page {doc.metadata['page'] + 1}]: {doc.page_content}"
+                f"[Page {_page_label(doc.metadata.get('page'))}]: {doc.page_content}"
                 for doc in text_docs
             ])
             content.append({
@@ -124,7 +129,7 @@ class LLMService:
                     image_id = doc.metadata.get('image_id', '')
                     img_index = int(image_id.split('_img_')[-1]) if '_img_' in image_id else 0
                     
-                    print(f"🔄 Re-extracting image from page {page_num + 1}...")
+                    print(f"🔄 Re-extracting image from page {_page_label(page_num)}...")
                     
                     # Re-extract the image
                     img_base64 = await self._re_extract_image(file_url, page_num, img_index)
@@ -132,7 +137,7 @@ class LLMService:
                     if img_base64:
                         content.append({
                             "type": "text",
-                            "text": f"\n[Image from page {page_num + 1}]:\n"
+                            "text": f"\n[Image from page {_page_label(page_num)}]:\n"
                         })
                         content.append({
                             "type": "image_url",
@@ -140,9 +145,9 @@ class LLMService:
                                 "url": f"data:image/png;base64,{img_base64}"
                             }
                         })
-                        print(f"✅ Added image from page {page_num + 1}")
+                        print(f"✅ Added image from page {_page_label(page_num)}")
                     else:
-                        print(f"⚠️ Could not extract image from page {page_num + 1}")
+                        print(f"⚠️ Could not extract image from page {_page_label(page_num)}")
                         
             except Exception as e:
                 print(f"❌ Error processing image: {e}")

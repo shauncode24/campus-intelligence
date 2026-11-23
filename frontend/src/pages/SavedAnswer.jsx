@@ -4,7 +4,7 @@ import Footer from "../components/Footer";
 import "./SavedAnswers.css";
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 import { useApp } from "../contexts/AppContext";
-import { parseTimestamp } from "../utils/validation";
+import { parseTimestamp, getDisplayPage } from "../utils/validation";
 import { handleError } from "../utils/errors";
 import { apiFetch } from "../utils/api";
 
@@ -119,51 +119,6 @@ export default function SavedAnswers() {
       navigator.clipboard.writeText(shareText);
       toast.success("Copied to clipboard!");
     }
-  };
-
-  const getConfidenceColor = (level) => {
-    if (level === "High") return "#34a853";
-    if (level === "Medium") return "#fbbc04";
-    return "#d93025";
-  };
-
-  const getConfidenceIcon = (level) => {
-    if (level === "High")
-      return (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="14"
-          height="14"
-          fill="currentColor"
-          viewBox="0 0 16 16"
-        >
-          <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z" />
-        </svg>
-      );
-    if (level === "Medium")
-      return (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="14"
-          height="14"
-          fill="currentColor"
-          viewBox="0 0 16 16"
-        >
-          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
-          <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z" />
-        </svg>
-      );
-    return (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="14"
-        height="14"
-        fill="currentColor"
-        viewBox="0 0 16 16"
-      >
-        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4m.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2" />
-      </svg>
-    );
   };
 
   const formatDate = (timestamp) => {
@@ -288,20 +243,6 @@ export default function SavedAnswers() {
                   <p className="saved-answer-text">{answer.answer}</p>
 
                   <div className="saved-answer-meta">
-                    {answer.confidence && (
-                      <div
-                        className="saved-confidence-badge"
-                        style={{
-                          color: getConfidenceColor(answer.confidence.level),
-                        }}
-                      >
-                        {getConfidenceIcon(answer.confidence.level)}
-                        <span>
-                          {answer.confidence.level} Confidence (
-                          {answer.confidence.score}%)
-                        </span>
-                      </div>
-                    )}
                     {answer.sources && answer.sources.length > 0 && (
                       <div className="saved-sources-section">
                         <div className="saved-sources-header">
@@ -321,7 +262,7 @@ export default function SavedAnswers() {
                           <div className="saved-source-item">
                             <span>
                               {answer.sources[0].documentName ||
-                                `Page ${answer.sources[0].page || "Unknown"}`}
+                                `Page ${getDisplayPage(answer.sources[0]) ?? "Unknown"}`}
                             </span>
                             {answer.sources[0].fileUrl && (
                               <a

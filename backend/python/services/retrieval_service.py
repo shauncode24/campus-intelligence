@@ -113,8 +113,13 @@ class RetrievalService:
             if len(content) > 150:
                 content = content[:150] + "..."
             
+            # `page` is the 0-based index stored with the chunk (kept for
+            # backwards compatibility). `displayPage` is the 1-based number a
+            # human sees; it is the same number the LLM is shown in its prompt.
+            raw_page = doc.metadata.get('page')
             sources.append({
-                "page": doc.metadata.get('page'),
+                "page": raw_page,
+                "displayPage": raw_page + 1 if isinstance(raw_page, int) else None,
                 "type": doc.metadata.get('type'),
                 "documentId": doc_id,
                 "documentName": doc_name,

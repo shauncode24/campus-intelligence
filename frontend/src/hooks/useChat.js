@@ -133,7 +133,6 @@ export function useChat(chatId, userId) {
         let accumulatedText = "";
         let metadata = {
           cached: false,
-          confidence: null,
           sources: [],
           deadline: null,
         };

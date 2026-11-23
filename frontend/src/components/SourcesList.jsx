@@ -1,10 +1,13 @@
 import { useState } from "react";
 import "../styles/SourcesList.css";
+import { getDisplayPage } from "../utils/validation";
 
 export default function SourcesList({ sources }) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (!sources || sources.length === 0) return null;
+
+  const page = getDisplayPage(sources[0]);
 
   return (
     <div className="sources-main">
@@ -56,8 +59,7 @@ export default function SourcesList({ sources }) {
             <div className="sources-left">
               {sources[0].documentName}.pdf
               <div className="default">
-                <span>Page {sources[0].pageNumber + 1}</span>
-                <span>&nbsp;•&nbsp;{sources[0].similarity}% Match</span>
+                {page !== null && <span>Page {page}</span>}
                 {sources[0].type === "visual" && (
                   <span className="visual-badge">Visual</span>
                 )}

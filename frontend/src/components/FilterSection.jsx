@@ -9,8 +9,6 @@ export default function FilterSection({
   setTimeFilter,
   typeFilter,
   setTypeFilter,
-  confidenceFilter,
-  setConfidenceFilter,
   viewMode,
   setViewMode,
   totalQuestions,
@@ -65,16 +63,6 @@ export default function FilterSection({
             <option value="general">General</option>
           </select>
 
-          <select
-            value={confidenceFilter}
-            onChange={(e) => setConfidenceFilter(e.target.value)}
-            className="filter-dropdown"
-          >
-            <option value="all">Any Confidence</option>
-            <option value="high">High Confidence</option>
-            <option value="medium">Medium Confidence</option>
-            <option value="low">Low Confidence</option>
-          </select>
         </div>
 
         <div className="filter-view-modes">

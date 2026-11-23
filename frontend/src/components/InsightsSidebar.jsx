@@ -153,20 +153,6 @@ export default function InsightsSidebar({ insights }) {
             </div>
           </div>
 
-          <div className="habit-item">
-            <TrendingUp size={16} color="#5f6368" />
-            <div>
-              <div className="habit-label">Avg. Confidence</div>
-              <div className="habit-value">
-                {insights.avgConfidence}%{" "}
-                {insights.avgConfidence >= 70
-                  ? "(High)"
-                  : insights.avgConfidence >= 50
-                  ? "(Medium)"
-                  : "(Low)"}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -2,11 +2,7 @@ import { useState } from "react";
 import CalendarButton from "./CalendarButton";
 import SourcesList from "./SourcesList";
 import "../styles/Message.css";
-import {
-  parseTimestamp,
-  validateConfidence,
-  validateSources,
-} from "../utils/validation";
+import { parseTimestamp, validateSources } from "../utils/validation";
 import toast from "react-hot-toast";
 import { apiFetch } from "../utils/api";
 
@@ -128,13 +124,6 @@ export default function Message({ message, isStreaming }) {
     }
   };
 
-  const getConfidenceColor = (level) => {
-    if (!level) return "#5f6368";
-    if (level === "High") return "#22C55E";
-    if (level === "Medium") return "#fbbc04";
-    return "#DC2626";
-  };
-
   const timestampDisplay = formatTimestamp(m.timestamp);
 
   if (m.role === "user") {
@@ -201,45 +190,6 @@ export default function Message({ message, isStreaming }) {
 
         <div className="message-content">
           <div className="message-bubble bubble-ai">
-            {!isStreaming &&
-              m.confidence &&
-              validateConfidence(m.confidence) && (
-                <div className="top-section">
-                  <div
-                    className="confidence-badge-top"
-                    style={{ color: getConfidenceColor(m.confidence.level) }}
-                  >
-                    <div
-                      className="default badge-div"
-                      style={{
-                        backgroundColor: getConfidenceColor(m.confidence.level),
-                      }}
-                    ></div>
-                    <span className="confidence-text">
-                      {m.confidence.level} confidence &nbsp;
-                    </span>
-                    <span className="confidence-percentage">
-                      {m.confidence.score}%
-                    </span>
-                  </div>
-
-                  <div className="document-badge">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="13"
-                      height="13"
-                      fill="currentColor"
-                      className="bi bi-file-earmark-arrow-up"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M8.5 11.5a.5.5 0 0 1-1 0V7.707L6.354 8.854a.5.5 0 1 1-.708-.708l2-2a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 7.707z" />
-                      <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z" />
-                    </svg>
-                    Based on documents uploaded on Dec 21, 2024
-                  </div>
-                </div>
-              )}
-
             <div className="message-text-content">
               {m.text}
               {isStreaming && <span className="streaming-cursor">▊</span>}

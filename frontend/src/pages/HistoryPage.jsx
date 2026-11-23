@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useApp } from "../contexts/AppContext";
 import { handleError } from "../utils/errors";
-import { parseTimestamp, validateConfidence } from "../utils/validation";
+import { parseTimestamp } from "../utils/validation";
 import Spinner from "../components/Loading/Spinner";
 import { apiFetch } from "../utils/api";
 
@@ -26,7 +26,6 @@ export default function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [timeFilter, setTimeFilter] = useState("any");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [confidenceFilter, setConfidenceFilter] = useState("all");
   const [viewMode, setViewMode] = useState("timeline");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [expandedItems, setExpandedItems] = useState(new Set());
@@ -99,16 +98,11 @@ export default function HistoryPage() {
     }
 
     const intentCounts = {};
-    const confidenceScores = [];
     const hourCounts = new Array(24).fill(0);
 
     historyData.forEach((item) => {
       const intent = item.intent || "general";
       intentCounts[intent] = (intentCounts[intent] || 0) + 1;
-
-      if (item.confidence && typeof item.confidence.score === "number") {
-        confidenceScores.push(item.confidence.score);
-      }
 
       if (item.askedAt) {
         const date = parseTimestamp(item.askedAt);
@@ -122,12 +116,6 @@ export default function HistoryPage() {
       (a, b) => b[1] - a[1]
     )[0];
 
-    const avgConfidence = confidenceScores.length
-      ? Math.round(
-          confidenceScores.reduce((a, b) => a + b, 0) / confidenceScores.length
-        )
-      : 0;
-
     const mostActiveHour = hourCounts.indexOf(Math.max(...hourCounts));
     const mostActiveTime = `${mostActiveHour % 12 || 12}:00 ${
       mostActiveHour >= 12 ? "PM" : "AM"
@@ -140,7 +128,6 @@ export default function HistoryPage() {
       totalQuestions: historyData.length,
       topTopic: topIntent ? topIntent[0] : "general",
       topTopicCount: topIntent ? topIntent[1] : 0,
-      avgConfidence,
       mostActiveTime,
       streak,
       weekGrowth,
@@ -272,13 +259,6 @@ export default function HistoryPage() {
       });
     }
 
-    if (confidenceFilter !== "all") {
-      filtered = filtered.filter((item) => {
-        const level = item.confidence?.level?.toLowerCase();
-        return level === confidenceFilter.toLowerCase();
-      });
-    }
-
     return filtered;
   };
 
@@ -371,21 +351,6 @@ export default function HistoryPage() {
     return colors[intent?.toLowerCase()] || colors.general;
   };
 
-  const getConfidenceBadge = (confidence) => {
-    const validated = validateConfidence(confidence);
-    if (!validated) return null;
-
-    const colors = {
-      high: "#34a853",
-      medium: "#fbbc04",
-      low: "#ea4335",
-    };
-    return {
-      color: colors[validated.level.toLowerCase()] || "#5f6368",
-      level: validated.level,
-    };
-  };
-
   const hasDocumentMissing = (item) => {
     if (!item.sources) return false;
     return item.sources.some(
@@ -425,8 +390,6 @@ export default function HistoryPage() {
           setTimeFilter={setTimeFilter}
           typeFilter={typeFilter}
           setTypeFilter={setTypeFilter}
-          confidenceFilter={confidenceFilter}
-          setConfidenceFilter={setConfidenceFilter}
           viewMode={viewMode}
           setViewMode={setViewMode}
           totalQuestions={history.length}
@@ -460,7 +423,6 @@ export default function HistoryPage() {
                         docMissing={hasDocumentMissing(item)}
                         formatDate={formatDate}
                         getIntentColor={getIntentColor}
-                        getConfidenceBadge={getConfidenceBadge}
                         toggleExpand={toggleExpand}
                         toggleSelect={toggleSelect}
                         toggleFavorite={toggleFavorite}
@@ -484,7 +446,6 @@ export default function HistoryPage() {
                         docMissing={hasDocumentMissing(item)}
                         formatDate={formatDate}
                         getIntentColor={getIntentColor}
-                        getConfidenceBadge={getConfidenceBadge}
                         toggleExpand={toggleExpand}
                         toggleSelect={toggleSelect}
                         toggleFavorite={toggleFavorite}
@@ -514,7 +475,6 @@ export default function HistoryPage() {
                             docMissing={hasDocumentMissing(item)}
                             formatDate={formatDate}
                             getIntentColor={getIntentColor}
-                            getConfidenceBadge={getConfidenceBadge}
                             toggleExpand={toggleExpand}
                             toggleSelect={toggleSelect}
                             toggleFavorite={toggleFavorite}

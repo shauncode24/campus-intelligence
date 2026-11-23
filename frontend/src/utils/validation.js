@@ -51,20 +51,20 @@ export function getUserId() {
 }
 
 /**
- * Validate confidence object
+ * The page number a human should see for a source (1-based).
+ *
+ * New sources carry an explicit `displayPage` (1-based). Older records (saved
+ * history, cached FAQ answers, stored chat messages) only have the 0-based
+ * `pageNumber` / `page`, so those get +1. Returns null when unknown. Never use
+ * `source.page || ...`: page index 0 is falsy.
  */
-export function validateConfidence(confidence) {
-  if (!confidence || typeof confidence !== "object") return null;
-
-  const validLevels = ["High", "Medium", "Low"];
-  const level = validLevels.includes(confidence.level)
-    ? confidence.level
-    : null;
-  const score = typeof confidence.score === "number" ? confidence.score : null;
-
-  if (!level || score === null) return null;
-
-  return { level, score };
+export function getDisplayPage(source) {
+  if (!source) return null;
+  if (Number.isInteger(source.displayPage)) return source.displayPage;
+  const legacy = Number.isInteger(source.pageNumber)
+    ? source.pageNumber
+    : source.page;
+  return Number.isInteger(legacy) ? legacy + 1 : null;
 }
 
 /**

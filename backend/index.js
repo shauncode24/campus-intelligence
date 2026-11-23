@@ -107,20 +107,14 @@ app.post("/document/query", requireAuth, async (req, res) => {
         data: {
           cached: result.cached || false,
           similarity: result.similarity,
-          confidence: {
-            level:
-              result.sources.length >= 3
-                ? "High"
-                : result.sources.length >= 2
-                ? "Medium"
-                : "Low",
-            score: Math.min(90, result.sources.length * 30),
-            reasoning: `Found ${result.sources.length} relevant sources`,
-          },
+          // No confidence value is sent: the previous number was derived from
+          // the count of retrieved chunks (always the same), so it said nothing
+          // about whether the answer was correct.
           sources: result.sources.map((s) => ({
             documentId: s.documentId,
             documentName: s.documentName || "Document",
-            pageNumber: s.page,
+            pageNumber: s.page, // 0-based, legacy
+            displayPage: s.displayPage, // 1-based, what users should see
             type: s.type,
             excerpt: s.content,
             similarity: Math.round((s.similarity || 0) * 100),

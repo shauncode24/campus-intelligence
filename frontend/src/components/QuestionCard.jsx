@@ -13,6 +13,7 @@ import {
   Share2,
 } from "lucide-react";
 import "../styles/QuestionCard.css";
+import { getDisplayPage } from "../utils/validation";
 
 export default function QuestionCard({
   item,
@@ -22,7 +23,6 @@ export default function QuestionCard({
   docMissing,
   formatDate,
   getIntentColor,
-  getConfidenceBadge,
   toggleExpand,
   toggleSelect,
   toggleFavorite,
@@ -32,8 +32,6 @@ export default function QuestionCard({
   userId,
   viewMode = "timeline",
 }) {
-  const confidence = getConfidenceBadge(item.confidence);
-
   const getSourceDisplay = (source) => {
     // If we have documentName, use it
     if (source.documentName && source.documentName !== "Document") {
@@ -41,7 +39,7 @@ export default function QuestionCard({
     }
 
     // Fallback to page info
-    return `Page ${source.page || source.pageNumber || "Unknown"}`;
+    return `Page ${getDisplayPage(source) ?? "Unknown"}`;
   };
 
   if (viewMode === "grid") {
@@ -73,17 +71,6 @@ export default function QuestionCard({
             >
               {item.intent || "general"}
             </span>
-            {confidence && (
-              <span
-                className="meta-badge"
-                style={{
-                  backgroundColor: confidence.color + "15",
-                  color: confidence.color,
-                }}
-              >
-                {confidence.level}
-              </span>
-            )}
           </div>
 
           {isExpanded && <p className="answer-text-grid">{item.answer}</p>}
@@ -152,17 +139,6 @@ export default function QuestionCard({
             >
               {item.intent || "general"}
             </span>
-            {confidence && (
-              <>
-                <span>•</span>
-                <span
-                  className="meta-badge-inline"
-                  style={{ color: confidence.color }}
-                >
-                  {confidence.level}
-                </span>
-              </>
-            )}
           </div>
 
           {isExpanded && (
@@ -232,20 +208,6 @@ export default function QuestionCard({
             >
               {item.intent || "general"}
             </span>
-            {confidence && (
-              <>
-                <span>•</span>
-                <div className="confidence-badge-new">
-                  <div
-                    className="confidence-dot"
-                    style={{ backgroundColor: confidence.color }}
-                  />
-                  <span style={{ color: confidence.color }}>
-                    {confidence.level} confidence
-                  </span>
-                </div>
-              </>
-            )}
             {docMissing && (
               <>
                 <span>•</span>
