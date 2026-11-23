@@ -10,6 +10,8 @@ import { db } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
 import dotenv from "dotenv";
 import { requireAuth } from "../middleware/auth.js";
+import { calendarUserLimiter } from "../middleware/rateLimit.js";
+import { failInternal } from "../utils/httpErrors.js";
 
 dotenv.config();
 
@@ -28,7 +30,7 @@ const STATE_PATTERN = /^[a-f0-9]{48}$/;
  * Step 1: Initiate OAuth flow
  * GET /calendar/auth   (requires Firebase ID token)
  */
-router.get("/auth", requireAuth, async (req, res) => {
+router.get("/auth", requireAuth, calendarUserLimiter, async (req, res) => {
   try {
     const nonce = crypto.randomBytes(24).toString("hex");
 
@@ -104,7 +106,7 @@ router.get("/callback", async (req, res) => {
  * Step 3: Create calendar event
  * POST /calendar/create-event   (requires Firebase ID token)
  */
-router.post("/create-event", requireAuth, async (req, res) => {
+router.post("/create-event", requireAuth, calendarUserLimiter, async (req, res) => {
   try {
     const { eventData } = req.body;
     const userId = req.uid;
@@ -169,10 +171,7 @@ router.post("/create-event", requireAuth, async (req, res) => {
       });
     }
 
-    res.status(500).json({
-      error: "Failed to create event",
-      message: error.message,
-    });
+    failInternal(res, error, "Failed to create event");
   }
 });
 
@@ -180,7 +179,7 @@ router.post("/create-event", requireAuth, async (req, res) => {
  * Check if the authenticated user has connected a calendar
  * GET /calendar/status   (requires Firebase ID token)
  */
-router.get("/status", requireAuth, async (req, res) => {
+router.get("/status", requireAuth, calendarUserLimiter, async (req, res) => {
   try {
     const tokenDoc = await db
       .collection("user_calendar_tokens")
@@ -201,7 +200,7 @@ router.get("/status", requireAuth, async (req, res) => {
  * Disconnect the authenticated user's calendar
  * DELETE /calendar/disconnect   (requires Firebase ID token)
  */
-router.delete("/disconnect", requireAuth, async (req, res) => {
+router.delete("/disconnect", requireAuth, calendarUserLimiter, async (req, res) => {
   try {
     await db.collection("user_calendar_tokens").doc(req.uid).delete();
 

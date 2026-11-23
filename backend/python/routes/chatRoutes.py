@@ -7,12 +7,15 @@ is checked for ownership and answered with 404 when the chat is missing or
 belongs to someone else.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+import json
 from typing import Optional, Dict, Literal
 from auth import get_current_user_id
+from utils.errors import internal_error
+from utils.rate_limit import general_user_limit, write_user_limit
 from database.chat_repository import chat_repository
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(general_user_limit)])
 
 CHAT_NOT_FOUND = "Chat not found"
 
@@ -24,13 +27,25 @@ class UpdateChatTitleRequest(BaseModel):
     title: str = Field(min_length=1, max_length=200)
 
 class AutoTitleRequest(BaseModel):
-    firstMessage: str
+    firstMessage: str = Field(max_length=2000)
+
+MAX_MESSAGE_CHARS = 20000
+MAX_METADATA_BYTES = 50000
+
 
 class AddMessageRequest(BaseModel):
-    chatId: str
+    chatId: str = Field(max_length=128)
     role: Literal["user", "bot"]
-    content: str
+    content: str = Field(max_length=MAX_MESSAGE_CHARS)
     metadata: Optional[Dict] = None
+
+    @field_validator("metadata")
+    @classmethod
+    def _bounded_metadata(cls, value):
+        # metadata is stored as-is, so cap what a client can make us store
+        if value is not None and len(json.dumps(value, default=str)) > MAX_METADATA_BYTES:
+            raise ValueError("metadata is too large")
+        return value
 
 
 async def _require_chat_owner(user_id: str, chat_id: str):
@@ -39,7 +54,7 @@ async def _require_chat_owner(user_id: str, chat_id: str):
         raise HTTPException(status_code=404, detail=CHAT_NOT_FOUND)
 
 
-@router.post("/chats/create")
+@router.post("/chats/create", dependencies=[Depends(write_user_limit)])
 async def create_chat(
     request: CreateChatRequest,
     user_id: str = Depends(get_current_user_id),
@@ -63,7 +78,7 @@ async def create_chat(
         raise
     except Exception as e:
         print(f"❌ Error in create_chat: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
 @router.get("/chats")
 async def get_user_chats(
@@ -82,7 +97,7 @@ async def get_user_chats(
 
     except Exception as e:
         print(f"❌ Error in get_user_chats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
 @router.delete("/chats/{chatId}")
 async def delete_chat(chatId: str, user_id: str = Depends(get_current_user_id)):
@@ -103,7 +118,7 @@ async def delete_chat(chatId: str, user_id: str = Depends(get_current_user_id)):
         raise
     except Exception as e:
         print(f"❌ Error in delete_chat: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
 @router.put("/chats/{chatId}/title")
 async def update_chat_title(
@@ -130,7 +145,7 @@ async def update_chat_title(
         raise
     except Exception as e:
         print(f"❌ Error in update_chat_title: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
 @router.post("/chats/{chatId}/auto-title")
 async def auto_generate_title(
@@ -158,7 +173,7 @@ async def auto_generate_title(
         raise
     except Exception as e:
         print(f"❌ Error in auto_generate_title: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
 @router.get("/chats/{chatId}/messages")
 async def get_chat_messages(
@@ -192,9 +207,9 @@ async def get_chat_messages(
         raise
     except Exception as e:
         print(f"❌ Error in get_chat_messages: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
-@router.post("/chats/messages/add")
+@router.post("/chats/messages/add", dependencies=[Depends(write_user_limit)])
 async def add_message(
     request: AddMessageRequest,
     user_id: str = Depends(get_current_user_id),
@@ -222,4 +237,4 @@ async def add_message(
         raise
     except Exception as e:
         print(f"❌ Error in add_message: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)

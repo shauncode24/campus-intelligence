@@ -1,11 +1,14 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import { getFAQ, getUserHistory } from "./services/questionCache.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
 import { requireAuth } from "./middleware/auth.js";
+import { ipLimiter, queryIpLimiter, queryUserLimiter } from "./middleware/rateLimit.js";
+import { failInternal, logError } from "./utils/httpErrors.js";
 
 dotenv.config();
 
@@ -14,26 +17,55 @@ const app = express();
 const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 const pythonRagUrl = process.env.PYTHON_RAG_URL || "http://localhost:8000";
 
+// Only the web app's own origin(s) may call this API from a browser. (The
+// Python service is called server-to-server, so it needs no CORS entry.) The
+// API uses bearer tokens, not cookies, so credentials are not allowed.
+const extraOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(helmet());
 app.use(
   cors({
-    origin: [frontendUrl, pythonRagUrl],
+    origin: [frontendUrl, ...extraOrigins],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
+    credentials: false,
   })
 );
 
-app.use(express.json());
-app.set("trust proxy", 1);
+// Behind a reverse proxy the client IP is in X-Forwarded-For. Set
+// TRUST_PROXY=1 only when a trusted proxy sets it (otherwise it can be
+// spoofed); without it every user behind the proxy shares one IP bucket.
+app.set(
+  "trust proxy",
+  ["1", "true", "yes"].includes((process.env.TRUST_PROXY || "").toLowerCase()) ? 1 : false
+);
 
-app.post("/document/query", requireAuth, async (req, res) => {
+app.use(ipLimiter);
+app.use(express.json({ limit: "100kb" }));
+
+const MAX_QUESTION_CHARS = Number.parseInt(process.env.MAX_QUESTION_CHARS ?? "", 10) || 2000;
+
+app.post(
+  "/document/query",
+  requireAuth,
+  queryIpLimiter,
+  queryUserLimiter,
+  async (req, res) => {
   try {
     // Identity comes from the verified token only (req.uid); a userId in the
     // body is ignored.
     const { question } = req.body;
 
-    if (!question) {
+    if (typeof question !== "string" || !question.trim()) {
       return res.status(400).json({ error: "Question required" });
+    }
+    if (question.length > MAX_QUESTION_CHARS) {
+      return res
+        .status(400)
+        .json({ error: `Question is too long (max ${MAX_QUESTION_CHARS} characters)` });
     }
 
     const effectiveUserId = req.uid;
@@ -66,9 +98,23 @@ app.post("/document/query", requireAuth, async (req, res) => {
 
     console.log(`📡 Python response status: ${pythonResponse.status}`);
 
+    // The RAG service enforces the per-user daily question budget. Its message
+    // is written for users, so pass it on instead of a generic failure.
+    if (pythonResponse.status === 429) {
+      const body = await pythonResponse.json().catch(() => ({}));
+      res.write(
+        `data: ${JSON.stringify({
+          type: "error",
+          userFacing: true,
+          data: body.detail || "Too many requests. Please try again later.",
+        })}\n\n`
+      );
+      return res.end();
+    }
+
     if (!pythonResponse.ok) {
       const errorText = await pythonResponse.text();
-      console.error(`❌ Python RAG error: ${errorText}`);
+      console.error(`❌ Python RAG error (${pythonResponse.status}): ${errorText}`);
       throw new Error(`Python RAG error: ${pythonResponse.statusText}`);
     }
 
@@ -136,16 +182,17 @@ app.post("/document/query", requireAuth, async (req, res) => {
 
     res.end();
   } catch (error) {
-    console.error("❌ Document query error:", error);
+    const ref = logError(error, "document query");
     res.write(
       `data: ${JSON.stringify({
         type: "error",
-        data: error.message,
+        data: `Something went wrong. Please try again. (ref ${ref})`,
       })}\n\n`
     );
     res.end();
   }
-});
+  }
+);
 
 // Get FAQ endpoint
 app.get("/faq", async (req, res) => {
@@ -154,8 +201,7 @@ app.get("/faq", async (req, res) => {
     const faqs = await getFAQ(limit);
     res.json({ faqs });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    failInternal(res, err, "Failed to load FAQ");
   }
 });
 
@@ -167,8 +213,7 @@ app.get("/history", requireAuth, async (req, res) => {
     const history = await getUserHistory(req.uid, limit);
     res.json({ history });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    failInternal(res, err, "Failed to load history");
   }
 });
 

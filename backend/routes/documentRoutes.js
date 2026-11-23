@@ -3,6 +3,8 @@ import { db } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
 import fetch from "node-fetch";
 import { requireAdmin } from "../middleware/auth.js";
+import { adminUserLimiter } from "../middleware/rateLimit.js";
+import { failInternal } from "../utils/httpErrors.js";
 import { validateFileUrl } from "../utils/fileUrl.js";
 import { deleteChunksForDocument, invalidateCachedAnswers } from "../services/documentCleanup.js";
 import { deleteDocumentFile } from "../services/fileStorage.js";
@@ -11,7 +13,7 @@ const router = express.Router();
 const PYTHON_RAG_URL = process.env.PYTHON_RAG_URL || "http://localhost:8000";
 
 // Every route in this file is admin-only (Firebase custom claim `admin: true`).
-router.use(requireAdmin);
+router.use(requireAdmin, adminUserLimiter);
 
 /** Headers for calling the Python service as the (verified) admin. */
 function pythonHeaders(req) {
@@ -209,10 +211,7 @@ router.post("/process", async (req, res) => {
       }
     }
 
-    res.status(500).json({
-      error: "Failed to process document",
-      message: error.message,
-    });
+    failInternal(res, error, "Failed to process document");
   }
 });
 
@@ -287,10 +286,7 @@ router.post("/reprocess", async (req, res) => {
       }
     }
 
-    res.status(500).json({
-      error: "Failed to reprocess document",
-      message: error.message,
-    });
+    failInternal(res, error, "Failed to reprocess document");
   }
 });
 
@@ -311,7 +307,7 @@ router.get("/rag-status", async (req, res) => {
   } catch (error) {
     res.status(503).json({
       status: "unhealthy",
-      error: error.message,
+      error: "RAG service unavailable",
     });
   }
 });
@@ -385,10 +381,7 @@ router.post("/process-bulk", async (req, res) => {
       }
     }
 
-    res.status(500).json({
-      error: "Failed to process documents in bulk",
-      message: error.message,
-    });
+    failInternal(res, error, "Failed to process documents in bulk");
   }
 });
 
@@ -424,10 +417,7 @@ router.post("/check-duplicate", async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error("❌ Error checking duplicates:", error);
-    res.status(500).json({
-      error: "Failed to check for duplicates",
-      message: error.message,
-    });
+    failInternal(res, error, "Failed to check for duplicates");
   }
 });
 
@@ -458,10 +448,7 @@ router.get("/processing-status/:documentId", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error getting processing status:", error);
-    res.status(500).json({
-      error: "Failed to get processing status",
-      message: error.message,
-    });
+    failInternal(res, error, "Failed to get processing status");
   }
 });
 
@@ -509,10 +496,7 @@ router.post("/validate-metadata", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error validating metadata:", error);
-    res.status(500).json({
-      error: "Failed to validate metadata",
-      message: error.message,
-    });
+    failInternal(res, error, "Failed to validate metadata");
   }
 });
 
@@ -558,10 +542,7 @@ router.delete("/cancel-processing/:documentId", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error cancelling processing:", error);
-    res.status(500).json({
-      error: "Failed to cancel processing",
-      message: error.message,
-    });
+    failInternal(res, error, "Failed to cancel processing");
   }
 });
 

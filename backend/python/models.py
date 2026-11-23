@@ -1,7 +1,8 @@
 """
 Pydantic models for request/response validation
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from config import Config
 from typing import List, Dict, Any, Optional
 
 class ProcessDocumentRequest(BaseModel):
@@ -12,8 +13,8 @@ class ProcessDocumentRequest(BaseModel):
 class QueryRequest(BaseModel):
     # NOTE: the caller's identity comes from the verified Firebase ID token,
     # never from the request body.
-    question: str
-    documentIds: Optional[List[str]] = None
+    question: str = Field(min_length=1, max_length=Config.MAX_QUESTION_CHARS)
+    documentIds: Optional[List[str]] = Field(default=None, max_length=50)
 
 class SourceInfo(BaseModel):
     page: Optional[int]

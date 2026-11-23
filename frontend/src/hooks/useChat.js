@@ -126,11 +126,27 @@ export function useChat(chatId, userId) {
           signal: controller.signal,
         });
 
-        if (!response.ok) throw new Error("Network response was not ok");
+        if (!response.ok) {
+          // 429 = rate limit: the server's message is written for users
+          let message = "Network response was not ok";
+          if (response.status === 429) {
+            const body = await response.json().catch(() => ({}));
+            message =
+              body.error ||
+              "You're sending questions too quickly. Please wait a moment.";
+          }
+          const failure = new Error(message);
+          failure.userFacing = response.status === 429;
+          throw failure;
+        }
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let accumulatedText = "";
+        // Set when the server sends an error event. It must be handled after
+        // the loop: throwing inside the per-line try/catch below would only be
+        // logged and the user would see nothing.
+        let streamError = null;
         let metadata = {
           cached: false,
           sources: [],
@@ -193,13 +209,19 @@ export function useChat(chatId, userId) {
                   setStreamingMessage("");
                   setStreamingMetadata(null);
                 } else if (data.type === "error") {
-                  throw new Error(data.data);
+                  streamError = data;
                 }
               } catch (e) {
                 console.warn("Failed to parse SSE data:", e);
               }
             }
           }
+        }
+
+        if (streamError) {
+          const failure = new Error(streamError.data);
+          failure.userFacing = streamError.userFacing === true;
+          throw failure;
         }
       } catch (error) {
         if (error.name !== "AbortError") {
@@ -210,7 +232,11 @@ export function useChat(chatId, userId) {
             ...prev,
             {
               role: "bot",
-              text: "Sorry, I encountered an error. Please try again.",
+              // Only show server text that was written for users (limits);
+              // everything else stays generic.
+              text: error.userFacing
+                ? error.message
+                : "Sorry, I encountered an error. Please try again.",
               timestamp: errorTimestamp,
             },
           ]);

@@ -6,6 +6,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+def _int_env(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+
 class Config:
     # Firebase Configuration
     FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
@@ -58,8 +65,37 @@ class Config:
     MAX_PDF_PAGES = int(os.getenv("MAX_PDF_PAGES", "500"))
     DOWNLOAD_TIMEOUT_SECONDS = int(os.getenv("DOWNLOAD_TIMEOUT_SECONDS", "60"))
 
-    # CORS Configuration
-    CORS_ORIGINS = ["*"]
+    # CORS: only the web app's own origin(s). Set CORS_ORIGINS (comma-separated)
+    # or FRONTEND_URL in backend/.env; defaults to the local dev server.
+    CORS_ORIGINS = [
+        o.strip().rstrip("/")
+        for o in (os.getenv("CORS_ORIGINS") or os.getenv("FRONTEND_URL") or "http://localhost:5173").split(",")
+        if o.strip()
+    ]
+
+    # Behind a reverse proxy the client IP is in X-Forwarded-For. Only enable
+    # this when a trusted proxy sets that header, otherwise it can be spoofed.
+    TRUST_PROXY = os.getenv("TRUST_PROXY", "").lower() in ("1", "true", "yes")
+
+    # Rate limits (requests per minute unless stated). 0 disables a limit.
+    # These are starting points, not tuned values: adjust to real traffic.
+    # Per-IP limits are deliberately generous because a whole campus can share
+    # one public IP; the per-user limits are the real control.
+    IP_RATE_PER_MINUTE = _int_env("IP_RATE_PER_MINUTE", 600)
+    USER_RATE_PER_MINUTE = _int_env("USER_RATE_PER_MINUTE", 120)
+    WRITE_RATE_PER_MINUTE = _int_env("WRITE_RATE_PER_MINUTE", 60)
+    QUERY_RATE_PER_MINUTE = _int_env("QUERY_RATE_PER_MINUTE", 10)
+    QUERY_RATE_PER_MINUTE_PER_IP = _int_env("QUERY_RATE_PER_MINUTE_PER_IP", 60)
+    ADMIN_RATE_PER_MINUTE = _int_env("ADMIN_RATE_PER_MINUTE", 120)
+
+    # Daily LLM budget: calls that actually reach the model (cache hits and
+    # refusals are free). The global cap bounds spend even if someone creates
+    # many (free) accounts.
+    LLM_CALLS_PER_USER_PER_DAY = _int_env("LLM_CALLS_PER_USER_PER_DAY", 100)
+    LLM_CALLS_GLOBAL_PER_DAY = _int_env("LLM_CALLS_GLOBAL_PER_DAY", 3000)
+
+    # Input size limits
+    MAX_QUESTION_CHARS = _int_env("MAX_QUESTION_CHARS", 2000)
     
     @classmethod
     def get_firebase_credentials(cls):

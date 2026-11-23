@@ -1,17 +1,29 @@
 """
 Main FastAPI application for the RAG service
 """
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 import warnings
 
 warnings.filterwarnings('ignore')
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Configuration and database
 from config import Config
 from auth import get_current_user_id, require_admin
+from utils.errors import internal_error
+from utils.rate_limit import (
+    limiter,
+    client_ip,
+    too_many,
+    general_user_limit,
+    query_limit,
+    admin_limit,
+    consume_llm_budget,
+)
 from database.firebase_client import firebase_client
 from database.cache_repository import cache_repository
 from database.storage_service import storage_service
@@ -48,7 +60,7 @@ from models import (
 from routes.chatRoutes import router as chat_router
 
 class UpdateNoteRequest(BaseModel):
-    note: str
+    note: str = Field(max_length=5000)
 
 class BulkProcessRequest(BaseModel):
     documents: List[dict]
@@ -70,13 +82,26 @@ Config.validate()
 # Initialize FastAPI app
 app = FastAPI(title="Campus Intel RAG Service", version="1.0.0")
 
-# CORS middleware
+async def _ip_rate_limit(request: Request, call_next):
+    """Coarse per-IP limit on every request (protects even unauthenticated endpoints)."""
+    if request.method != "OPTIONS":
+        wait = limiter.check(f"ip:{client_ip(request)}", Config.IP_RATE_PER_MINUTE, 60)
+        if wait > 0:
+            err = too_many(wait, "Too many requests. Please wait a moment and try again.")
+            return JSONResponse(status_code=429, content={"detail": err.detail}, headers=err.headers)
+    return await call_next(request)
+
+
+app.add_middleware(BaseHTTPMiddleware, dispatch=_ip_rate_limit)
+
+# CORS: only the web app's origin(s); the API uses bearer tokens, not cookies,
+# so credentials are not allowed.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=Config.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Include chat routes WITHOUT /api prefix - mount at root level
@@ -113,6 +138,7 @@ async def _decline(user_id: str, question: str, intent: str, reason: str) -> Que
 async def query_documents(
     request: QueryRequest,
     user_id: str = Depends(get_current_user_id),
+    _rate_limited: None = Depends(query_limit),
 ):
     """
     Query the RAG system with caching and user history
@@ -195,6 +221,9 @@ async def query_documents(
 
         print(f"📚 Using {len(relevant_docs)} relevant chunks")
 
+        # About to spend a model call: charge the per-user and global daily budgets
+        consume_llm_budget(user_id)
+
         # Sources first: they carry the document titles used to label the context
         sources = retrieval_service.prepare_sources(relevant_docs)
         doc_names = {s_['documentId']: s_['documentName'] for s_ in sources}
@@ -255,13 +284,12 @@ async def query_documents(
             confidence=confidence
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ Error in query: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e, "query")
 
-@app.post("/process-document")
+@app.post("/process-document", dependencies=[Depends(admin_limit)])
 async def process_document(
     request: ProcessDocumentRequest,
     admin_id: str = Depends(require_admin),
@@ -327,7 +355,7 @@ async def process_document(
         print(f"❌ Error processing document: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
@@ -359,7 +387,7 @@ async def get_faq(limit: int = 10):
     return {"faqs": faqs}
 
 
-@app.get("/history")
+@app.get("/history", dependencies=[Depends(general_user_limit)])
 async def get_user_history(
     limit: int = Query(default=100, ge=1, le=200),
     favorites_only: bool = False,
@@ -381,10 +409,10 @@ async def get_user_history(
         print(f"❌ Error fetching history: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
 
-@app.put("/history/{historyId}/favorite")
+@app.put("/history/{historyId}/favorite", dependencies=[Depends(general_user_limit)])
 async def toggle_favorite(historyId: str, user_id: str = Depends(get_current_user_id)):
     """Toggle favorite status for a question in the authenticated user's history"""
     try:
@@ -407,10 +435,10 @@ async def toggle_favorite(historyId: str, user_id: str = Depends(get_current_use
         print(f"❌ Error toggling favorite: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
 
-@app.delete("/history/{historyId}")
+@app.delete("/history/{historyId}", dependencies=[Depends(general_user_limit)])
 async def delete_user_question(historyId: str, user_id: str = Depends(get_current_user_id)):
     """Delete a specific question from the authenticated user's history"""
     try:
@@ -433,7 +461,7 @@ async def delete_user_question(historyId: str, user_id: str = Depends(get_curren
         print(f"❌ Error deleting history item: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
 
 @app.get("/documents/{documentId}/exists")
@@ -453,10 +481,10 @@ async def check_document_exists(documentId: str):
         
     except Exception as e:
         print(f"❌ Error checking document: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
     
 
-@app.put("/history/{history_id}/note")
+@app.put("/history/{history_id}/note", dependencies=[Depends(general_user_limit)])
 async def update_personal_note(
     history_id: str,
     request: UpdateNoteRequest,
@@ -491,9 +519,9 @@ async def update_personal_note(
         raise
     except Exception as e:
         print(f"❌ Error updating note: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
-@app.post("/check-duplicate")
+@app.post("/check-duplicate", dependencies=[Depends(admin_limit)])
 async def check_duplicate_document(
     name: str,
     department: str,
@@ -536,7 +564,7 @@ async def check_duplicate_document(
         
     except Exception as e:
         print(f"❌ Error checking duplicates: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise internal_error(e)
 
 
 # Enhance the existing update_document_status in storage_service.py
