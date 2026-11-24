@@ -7,6 +7,7 @@ from typing import List, Dict
 from firebase_admin import firestore
 from database.firebase_client import firebase_client
 from utils.threads import offload_async_methods
+from services.vector_index import vector_index
 from langchain_core.documents import Document
 
 @offload_async_methods
@@ -26,6 +27,7 @@ class StorageService:
         if not db:
             return 0
 
+        vector_index.invalidate()      # this process's in-memory index no longer matches
         deleted = 0
         batch = db.batch()
         pending = 0
@@ -64,6 +66,7 @@ class StorageService:
             print("⚠️ Firebase not available")
             return
         
+        vector_index.invalidate()
         try:
             batch = db.batch()
             batch_count = 0
@@ -115,6 +118,7 @@ class StorageService:
             stale = StorageService.delete_stale_chunks(doc_id, keep_ids)
             if stale:
                 print(f"  🧹 Removed {stale} stale chunks from a previous run")
+            vector_index.invalidate()   # a question during the write may have rebuilt from a half-written state
 
             print(f"✅ Stored {len(all_docs)} chunks in Firebase (embeddings only)")
             

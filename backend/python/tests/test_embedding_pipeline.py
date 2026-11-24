@@ -21,6 +21,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from config import Config
 from database.cache_repository import cache_repository
+from database.corpus_epoch import bump_epoch
 from database.firebase_client import firebase_client
 from database.storage_service import storage_service
 from fake_firestore import FakeDB
@@ -251,6 +252,7 @@ class TestRetrievalRouting(DbCase):
         for c in list(self.db.collection("chunks").docs.values()):
             if c["type"] == "text":
                 c["embeddingModel"] = "someone/else"
+        bump_epoch(self.db)           # chunks changed behind this process: the epoch is how it finds out
         docs, log = self.retrieve(image_query_embedding=None)
         self.assertEqual(docs, [])
         self.assertIn("different embedding model", log)

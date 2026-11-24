@@ -49,6 +49,10 @@ class Config:
     # re-extracted from the PDF and shown to Gemini as pixels.
     IMAGE_RETRIEVAL = os.getenv("IMAGE_RETRIEVAL", "true").lower() in ("1", "true", "yes")
     IMAGE_TOP_K = int(os.getenv("IMAGE_TOP_K", "3"))
+    # In-memory vector index (services/vector_index.py). Above this many chunks (~1.5 KB each) the
+    # service falls back to scanning Firestore per question and says so in the log; 0 = no cap.
+    VECTOR_INDEX_MAX_CHUNKS = int(os.getenv("VECTOR_INDEX_MAX_CHUNKS", "150000"))
+    VECTOR_INDEX_ENABLED = os.getenv("VECTOR_INDEX_ENABLED", "true").lower() != "false"
 
     # Image captioning: at upload, Gemini describes each meaningful image and the
     # description is indexed as text (same similarity scale as normal text). This

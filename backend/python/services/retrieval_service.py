@@ -8,6 +8,7 @@ from database.firebase_client import firebase_client
 from services.embedding_service import embedding_service
 from config import Config
 from services.document_validity import is_live, matches_filters
+from services.vector_index import vector_index
 
 class RetrievalService:
     LIVE_FIELDS = ['status', 'effectiveDate', 'expiryDate', 'supersededBy', 'department', 'documentType']
@@ -31,34 +32,9 @@ class RetrievalService:
         return ids
 
     @staticmethod
-    def retrieve_multimodal(query_embedding, document_ids=None, k=None, image_query_embedding=None,
-                            filters=None):
-        """
-        Retrieve relevant chunks from Firebase.
-
-        TEXT chunks are scored with the text-model question vector `query_embedding`
-        and the top k are returned. IMAGE chunks are scored with the CLIP question
-        vector `image_query_embedding` (a different similarity scale, so they are
-        ranked and thresholded on their own): at most Config.IMAGE_TOP_K images
-        scoring at least Config.MIN_IMAGE_SCORE are returned after the text chunks.
-        Pass image_query_embedding=None to skip images. `filters` limits the search to
-        documents whose metadata matches (e.g. {'department': 'Library'}).
-
-        Chunks from documents that are not live (see live_document_ids), and chunks whose vectors
-        came from a different model than the one scoring them, are ignored.
-
-        Returns:
-            List[Document]: text chunks (best first) then image chunks (best first)
-        """
-        if k is None:
-            k = Config.TOP_K_RETRIEVAL
-
-        db = firebase_client.db
-        if not db:
-            raise HTTPException(status_code=500, detail="Firebase not initialized")
-
-        print(f"🔍 Retrieving chunks from Firebase...")
-
+    def _scan_scored(db, query_embedding, document_ids, image_query_embedding, filters):
+        """The original path: read every chunk from Firestore for this question. Used only when
+        the in-memory index is off or the corpus is over its size cap."""
         chunks_ref = db.collection('chunks')
 
         # Build query
@@ -134,9 +110,86 @@ class RetrievalService:
             )
             (image_scored if is_image else text_scored).append((doc, similarity))
 
+        return text_scored, image_scored, ignored_other_model
+
+    _warned_cap = False
+
+    @staticmethod
+    def _as_document(chunk_id, doc_id, meta, similarity):
+        return Document(
+            page_content=meta.get('content', ''),
+            metadata={
+                'page': meta.get('page'),
+                'type': meta.get('type', 'text'),
+                'image_id': meta.get('image_id'),
+                'documentId': doc_id,
+                'similarity': float(similarity),
+                'xref': meta.get('xref'),
+                'caption': meta.get('caption', False),
+                'chunkId': chunk_id,
+            }
+        )
+
+    @staticmethod
+    def _index_scored(db, query_embedding, document_ids, image_query_embedding, filters, k):
+        """Same result as _scan_scored, from memory: only live documents (read fresh), best k text
+        chunks and best IMAGE_TOP_K images."""
+        allowed = RetrievalService.live_document_ids(db, filters)
+        if document_ids:
+            allowed &= set(document_ids)
+        text_hits, ignored = vector_index.search(False, embedding_service.model_id, query_embedding, allowed, k)
+        image_hits = []
+        if image_query_embedding is not None:
+            image_hits, ignored_img = vector_index.search(
+                True, embedding_service.image_model_id, image_query_embedding, allowed, Config.IMAGE_TOP_K)
+            ignored += ignored_img
+        to_scored = lambda hits: [(RetrievalService._as_document(*h), h[3]) for h in hits]
+        return to_scored(text_hits), to_scored(image_hits), ignored
+
+    @staticmethod
+    def retrieve_multimodal(query_embedding, document_ids=None, k=None, image_query_embedding=None,
+                            filters=None):
+        """
+        Retrieve relevant chunks from Firebase.
+
+        TEXT chunks are scored with the text-model question vector `query_embedding`
+        and the top k are returned. IMAGE chunks are scored with the CLIP question
+        vector `image_query_embedding` (a different similarity scale, so they are
+        ranked and thresholded on their own): at most Config.IMAGE_TOP_K images
+        scoring at least Config.MIN_IMAGE_SCORE are returned after the text chunks.
+        Pass image_query_embedding=None to skip images. `filters` limits the search to
+        documents whose metadata matches (e.g. {'department': 'Library'}).
+
+        Chunks from documents that are not live (see live_document_ids), and chunks whose vectors
+        came from a different model than the one scoring them, are ignored.
+
+        Returns:
+            List[Document]: text chunks (best first) then image chunks (best first)
+        """
+        if k is None:
+            k = Config.TOP_K_RETRIEVAL
+
+        db = firebase_client.db
+        if not db:
+            raise HTTPException(status_code=500, detail="Firebase not initialized")
+
+        text_scored = image_scored = None
+        if Config.VECTOR_INDEX_ENABLED:
+            from database.corpus_epoch import get_epoch
+            if vector_index.ensure(db, get_epoch(db), Config.VECTOR_INDEX_MAX_CHUNKS):
+                text_scored, image_scored, ignored_other_model = RetrievalService._index_scored(
+                    db, query_embedding, document_ids, image_query_embedding, filters, k)
+            elif not RetrievalService._warned_cap:
+                RetrievalService._warned_cap = True
+                print(f"⚠️ More than {Config.VECTOR_INDEX_MAX_CHUNKS} chunks: not indexed in memory, "
+                      f"scanning Firestore per question. Time for a real vector store (AUDIT P2-1).")
+        if text_scored is None:
+            text_scored, image_scored, ignored_other_model = RetrievalService._scan_scored(
+                db, query_embedding, document_ids, image_query_embedding, filters)
+
         if ignored_other_model:
             print(f"⚠️ {ignored_other_model} chunks were indexed with a different embedding model "
-                  f"and were ignored (text: {text_model}). Re-process those documents "
+                  f"and were ignored (text: {embedding_service.model_id}). Re-process those documents "
                   f"(python scripts/reindex_all.py).")
 
         text_scored.sort(key=lambda x: x[1], reverse=True)
@@ -196,7 +249,8 @@ class RetrievalService:
         """
         db = firebase_client.db
         sources = []
-        
+        doc_cache = {}      # several passages of one document: read it once
+
         for doc in context_docs:
             doc_id = doc.metadata.get('documentId')
             doc_name = "Document"
@@ -206,9 +260,11 @@ class RetrievalService:
             # Get document metadata from Firebase
             if doc_id and db:
                 try:
-                    doc_ref = db.collection('documents').document(doc_id).get()
-                    if doc_ref.exists:
-                        doc_data = doc_ref.to_dict()
+                    if doc_id not in doc_cache:
+                        snap = db.collection('documents').document(doc_id).get()
+                        doc_cache[doc_id] = (snap.to_dict() or {}) if snap.exists else None
+                    doc_data = doc_cache[doc_id]
+                    if doc_data is not None:
                         doc_name = doc_data.get('name', 'Document')
                         file_url = doc_data.get('fileUrl')
                         version = doc_data.get('version')
