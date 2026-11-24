@@ -57,7 +57,7 @@ app.post(
   try {
     // Identity comes from the verified token only (req.uid); a userId in the
     // body is ignored.
-    const { question, history, chatId } = req.body;
+    const { question, history, chatId, department, documentType } = req.body;
 
     if (typeof question !== "string" || !question.trim()) {
       return res.status(400).json({ error: "Question required" });
@@ -98,6 +98,11 @@ app.post(
       question: question,
       history: cleanHistory,
       ...(chatId ? { chatId } : {}),
+      // optional: search only documents of this department / type
+      ...(typeof department === "string" && department.trim() && department.length <= 100
+        ? { department: department.trim() } : {}),
+      ...(typeof documentType === "string" && documentType.trim() && documentType.length <= 100
+        ? { documentType: documentType.trim() } : {}),
     };
 
     // Call Python RAG service, forwarding the caller's token so Python

@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { db } from "../app/firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { documentState } from "../utils/documentState";
 import { supabase } from "../app/supabase";
 import { apiFetch } from "../utils/api";
 import toast from "react-hot-toast";
@@ -22,6 +25,31 @@ export default function UploadDocument() {
   const [processingStates, setProcessingStates] = useState({});
   const [uploadResults, setUploadResults] = useState(null);
   const [duplicateWarnings, setDuplicateWarnings] = useState({});
+  // Current documents an upload can replace (admin-only page, so reading all is allowed)
+  const [replaceableDocuments, setReplaceableDocuments] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDocs(
+          query(collection(db, "documents"), where("status", "==", "Processed"))
+        );
+        if (cancelled) return;
+        setReplaceableDocuments(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((d) => documentState(d) === "live")
+            .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+        );
+      } catch (error) {
+        console.error("Could not load documents to replace:", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFilesSelected = (selectedFiles) => {
     const newFiles = selectedFiles.filter(
@@ -51,6 +79,7 @@ export default function UploadDocument() {
         version: "",
         owner: "",
         accessLevel: "Public",
+        supersedes: "",
       };
     });
 
@@ -185,20 +214,26 @@ export default function UploadDocument() {
   };
 
   const createFirestoreDocument = async (file, fileUrl) => {
-    const metadata = fileMetadata[file.name];
+    const { supersedes, ...metadata } = fileMetadata[file.name];
 
     // The admin API creates the record; `uploadedBy` and the timestamp are set
     // server-side from the verified admin token.
     const response = await apiFetch(`${VITE_API_BASE_URL}/documents`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileUrl, fileSize: file.size, metadata }),
+      body: JSON.stringify({
+        fileUrl,
+        fileSize: file.size,
+        metadata,
+        ...(supersedes ? { supersedes } : {}),
+      }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         errorData.errors?.join(", ") ||
+          errorData.message ||
           errorData.error ||
           "Failed to create document record"
       );
@@ -489,6 +524,7 @@ export default function UploadDocument() {
                   }
                   onRemove={() => handleRemoveFile(file.name)}
                   disabled={uploading || processing}
+                  replaceableDocuments={replaceableDocuments}
                 />
                 {duplicateWarnings[file.name] && (
                   <DuplicateWarning duplicates={duplicateWarnings[file.name]} />

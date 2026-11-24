@@ -7,22 +7,32 @@ from fastapi import HTTPException
 from database.firebase_client import firebase_client
 from services.embedding_service import embedding_service
 from config import Config
+from services.document_validity import is_live, matches_filters
 
 class RetrievalService:
-    @staticmethod
-    def processed_document_ids(db) -> set:
-        """
-        Ids of documents that are fully processed and live. Chunks of any other
-        document (deleted, still processing, errored, being deleted) must never
-        be used to answer a question. Nothing but the id is downloaded.
-        """
-        return {
-            d.id
-            for d in db.collection('documents').where('status', '==', 'Processed').select(['status']).stream()
-        }
+    LIVE_FIELDS = ['status', 'effectiveDate', 'expiryDate', 'supersededBy', 'department', 'documentType']
 
     @staticmethod
-    def retrieve_multimodal(query_embedding, document_ids=None, k=None, image_query_embedding=None):
+    def live_document_ids(db, filters=None, today=None) -> set:
+        """
+        Ids of documents that may be used to answer a question right now: fully
+        processed, not superseded by a newer version, in force (effective date reached)
+        and not expired, and matching the optional metadata `filters`
+        ({'department': ..., 'documentType': ...}). Chunks of any other document
+        (deleted, still processing, errored, being deleted, old version, expired) must
+        never be used. Only the few fields needed for the decision are downloaded.
+        """
+        ids = set()
+        query = db.collection('documents').where('status', '==', 'Processed').select(RetrievalService.LIVE_FIELDS)
+        for d in query.stream():
+            record = d.to_dict() or {}
+            if is_live(record, today) and matches_filters(record, filters):
+                ids.add(d.id)
+        return ids
+
+    @staticmethod
+    def retrieve_multimodal(query_embedding, document_ids=None, k=None, image_query_embedding=None,
+                            filters=None):
         """
         Retrieve relevant chunks from Firebase.
 
@@ -31,9 +41,10 @@ class RetrievalService:
         vector `image_query_embedding` (a different similarity scale, so they are
         ranked and thresholded on their own): at most Config.IMAGE_TOP_K images
         scoring at least Config.MIN_IMAGE_SCORE are returned after the text chunks.
-        Pass image_query_embedding=None to skip images.
+        Pass image_query_embedding=None to skip images. `filters` limits the search to
+        documents whose metadata matches (e.g. {'department': 'Library'}).
 
-        Chunks from documents that are not "Processed", and chunks whose vectors
+        Chunks from documents that are not live (see live_document_ids), and chunks whose vectors
         came from a different model than the one scoring them, are ignored.
 
         Returns:
@@ -58,8 +69,8 @@ class RetrievalService:
 
         chunks_snapshot = query.stream()
 
-        # Only chunks of fully processed, still-existing documents may be used
-        processed_ids = RetrievalService.processed_document_ids(db)
+        # Only chunks of live documents may be used: processed, current version, in force, not expired
+        processed_ids = RetrievalService.live_document_ids(db, filters)
 
         # Only vectors from the model that produced the query vector can be compared
         # with it. Chunks stored before vectors were tagged came from CLIP.
@@ -189,6 +200,7 @@ class RetrievalService:
             doc_id = doc.metadata.get('documentId')
             doc_name = "Document"
             file_url = None
+            version = effective = expiry = None
             
             # Get document metadata from Firebase
             if doc_id and db:
@@ -198,6 +210,9 @@ class RetrievalService:
                         doc_data = doc_ref.to_dict()
                         doc_name = doc_data.get('name', 'Document')
                         file_url = doc_data.get('fileUrl')
+                        version = doc_data.get('version')
+                        effective = doc_data.get('effectiveDate')
+                        expiry = doc_data.get('expiryDate')
                 except Exception as e:
                     print(f"Error fetching document metadata: {e}")
             
@@ -216,6 +231,9 @@ class RetrievalService:
                 "documentId": doc_id,
                 "documentName": doc_name,
                 "fileUrl": file_url,
+                "version": version,
+                "effectiveDate": effective,
+                "expiryDate": expiry,
                 "content": content,
                 "similarity": doc.metadata.get('similarity', 0)
             })

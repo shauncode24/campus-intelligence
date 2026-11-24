@@ -52,7 +52,7 @@ function validateMetadata(metadata) {
  */
 router.post("/", async (req, res) => {
   try {
-    const { fileUrl, fileSize, metadata } = req.body || {};
+    const { fileUrl, fileSize, metadata, supersedes } = req.body || {};
 
     const urlCheck = validateFileUrl(fileUrl);
     if (!urlCheck.ok) {
@@ -61,6 +61,25 @@ router.post("/", async (req, res) => {
     const errors = validateMetadata(metadata);
     if (errors.length > 0) {
       return res.status(400).json({ error: "Invalid metadata", errors });
+    }
+
+    // "This is the new version of document X": X must exist, be live, and not already
+    // have been replaced. X keeps answering until the new document finishes processing;
+    // only then does the processing job retire it.
+    let supersededDoc = null;
+    if (supersedes !== undefined && supersedes !== null && supersedes !== "") {
+      if (typeof supersedes !== "string" || supersedes.length > 128 || supersedes.includes("/")) {
+        return res.status(400).json({ error: "Invalid supersedes", message: "supersedes must be a document id" });
+      }
+      const oldSnap = await db.collection("documents").doc(supersedes).get();
+      if (!oldSnap.exists) {
+        return res.status(400).json({ error: "Invalid supersedes", message: "The document to replace does not exist" });
+      }
+      const old = oldSnap.data();
+      if (old.supersededBy) {
+        return res.status(400).json({ error: "Invalid supersedes", message: "That document has already been replaced by a newer version" });
+      }
+      supersededDoc = supersedes;
     }
 
     const tags = Array.isArray(metadata.tags)
@@ -87,6 +106,7 @@ router.post("/", async (req, res) => {
       version: metadata.version || null,
       owner: metadata.owner || null,
       accessLevel: metadata.accessLevel || "Public",
+      ...(supersededDoc ? { supersedes: supersededDoc } : {}),
     };
 
     const docRef = await db.collection("documents").add(docData);
@@ -119,7 +139,7 @@ router.delete("/:documentId", async (req, res) => {
     if (!snap.exists) {
       return res.status(404).json({ error: "Document not found" });
     }
-    const { fileUrl } = snap.data();
+    const { fileUrl, supersedes } = snap.data();
 
     await ref.update({
       status: "Deleting",
@@ -133,9 +153,27 @@ router.delete("/:documentId", async (req, res) => {
       console.warn(`⚠️ File for ${documentId} not removed from storage: ${file.reason}`);
     }
 
+    // If this document had replaced an older version, the older one is current again
+    let reinstated = null;
+    if (typeof supersedes === "string" && supersedes) {
+      try {
+        const oldRef = db.collection("documents").doc(supersedes);
+        const oldSnap = await oldRef.get();
+        if (oldSnap.exists && oldSnap.data().supersededBy === documentId) {
+          await oldRef.update({
+            supersededBy: admin.firestore.FieldValue.delete(),
+            supersededAt: admin.firestore.FieldValue.delete(),
+          });
+          reinstated = supersedes;
+        }
+      } catch (e) {
+        console.error("Could not reinstate the previous version:", e);
+      }
+    }
+
     await ref.delete();
 
-    res.json({ success: true, chunksDeleted, cacheEntriesRemoved, file });
+    res.json({ success: true, chunksDeleted, cacheEntriesRemoved, file, reinstated });
   } catch (error) {
     console.error("❌ Error deleting document:", error);
     res.status(500).json({

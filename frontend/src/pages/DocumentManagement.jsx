@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { usePageTitle } from "../components/usePageTitle";
 import ConfirmModal from "../components/ConfirmModal";
 import { handleError } from "../utils/errors";
+import { documentState, STATE_LABEL } from "../utils/documentState";
 
 export default function DocumentManagement() {
   usePageTitle("Manage Documents");
@@ -234,6 +235,19 @@ export default function DocumentManagement() {
                       >
                         {doc.status || "Processed"}
                       </span>
+                      {STATE_LABEL[documentState(doc)] && (
+                        <div
+                          className="status-note"
+                          title="This document is kept but is not used to answer questions"
+                        >
+                          {STATE_LABEL[documentState(doc)]}
+                        </div>
+                      )}
+                      {doc.status === "Error" && doc.errorMessage && (
+                        <div className="status-note" title={doc.errorMessage}>
+                          {doc.errorMessage}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <div className="actions-cell">

@@ -60,6 +60,10 @@ export default function SourcesList({ sources }) {
               {sources[0].documentName}.pdf
               <div className="default">
                 {page !== null && <span>Page {page}</span>}
+                {sources[0].version && <span>Version {sources[0].version}</span>}
+                {sources[0].effectiveDate && (
+                  <span>In effect from {sources[0].effectiveDate}</span>
+                )}
                 {sources[0].type === "image" && (
                   <span className="visual-badge">Figure</span>
                 )}

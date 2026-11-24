@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "./DocumentLibrary.css";
 import { handleError } from "../utils/errors";
+import { documentState } from "../utils/documentState";
 import DocumentSkeleton from "../components/Loading/DocumentSkeleton";
 import Spinner from "../components/Loading/Spinner";
 
@@ -32,10 +33,11 @@ export default function DocumentLibrary() {
         where("status", "==", "Processed")
       );
       const querySnapshot = await getDocs(q);
-      const docs = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      // Replaced versions and expired / not-yet-effective documents are not shown:
+      // they are not used to answer questions either.
+      const docs = querySnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((doc) => documentState(doc) === "live");
       setDocuments(docs);
       setLoading(false);
     } catch (err) {

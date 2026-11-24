@@ -150,6 +150,7 @@ class IngestionManager:
                     "imageStats": image_stats,
                     "errorMessage": firestore.DELETE_FIELD,
                 })
+                await run_blocking(self._supersede_old_version, doc_id, record)
                 print(f"✅ Ingestion finished for {doc_id}: {len(all_docs)} chunks")
         except JobCancelled:
             print(f"🚫 Ingestion of {doc_id} stopped: cancelled or deleted")
@@ -161,6 +162,25 @@ class IngestionManager:
             await self._fail(ref, doc_id, e)
         finally:
             self._active.discard(doc_id)
+
+    @staticmethod
+    def _supersede_old_version(doc_id: str, record: dict):
+        """
+        If this document was uploaded as the new version of another, retire the old one
+        now that the new one is searchable (never before: until then the old version keeps
+        answering). The old record stays for the admin but is no longer used for answers.
+        """
+        old_id = (record or {}).get("supersedes")
+        if not old_id or old_id == doc_id:
+            return
+        old_ref = firebase_client.db.collection("documents").document(old_id)
+        old = old_ref.get()
+        if not old.exists:
+            return
+        if (old.to_dict() or {}).get("supersededBy") not in (None, "", doc_id):
+            return                      # already replaced by something else; leave that alone
+        old_ref.update({"supersededBy": doc_id, "supersededAt": firestore.SERVER_TIMESTAMP})
+        print(f"📚 {old_id} is now superseded by {doc_id}")
 
     async def _fail(self, ref, doc_id: str, error: Exception):
         if isinstance(error, USER_FACING_ERRORS):

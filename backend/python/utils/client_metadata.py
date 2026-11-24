@@ -28,6 +28,8 @@ def build_message_metadata(response) -> dict:
                 "excerpt": s.get("content"),
                 "similarity": _percent(s.get("similarity")),
                 "fileUrl": s.get("fileUrl"),
+                "version": s.get("version"),
+                "effectiveDate": s.get("effectiveDate"),
             }
             for s in (response.sources or [])
         ],

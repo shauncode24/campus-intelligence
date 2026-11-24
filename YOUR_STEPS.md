@@ -4,7 +4,7 @@ Living checklist. Claude updates it after every roadmap item. It assumes **nothi
 Do the sections **in order**: later ones depend on earlier ones. Commands are for **Windows PowerShell**
 unless marked otherwise. `<angle brackets>` are values you fill in.
 
-**Last updated:** after P1-6.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6.
+**Last updated:** after P1-7.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7.
 
 Legend: ☐ = to do. ⚠️ = skipping it breaks something. 💸 = costs Gemini quota. 🔒 = security.
 
@@ -20,8 +20,21 @@ git status --short
 git log --oneline -8
 ```
 
-The last commit you should see is the P1-5 one ("Save chats on the server…"). P1-6's changes are
-uncommitted. Message for it:
+The last commit you should see is the P1-6 one ("Process documents in the background…"). P1-7's changes
+are uncommitted. Message for it:
+
+```
+Make document versions, effective dates and expiry decide what answers (P1-7)
+
+A document answers only if processed, not superseded, in force and not expired.
+"Replaces older document" upload flow retires the old version once the new one is
+processed; stale cached answers are skipped; optional department/type filters;
+version and date shown to the model and in sources.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
+Message for P1-6:
 
 ```
 Process documents in the background; keep the service responsive (P1-6)
@@ -292,6 +305,14 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 14. **Restart safety:** start an upload, stop the Python service mid-way, start it again → the document shows `Error`
     ("interrupted because the service restarted"); Reprocess fixes it.
 15. **Reprocess (Documents page):** shows "Reprocessing started"; refresh after a moment → Processed again.
+16. **Versions (P1-7):** upload "Test Policy" (say it states a fee of Rs. 100), ask about the fee → cites it. Upload
+    a second file with the same name, choose the first under "Replaces an older document" (state a fee of Rs. 200).
+    While it processes the old one still answers; when done, ask again → answer says Rs. 200, source card shows the new
+    version; the Documents page marks the old one "Replaced by a newer version"; the public library no longer lists it.
+17. **Undo:** delete the new version in the admin list → the old one answers again and shows in the library.
+18. **Expiry:** edit a document's `expiryDate` in the Firebase console (Firestore → documents → that doc) to yesterday's
+    date (format `2025-01-31`) → questions it alone covered now answer "couldn't find"; set it to a future date → works again.
+    (The upload form's own expiry date field does the same; this just avoids waiting.)
 
 ---
 
@@ -312,6 +333,10 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 - ☐ **Run exactly one Python instance** (P1-6): the processing queue and the start-up cleanup of interrupted jobs live
   in the process. If you deploy several instances, tell Claude: it needs a durable queue.
 - ☐ **Anyone who was mid-upload during a restart** must hit Reprocess (the document is marked Error on start-up).
+- ☐ **Fill in versions and dates on your real documents** (P1-7): version, effective date and expiry date only do
+  something once they are entered. Documents without dates stay live forever. For each policy that has a newer edition,
+  re-upload the new one with "Replaces an older document" (or delete the old one).
+- ☐ **Dates are UTC** (P1-7): at midnight local time the boundary can be off by up to a day. Tell Claude if you want campus time.
 
 ## 12. Real-data work (needs you; this is what makes the numbers real)
 
@@ -346,4 +371,5 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 ## Change log of this file
 
 - **After P1-5:** file created; covers P0-1 … P1-5.
+- **After P1-7:** commit message for P1-7; smoke-test steps 16-18 (versions, undo, expiry); chores: enter versions/dates on real documents, replace old editions.
 - **After P1-6:** commit message for P1-6; new optional `MAX_CONCURRENT_INGESTS`; smoke-test steps 11-15 (background upload, queue, failure, restart, reprocess); single-instance requirement.

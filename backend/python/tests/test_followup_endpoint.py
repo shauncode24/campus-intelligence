@@ -89,7 +89,7 @@ class FollowUpCase(unittest.TestCase):
         self.retrieval_docs = [Document(page_content="The late fee is Rs. 200 per day, at most Rs. 5,000 per semester.",
                                         metadata={"page": 0, "type": "text", "documentId": "d1", "similarity": 0.9})]
 
-        def fake_retrieve(query_embedding, document_ids=None, k=None, image_query_embedding=None):
+        def fake_retrieve(query_embedding, document_ids=None, k=None, image_query_embedding=None, filters=None):
             self.retrieved.append(np.array(query_embedding))
             return self.retrieval_docs
         retrieval_service.retrieve_multimodal = fake_retrieve

@@ -38,6 +38,7 @@ export default function FileCard({
   onMetadataChange,
   onRemove,
   disabled,
+  replaceableDocuments = [],
 }) {
   const formatFileSize = (bytes) => {
     if (bytes < 1024) return bytes + " B";
@@ -322,6 +323,33 @@ export default function FileCard({
               placeholder="Maintaining department"
               disabled={disabled}
             />
+          </div>
+        </div>
+
+        {/* Replaces an older version */}
+        <div className="form-row">
+          <div className="form-group full-width">
+            <label>Replaces an older document (optional)</label>
+            <select
+              value={metadata.supersedes || ""}
+              onChange={(e) =>
+                onMetadataChange({ ...metadata, supersedes: e.target.value })
+              }
+              disabled={disabled}
+            >
+              <option value="">This is not a new version of anything</option>
+              {replaceableDocuments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                  {d.version ? ` (${d.version})` : ""}
+                  {d.department ? ` - ${d.department}` : ""}
+                </option>
+              ))}
+            </select>
+            <small>
+              The older document keeps answering questions until this one has finished
+              processing, then it is retired (kept, but no longer used).
+            </small>
           </div>
         </div>
 

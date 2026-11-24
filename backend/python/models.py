@@ -28,6 +28,9 @@ class QueryRequest(BaseModel):
     # it, reads the follow-up context from its own stored copy (ignoring `history`),
     # and saves the question and answer into it.
     chatId: Optional[str] = Field(default=None, max_length=128)
+    # Optional metadata filters: only search documents of this department / type
+    department: Optional[str] = Field(default=None, max_length=100)
+    documentType: Optional[str] = Field(default=None, max_length=100)
 
 class SourceInfo(BaseModel):
     page: Optional[int]

@@ -39,6 +39,7 @@ from services.retrieval_service import retrieval_service
 from services.llm_service import llm_service, is_not_found
 from services.query_condenser import query_condenser, needs_condensing, CondenseResult
 from services.ingestion import ingestion_manager, fail_interrupted_jobs
+from services.document_validity import describe
 from utils.threads import run_blocking
 
 # Utilities
@@ -227,7 +228,11 @@ async def query_documents(
         # A question that needed rewriting but could not be rewritten is still
         # ambiguous ("and the deadline?"), so it must never be read from or written
         # to the shared answer cache.
-        cacheable = condensed.resolved
+        # Answers are also not shared when the search was narrowed (specific documents or
+        # filters): the cache key does not include that, so they would leak across searches.
+        filters = {k: v for k, v in (("department", request.department),
+                                     ("documentType", request.documentType)) if v}
+        cacheable = condensed.resolved and not filters and not request.documentIds
         if standalone_note:
             print(f"✏️ Understood as: {question}")
 
@@ -253,6 +258,17 @@ async def query_documents(
                 intent
             )
         
+        if cached_question:
+            # A cached answer may cite a document that has since been replaced by a newer
+            # version, has expired, or was deleted. Serve it only if every cited document
+            # is still live; otherwise answer afresh from the current documents.
+            cited = {s.get('documentId') for s in cached_question.get('sources', []) if s.get('documentId')}
+            live_ids = await run_blocking(retrieval_service.live_document_ids, firebase_client.db)
+            if cited - live_ids:
+                print(f"♻️ Cached answer ignored: it cites documents that are no longer current "
+                      f"({len(cited - live_ids)})")
+                cached_question = None
+
         if cached_question:
             print(f"♻️ Reusing cached answer (similarity: {cached_question.get('similarity', 1.0):.3f})")
             
@@ -288,7 +304,8 @@ async def query_documents(
             retrieval_service.retrieve_multimodal,
             query_embedding,
             request.documentIds,
-            image_query_embedding=image_query_embedding
+            image_query_embedding=image_query_embedding,
+            filters=filters
         )
         
         # Only show the model chunks that are plausibly relevant. If nothing is,
@@ -309,7 +326,13 @@ async def query_documents(
 
         # Sources first: they carry the document titles used to label the context
         sources = await run_blocking(retrieval_service.prepare_sources, relevant_docs)
-        doc_names = {s_['documentId']: s_['documentName'] for s_ in sources}
+        # The prompt names each document with its version and effective date, so the model can
+        # say which version it is quoting and notice when two versions disagree
+        doc_names = {
+            s_['documentId']: describe({'name': s_['documentName'], 'version': s_.get('version'),
+                                        'effectiveDate': s_.get('effectiveDate')})
+            for s_ in sources
+        }
 
         # Create multimodal message with labelled excerpts (async: re-extracts images)
         message = await llm_service.create_multimodal_message(
