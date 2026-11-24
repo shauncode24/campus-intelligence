@@ -10,6 +10,12 @@ from firebase_admin import firestore as _fs
 _auto_ids = itertools.count(1)
 
 
+class _Inc:
+    """A pending Increment; resolved against the stored value when written."""
+    def __init__(self, sentinel):
+        self.by = getattr(sentinel, "value", None) or getattr(sentinel, "_value", 1)
+
+
 def _plain(data):
     """Resolve Firestore sentinels the way the server would."""
     out = {}
@@ -17,7 +23,7 @@ def _plain(data):
         if v is _fs.SERVER_TIMESTAMP:
             out[k] = "SERVER_TIMESTAMP"
         elif type(v).__name__ == "Increment":
-            out[k] = 1
+            out[k] = _Inc(v)
         elif isinstance(v, dict):
             out[k] = _plain(v)
         else:
@@ -48,27 +54,44 @@ class FakeDocRef:
     def update(self, data):
         if self.id not in self.collection.docs:
             raise KeyError(f"No document to update: {self.collection.name}/{self.id}")
-        self.collection.docs[self.id].update(_plain(data))
+        doc = self.collection.docs[self.id]
+        for key, value in _plain(data).items():
+            target = doc
+            *parents, leaf = key.split(".")          # 'metadata.favorite' updates inside the map
+            for part in parents:
+                target = target.setdefault(part, {})
+            if isinstance(value, _Inc):
+                value = (target.get(leaf) or 0) + value.by
+            target[leaf] = value
 
     def delete(self):
         self.collection.docs.pop(self.id, None)
 
 
 class FakeQuery:
-    def __init__(self, collection, filters=(), max_docs=None):
+    def __init__(self, collection, filters=(), max_docs=None, orders=(), after=None):
         self.collection, self.filters, self.max_docs = collection, filters, max_docs
+        self.orders, self.after = orders, after
+
+    def _copy(self, **kw):
+        args = dict(filters=self.filters, max_docs=self.max_docs, orders=self.orders, after=self.after)
+        args.update(kw)
+        return FakeQuery(self.collection, **args)
 
     def where(self, field, op, value):
-        return FakeQuery(self.collection, self.filters + ((field, op, value),), self.max_docs)
+        return self._copy(filters=self.filters + ((field, op, value),))
 
     def select(self, *_args, **_kwargs):
         return self
 
-    def order_by(self, *_args, **_kwargs):
-        return self
+    def order_by(self, field, direction="ASCENDING", **_kwargs):
+        return self._copy(orders=self.orders + ((field, direction == "DESCENDING"),))
+
+    def start_after(self, snapshot):
+        return self._copy(after=snapshot)
 
     def limit(self, n):
-        return FakeQuery(self.collection, self.filters, n)
+        return self._copy(max_docs=n)
 
     def _matches(self, data):
         for field, op, value in self.filters:
@@ -84,6 +107,12 @@ class FakeQuery:
             for doc_id, data in list(self.collection.docs.items())
             if self._matches(data)
         ]
+        for field, descending in reversed(self.orders):          # stable multi-key sort
+            rows.sort(key=lambda r: r._data.get(field), reverse=descending)
+        if self.after is not None:
+            ids = [r.id for r in rows]
+            if self.after.id in ids:
+                rows = rows[ids.index(self.after.id) + 1:]
         return rows[: self.max_docs] if self.max_docs else rows
 
     def get(self):

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { apiFetch } from "../utils/api";
-import { buildHistory } from "../utils/chatHistory";
+import toast from "react-hot-toast";
 
 const { VITE_API_BASE_URL, VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -9,11 +9,7 @@ export function useChat(chatId, userId) {
   const [streamingMessage, setStreamingMessage] = useState("");
   const [streamingMetadata, setStreamingMetadata] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [isFirstMessage, setIsFirstMessage] = useState(true);
   const abortControllerRef = useRef(null);
-  // sendMessage is memoised, so it reads the chat through a ref to avoid a stale copy
-  const messagesRef = useRef([]);
-  messagesRef.current = messages;
 
   // Load messages when chatId changes
   useEffect(() => {
@@ -22,7 +18,6 @@ export function useChat(chatId, userId) {
     setStreamingMessage("");
     setStreamingMetadata(null);
     setLoading(false);
-    setIsFirstMessage(true);
 
     if (!chatId) return;
 
@@ -31,7 +26,7 @@ export function useChat(chatId, userId) {
     async function loadMessages() {
       try {
         const response = await apiFetch(
-          `${VITE_PYTHON_RAG_URL}/chats/${chatId}/messages?limit=100`,
+          `${VITE_PYTHON_RAG_URL}/chats/${chatId}/messages?limit=200`,
           { signal: controller.signal }
         );
         const data = await response.json();
@@ -44,10 +39,8 @@ export function useChat(chatId, userId) {
             ...(msg.metadata || {}),
           }));
           setMessages(formatted);
-          setIsFirstMessage(false);
         } else {
           setMessages([]);
-          setIsFirstMessage(true);
         }
       } catch (error) {
         if (error.name !== "AbortError") {
@@ -69,10 +62,6 @@ export function useChat(chatId, userId) {
   const sendMessage = useCallback(
     async (input) => {
       if (!input.trim() || !chatId || !userId) return;
-
-      // The turns BEFORE this question (taken before the question is added below),
-      // so the server can understand follow-ups like "and the deadline?"
-      const history = buildHistory(messagesRef.current);
 
       // Cancel previous request
       if (abortControllerRef.current) {
@@ -96,41 +85,13 @@ export function useChat(chatId, userId) {
       setStreamingMessage("");
       setStreamingMetadata(null);
 
-      // Save user message with timestamp
-      try {
-        await apiFetch(`${VITE_PYTHON_RAG_URL}/chats/messages/add`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chatId,
-            role: "user",
-            content: input,
-            metadata: { timestamp: userTimestamp }, // ✅ Store timestamp
-          }),
-          signal: controller.signal,
-        });
-
-        // Auto-generate title for first message
-        if (isFirstMessage) {
-          await apiFetch(`${VITE_PYTHON_RAG_URL}/chats/${chatId}/auto-title`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ firstMessage: input }),
-            signal: controller.signal,
-          });
-          setIsFirstMessage(false);
-        }
-      } catch (error) {
-        if (error.name !== "AbortError") {
-          console.error("Error saving user message:", error);
-        }
-      }
-
       try {
         const response = await apiFetch(`${VITE_API_BASE_URL}/document/query`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: input, history }),
+          // The server saves the question and answer into this chat and reads the earlier
+          // turns itself (follow-ups); the browser writes nothing.
+          body: JSON.stringify({ question: input, chatId }),
           signal: controller.signal,
         });
 
@@ -179,41 +140,23 @@ export function useChat(chatId, userId) {
                 } else if (data.type === "metadata") {
                   metadata = data.data;
                   setStreamingMetadata(metadata);
-                } // After "done" block in sendMessage function, replace this section:
-                else if (data.type === "done") {
-                  const botTimestamp = new Date().toISOString();
-
-                  // Save bot message FIRST and get historyId
-                  const saveResponse = await apiFetch(
-                    `${VITE_PYTHON_RAG_URL}/chats/messages/add`,
+                } else if (data.type === "done") {
+                  // metadata (from the server) already carries historyId, so Save
+                  // works at once and the same message loads after a reload
+                  setMessages((prev) => [
+                    ...prev,
                     {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        chatId,
-                        role: "bot",
-                        content: accumulatedText,
-                        metadata: {
-                          ...metadata,
-                          timestamp: botTimestamp,
-                        },
-                      }),
-                    }
-                  );
-
-                  const saveData = await saveResponse.json();
-                  const messageId = saveData.messageId;
-
-                  // NOW create bot message with historyId already included
-                  const botMessage = {
-                    role: "bot",
-                    text: accumulatedText,
-                    timestamp: botTimestamp,
-                    historyId: messageId, // ✅ Set immediately
-                    ...metadata,
-                  };
-
-                  setMessages((prev) => [...prev, botMessage]);
+                      role: "bot",
+                      text: accumulatedText,
+                      timestamp: new Date().toISOString(),
+                      ...metadata,
+                    },
+                  ]);
+                  if (metadata.saved === false) {
+                    toast.error(
+                      "This answer could not be saved to your history."
+                    );
+                  }
                   setStreamingMessage("");
                   setStreamingMetadata(null);
                 } else if (data.type === "error") {
@@ -257,7 +200,7 @@ export function useChat(chatId, userId) {
         abortControllerRef.current = null;
       }
     },
-    [chatId, userId, isFirstMessage]
+    [chatId, userId]
   );
 
   // Cleanup on unmount

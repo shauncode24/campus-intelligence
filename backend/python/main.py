@@ -26,6 +26,7 @@ from utils.rate_limit import (
 )
 from database.firebase_client import firebase_client
 from database.cache_repository import cache_repository
+from database.chat_repository import chat_repository
 from database.faq_repository import faq_repository
 from database.storage_service import storage_service
 
@@ -38,6 +39,7 @@ from services.query_condenser import query_condenser, needs_condensing, Condense
 
 # Utilities
 from utils.intent_detector import detect_intent
+from utils.client_metadata import build_message_metadata
 from utils.deadline_extractor import extract_deadline_info
 from utils.confidence_calculator import calculate_confidence
 from utils.file_security import (
@@ -110,8 +112,48 @@ app.add_middleware(
 app.include_router(chat_router, tags=["chats"])
 
 
+async def _save_exchange(user_id: str, chat_id, typed_question: str, response: QueryResponse,
+                         question_id: str, intent: str, confidence) -> QueryResponse:
+    """
+    Store the question and its answer and fill in what the browser needs to show
+    them. The single place an exchange is saved: with a chat it goes into the chat and
+    the user's history in one atomic write; without one, into the history alone.
+
+    If storing fails the answer is still returned, marked `saved=False`, rather than
+    throwing away a model call the user already paid for.
+    """
+    metadata = build_message_metadata(response)
+    history_extra = {
+        'questionId': question_id,
+        'intent': intent,
+        'confidence': confidence,
+        'sources': response.sources,
+    }
+    try:
+        if chat_id:
+            saved = await chat_repository.record_exchange(
+                user_id, chat_id, typed_question, response.answer, metadata, history_extra
+            )
+            response.historyId, response.messageId = saved["historyId"], saved["messageId"]
+            metadata["historyId"] = saved["historyId"]
+        else:
+            response.historyId = await cache_repository.store_user_question(
+                user_id, question_id, typed_question, answer=response.answer, intent=intent,
+                confidence=confidence, sources=response.sources
+            )
+            if response.historyId:
+                metadata["historyId"] = response.historyId
+            else:
+                response.saved = False
+    except Exception as e:
+        print(f"❌ Could not save the exchange: {e}")
+        response.saved = False
+    response.metadata = metadata
+    return response
+
+
 async def _decline(user_id: str, question: str, intent: str, reason: str,
-                   standalone: str = None) -> QueryResponse:
+                   standalone: str = None, chat_id: str = None) -> QueryResponse:
     """
     The documents do not contain an answer. Say so plainly, show no sources,
     record it in the user's history, and do NOT cache it (a refusal must never
@@ -126,16 +168,7 @@ async def _decline(user_id: str, question: str, intent: str, reason: str,
         answered=False,
         standaloneQuestion=standalone,
     )
-    await cache_repository.store_user_question(
-        user_id,
-        "no_answer",
-        question,
-        answer=response.answer,
-        intent=intent,
-        confidence=None,
-        sources=[]
-    )
-    return response
+    return await _save_exchange(user_id, chat_id, question, response, "no_answer", intent, None)
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -157,7 +190,18 @@ async def query_documents(
         
         # Follow-ups: if the question leans on earlier turns, rewrite it into a
         # standalone question. History is used only for that, never as evidence.
-        history = [turn.model_dump() for turn in request.history]
+        chat_id = request.chatId
+        if chat_id:
+            if not await chat_repository.user_owns_chat(user_id, chat_id):
+                raise HTTPException(status_code=404, detail="Chat not found")
+            # The server's own copy of the conversation; anything the browser sends is ignored
+            try:
+                history = await chat_repository.get_context_turns(chat_id, Config.MAX_HISTORY_MESSAGES)
+            except Exception as e:
+                print(f"⚠️ Could not read the chat for follow-up context: {e}")
+                history = []
+        else:
+            history = [turn.model_dump() for turn in request.history]
         if Config.QUERY_CONDENSING and needs_condensing(request.question, history):
             consume_llm_budget(user_id)   # a model call: charged like any other
             condensed = query_condenser.condense(request.question, history)
@@ -200,24 +244,13 @@ async def query_documents(
             # Increment count
             await cache_repository.increment_question_count(cached_question['id'])
             
-            # Store user question with full data
-            await cache_repository.store_user_question(
-                user_id,
-                cached_question['id'],
-                request.question,
-                answer=cached_question['answer'],
-                intent=cached_question.get('intent'),
-                confidence=cached_question.get('confidence'),
-                sources=cached_question.get('sources', [])
-            )
-            
             # Extract deadline info for cached response
             deadline = extract_deadline_info(
                 cached_question['answer'],
                 cached_question.get('sources', [])
             )
             
-            return QueryResponse(
+            response = QueryResponse(
                 answer=cached_question['answer'],
                 sources=cached_question.get('sources', []),
                 hasVisualContent=any(s.get('type') == 'image' for s in cached_question.get('sources', [])),
@@ -226,6 +259,10 @@ async def query_documents(
                 similarity=cached_question.get('similarity'),
                 deadline=deadline,
                 confidence=cached_question.get('confidence')
+            )
+            return await _save_exchange(
+                user_id, chat_id, request.question, response, cached_question['id'],
+                cached_question.get('intent'), cached_question.get('confidence')
             )
         
         # No cache hit - generate new answer
@@ -247,7 +284,7 @@ async def query_documents(
                   f"{len(relevant_docs)}/{len(context_docs)} chunks kept")
 
         if not relevant_docs:
-            return await _decline(user_id, request.question, intent, "no relevant chunks", standalone_note)
+            return await _decline(user_id, request.question, intent, "no relevant chunks", standalone_note, chat_id)
 
         print(f"📚 Using {len(relevant_docs)} relevant chunks")
 
@@ -268,7 +305,8 @@ async def query_documents(
 
         if is_not_found(answer):
             return await _decline(
-                user_id, request.question, intent, "model found no support in context", standalone_note
+                user_id, request.question, intent, "model found no support in context",
+                standalone_note, chat_id
             )
 
         has_visual = any(doc.metadata.get('type') == 'image' for doc in relevant_docs)
@@ -294,20 +332,9 @@ async def query_documents(
                 deadline=deadline
             )
         
-        # Store the user's own history entry (with the question as THEY typed it)
-        await cache_repository.store_user_question(
-            user_id,
-            question_id or "uncached",
-            request.question,
-            answer=answer,
-            intent=intent,
-            confidence=confidence,
-            sources=sources
-        )
+        print("✅ Answer generated")
         
-        print(f"✅ Answer generated and cached\n")
-        
-        return QueryResponse(
+        response = QueryResponse(
             answer=answer,
             sources=sources,
             hasVisualContent=has_visual,
@@ -315,6 +342,10 @@ async def query_documents(
             deadline=deadline,
             confidence=confidence,
             standaloneQuestion=standalone_note
+        )
+        # The user's own entry keeps the question as THEY typed it
+        return await _save_exchange(
+            user_id, chat_id, request.question, response, question_id or "uncached", intent, confidence
         )
         
     except HTTPException:

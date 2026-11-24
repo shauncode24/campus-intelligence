@@ -24,6 +24,10 @@ class QueryRequest(BaseModel):
     # Recent chat turns (oldest first), so a follow-up like "and the deadline?" can be
     # understood. Never used as evidence for an answer.
     history: List[HistoryTurn] = Field(default_factory=list, max_length=12)
+    # The chat this question belongs to. When given, the server checks the caller owns
+    # it, reads the follow-up context from its own stored copy (ignoring `history`),
+    # and saves the question and answer into it.
+    chatId: Optional[str] = Field(default=None, max_length=128)
 
 class SourceInfo(BaseModel):
     page: Optional[int]
@@ -59,6 +63,14 @@ class QueryResponse(BaseModel):
     similarity: Optional[float] = None
     deadline: Optional[Dict[str, Any]] = None
     confidence: Optional[ConfidenceInfo] = None
+    # Ids of what was stored for this exchange (null when nothing could be saved)
+    historyId: Optional[str] = None
+    messageId: Optional[str] = None
+    # False if the answer could not be stored; the answer is still returned
+    saved: bool = True
+    # Exactly what the chat shows beside the answer (and what is stored with it), so the
+    # live view and a reload cannot differ
+    metadata: Optional[Dict[str, Any]] = None
 
 class HealthResponse(BaseModel):
     status: str

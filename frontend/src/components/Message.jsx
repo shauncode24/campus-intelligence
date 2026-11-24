@@ -13,7 +13,7 @@ export default function Message({ message, isStreaming }) {
   const [copied, setCopied] = useState(false);
   const [thumbsUp, setThumbsUp] = useState(false);
   const [thumbsDown, setThumbsDown] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(!!m.favorite);
 
   useState(() => {
     console.log("Messages, ", m);
@@ -84,7 +84,7 @@ export default function Message({ message, isStreaming }) {
     try {
       // Check if we have a valid history ID
       if (!m.historyId) {
-        toast.error("Cannot save this message yet. Please wait...");
+        toast.error("This answer was not stored, so it cannot be saved.");
         return;
       }
 
@@ -97,9 +97,12 @@ export default function Message({ message, isStreaming }) {
         const data = await response.json();
         setSaved(data.favorite);
         toast.success(data.favorite ? "Saved!" : "Removed from saved");
+      } else {
+        toast.error("Could not save this answer. Please try again.");
       }
     } catch (error) {
-      handleError(error, { customMessage: "Failed to save answer" });
+      console.error("Save failed:", error);
+      toast.error("Could not save this answer. Please try again.");
     }
   };
 

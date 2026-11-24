@@ -231,7 +231,18 @@ class CacheRepository:
             current_favorite = doc_data.get('favorite', False)
             new_favorite = not current_favorite
             
-            doc_ref.update({'favorite': new_favorite})
+            # The answer message in the chat shows the same state after a reload, so
+            # both are changed together.
+            # (The chat may have been deleted since; the favourite still works then.)
+            message_id = doc_data.get('messageId')
+            message_ref = db.collection('chat_messages').document(message_id) if message_id else None
+            if message_ref is not None and message_ref.get().exists:
+                batch = db.batch()
+                batch.update(doc_ref, {'favorite': new_favorite})
+                batch.update(message_ref, {'metadata.favorite': new_favorite})
+                batch.commit()
+            else:
+                doc_ref.update({'favorite': new_favorite})
             print(f"⭐ Toggled favorite for {history_id}: {new_favorite}")
             return new_favorite
             
@@ -343,12 +354,13 @@ class CacheRepository:
             return history
             
         except Exception as e:
+            # Not swallowed: an empty history must mean "nothing asked yet", never
+            # "the query failed" (typically a missing Firestore index).
             print(f"❌ Error fetching user history: {e}")
-            print(f"   Note: If you see 'index' error, create composite index in Firebase:")
-            print(f"   Collection: user_questions, Fields: userId (Ascending), askedAt (Descending)")
-            if favorites_only:
-                print(f"   Also needed: userId (Ascending), favorite (Ascending), askedAt (Descending)")
-            return []
+            print("   If this is an 'index' error, create the composite index: collection user_questions, "
+                  "userId (Ascending), askedAt (Descending)"
+                  + ("; and userId, favorite, askedAt (Descending)" if favorites_only else ""))
+            raise
 
 # Singleton instance
 cache_repository = CacheRepository()

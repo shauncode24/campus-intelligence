@@ -57,7 +57,7 @@ app.post(
   try {
     // Identity comes from the verified token only (req.uid); a userId in the
     // body is ignored.
-    const { question, history } = req.body;
+    const { question, history, chatId } = req.body;
 
     if (typeof question !== "string" || !question.trim()) {
       return res.status(400).json({ error: "Question required" });
@@ -68,7 +68,14 @@ app.post(
         .json({ error: `Question is too long (max ${MAX_QUESTION_CHARS} characters)` });
     }
 
-    // Recent chat turns, used only to understand follow-up questions
+    // The chat this question belongs to; the RAG service checks the caller owns it
+    // and saves the exchange into it.
+    if (chatId !== undefined && (typeof chatId !== "string" || !chatId || chatId.length > 128)) {
+      return res.status(400).json({ error: "chatId must be a string" });
+    }
+
+    // Recent chat turns, used only to understand follow-up questions (ignored by the
+    // RAG service when chatId is given: it reads the chat from its own copy)
     const cleanHistory = sanitizeHistory(history);
     if (cleanHistory === null) {
       return res.status(400).json({ error: "history must be an array" });
@@ -90,6 +97,7 @@ app.post(
     const requestBody = {
       question: question,
       history: cleanHistory,
+      ...(chatId ? { chatId } : {}),
     };
 
     // Call Python RAG service, forwarding the caller's token so Python
@@ -115,6 +123,19 @@ app.post(
           userFacing: true,
           data: body.detail || "Too many requests. Please try again later.",
         })}\n\n`
+      );
+      return res.end();
+    }
+
+    if (pythonResponse.status === 404 && chatId) {
+      res.write(
+        `data: ${JSON.stringify({
+          type: "error",
+          userFacing: true,
+          data: "This chat no longer exists. Please start a new chat.",
+        })}
+
+`
       );
       return res.end();
     }
@@ -157,28 +178,9 @@ app.post(
     res.write(
       `data: ${JSON.stringify({
         type: "metadata",
-        data: {
-          cached: result.cached || false,
-          answered: result.answered !== false,
-          // set when a follow-up was rewritten into a standalone question
-          standaloneQuestion: result.standaloneQuestion || null,
-          similarity: result.similarity,
-          // No confidence value is sent: the previous number was derived from
-          // the count of retrieved chunks (always the same), so it said nothing
-          // about whether the answer was correct.
-          sources: result.sources.map((s) => ({
-            documentId: s.documentId,
-            documentName: s.documentName || "Document",
-            pageNumber: s.page, // 0-based, legacy
-            displayPage: s.displayPage, // 1-based, what users should see
-            type: s.type,
-            excerpt: s.content,
-            similarity: Math.round((s.similarity || 0) * 100),
-            fileUrl: s.fileUrl, // ADD
-          })),
-          hasVisualContent: result.hasVisualContent,
-          deadline: result.deadline, // ADD THIS
-        },
+        // Built by the RAG service and stored with the answer, so the live view and a
+        // reopened chat show the same thing. `saved` is false if it could not be stored.
+        data: { ...result.metadata, saved: result.saved !== false },
       })}\n\n`
     );
 

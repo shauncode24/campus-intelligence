@@ -3,6 +3,7 @@ Chat repository for managing chat sessions
 """
 from firebase_admin import firestore
 from database.firebase_client import firebase_client
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 
 class ChatRepository:
@@ -175,43 +176,6 @@ class ChatRepository:
             return False
     
     @staticmethod
-    async def auto_generate_title(chat_id: str, first_message: str) -> bool:
-        """
-        Auto-generate chat title from first message
-        
-        Args:
-            chat_id: Chat identifier
-            first_message: First user message
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        db = firebase_client.db
-        if not db:
-            return False
-        
-        try:
-            # Take first 50 chars or up to first question mark/period
-            title = first_message[:50].split('?')[0].split('.')[0].strip()
-            if len(title) < 3:
-                title = first_message[:50]
-            
-            if len(title) > 50:
-                title = title[:47] + "..."
-            
-            chat_ref = db.collection('chats').document(chat_id)
-            chat_ref.update({
-                'title': title,
-                'updatedAt': firestore.SERVER_TIMESTAMP
-            })
-            
-            print(f"✅ Auto-generated title: {title}")
-            return True
-        except Exception as e:
-            print(f"❌ Error auto-generating title: {e}")
-            return False
-    
-    @staticmethod
     async def update_chat_title(user_id: str, chat_id: str, title: str) -> bool:
         """
         Update chat title
@@ -255,95 +219,132 @@ class ChatRepository:
             return False
     
     @staticmethod
-    async def add_message_to_chat(chat_id: str, role: str, content: str, 
-                                   metadata: Dict = None) -> Optional[str]:
-        """
-        Add a message to a chat
-        
-        Args:
-            chat_id: Chat identifier
-            role: Message role ('user' or 'bot')
-            content: Message content
-            metadata: Optional metadata (sources, confidence, etc.)
-            
-        Returns:
-            str: Message ID if successful, None otherwise
-        """
-        db = firebase_client.db
-        if not db:
-            print("⚠️ Firebase not available")
-            return None
-        
-        try:
-            message_data = {
-                'chatId': chat_id,
-                'role': role,
-                'content': content,
-                'createdAt': firestore.SERVER_TIMESTAMP
-            }
-            
-            if metadata:
-                message_data['metadata'] = metadata
-            
-            doc_ref = db.collection('chat_messages').add(message_data)
-            message_id = doc_ref[1].id
-            
-            # Update chat's updatedAt and messageCount
-            chat_ref = db.collection('chats').document(chat_id)
-            chat_ref.update({
-                'updatedAt': firestore.SERVER_TIMESTAMP,
-                'messageCount': firestore.Increment(1)
-            })
-            
-            print(f"💬 Added message to chat {chat_id}")
-            return message_id
-            
-        except Exception as e:
-            print(f"❌ Error adding message: {e}")
-            return None
-    
+    def derive_title(first_message: str) -> str:
+        """A short chat title from the first question."""
+        title = first_message[:50].split('?')[0].split('.')[0].strip()
+        if len(title) < 3:
+            title = first_message[:50].strip()
+        if len(title) > 50:
+            title = title[:47] + "..."
+        return title or "New Chat"
+
     @staticmethod
-    async def get_chat_messages(chat_id: str, limit: int = 100) -> List[Dict]:
+    async def record_exchange(user_id: str, chat_id: str, question: str, answer: str,
+                              metadata: Dict, history_extra: Dict) -> Dict:
         """
-        Get all messages in a chat
-        
-        Args:
-            chat_id: Chat identifier
-            limit: Maximum number of messages to return
-            
-        Returns:
-            List[Dict]: List of message objects
+        Save one question and its answer: the ONLY place chat messages are written.
+
+        One atomic batch holds the user message, the answer message, the entry in the
+        user's question history (what the History and Saved pages list) and the chat's
+        counters/title. Either all of it is stored or none is, and it happens on the
+        server, so closing the tab mid-answer cannot leave the chat and the history
+        disagreeing. Raises on failure: the caller must not report success.
+
+        The answer message carries `historyId`, which is what "Save" and notes act on.
+        Returns {"historyId", "messageId", "title"}.
         """
         db = firebase_client.db
         if not db:
-            print("⚠️ Firebase not available")
-            return []
-        
-        try:
-            query = db.collection('chat_messages') \
-                .where('chatId', '==', chat_id) \
-                .order_by('createdAt', direction=firestore.Query.ASCENDING) \
-                .limit(limit)
-            
-            messages = query.stream()
-            
-            message_list = []
-            for msg in messages:
-                msg_data = msg.to_dict()
-                message_list.append({
-                    'id': msg.id,
-                    'role': msg_data.get('role'),
-                    'content': msg_data.get('content'),
-                    'metadata': msg_data.get('metadata', {}),
-                    'createdAt': msg_data.get('createdAt')
-                })
-            
-            print(f"📨 Retrieved {len(message_list)} messages for chat {chat_id}")
-            return message_list
-            
-        except Exception as e:
-            print(f"❌ Error fetching messages: {e}")
-            return []
+            raise RuntimeError("Firebase not available")
+
+        chat_ref = db.collection('chats').document(chat_id)
+        chat = chat_ref.get()
+        if not chat.exists or chat.to_dict().get('userId') != user_id:
+            raise PermissionError("chat is not owned by this user")
+        chat_data = chat.to_dict()
+
+        # Explicit, distinct times (not SERVER_TIMESTAMP): inside one batch every server
+        # timestamp is identical, which would let the answer sort before its question.
+        asked_at = datetime.now(timezone.utc)
+        answered_at = asked_at + timedelta(milliseconds=1)
+        now_iso = answered_at.isoformat()
+        user_msg_ref = db.collection('chat_messages').document()
+        bot_msg_ref = db.collection('chat_messages').document()
+        history_ref = db.collection('user_questions').document()
+
+        bot_metadata = dict(metadata or {})
+        bot_metadata['historyId'] = history_ref.id
+        bot_metadata['timestamp'] = now_iso
+        bot_metadata['favorite'] = False
+
+        batch = db.batch()
+        # created in this order; the bot message sorts after the question
+        batch.set(user_msg_ref, {
+            'chatId': chat_id, 'userId': user_id, 'role': 'user', 'content': question,
+            'metadata': {'timestamp': asked_at.isoformat()}, 'createdAt': asked_at,
+        })
+        batch.set(bot_msg_ref, {
+            'chatId': chat_id, 'userId': user_id, 'role': 'bot', 'content': answer,
+            'metadata': bot_metadata, 'createdAt': answered_at,
+        })
+        batch.set(history_ref, {
+            **history_extra,
+            'userId': user_id, 'questionText': question, 'answer': answer,
+            'favorite': False, 'personalNote': '',
+            'chatId': chat_id, 'messageId': bot_msg_ref.id,
+            'askedAt': firestore.SERVER_TIMESTAMP,
+        })
+        chat_update = {
+            'updatedAt': firestore.SERVER_TIMESTAMP,
+            'messageCount': firestore.Increment(2),
+        }
+        title = chat_data.get('title', 'New Chat')
+        if not chat_data.get('messageCount'):
+            title = ChatRepository.derive_title(question)
+            chat_update['title'] = title
+        batch.update(chat_ref, chat_update)
+        batch.commit()
+
+        return {"historyId": history_ref.id, "messageId": bot_msg_ref.id, "title": title}
+
+    @staticmethod
+    async def get_chat_messages(chat_id: str, limit: int = 100,
+                                before: Optional[str] = None):
+        """
+        The NEWEST `limit` messages of a chat, oldest first (the order to display).
+
+        Returns (messages, has_more). `before` is a message id: only messages older
+        than it are returned, which is how a client pages further back. Firestore
+        errors propagate (an unreadable chat is not an empty chat).
+        """
+        db = firebase_client.db
+        if not db:
+            raise RuntimeError("Firebase not available")
+
+        query = db.collection('chat_messages')             .where('chatId', '==', chat_id)             .order_by('createdAt', direction=firestore.Query.DESCENDING)
+        if before:
+            anchor = db.collection('chat_messages').document(before).get()
+            if anchor.exists and anchor.to_dict().get('chatId') == chat_id:
+                query = query.start_after(anchor)
+        docs = list(query.limit(limit + 1).stream())
+
+        has_more = len(docs) > limit
+        message_list = []
+        for msg in reversed(docs[:limit]):
+            msg_data = msg.to_dict()
+            message_list.append({
+                'id': msg.id,
+                'role': msg_data.get('role'),
+                'content': msg_data.get('content'),
+                'metadata': msg_data.get('metadata', {}),
+                'createdAt': msg_data.get('createdAt')
+            })
+        return message_list, has_more
+
+    @staticmethod
+    async def get_context_turns(chat_id: str, max_turns: int) -> List[Dict]:
+        """
+        The last few turns of a chat as {role, text}, for understanding follow-ups.
+        Read from the server's own copy (never trusted from the browser). Refusals are
+        left out: they are not information.
+        """
+        messages, _ = await ChatRepository.get_chat_messages(chat_id, max_turns * 3)
+        turns = [
+            {"role": m['role'], "text": m['content']}
+            for m in messages
+            if m.get('content') and not (m['role'] == 'bot' and (m.get('metadata') or {}).get('answered') is False)
+        ]
+        return turns[-max_turns:]
 
 # Singleton instance
 chat_repository = ChatRepository()
