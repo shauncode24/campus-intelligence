@@ -35,6 +35,8 @@ backend\venv\Scripts\python.exe eval\run_retrieval_eval.py ^
 | `--retriever production` | the real backend code: same chunker, embedding model and cosine ranking as the service |
 | `--embedding-backend bge-small \| clip` | which embedding model `production` uses (run once per model to compare) |
 | `--retriever bm25` | plain keyword search, a sanity reference ("does the embedding beat word matching?") |
+| `--retriever hybrid` | **experiment (P2-2):** the production dense search + BM25 over the same chunks, fused with Reciprocal Rank Fusion (k=60, 50 candidates per list) |
+| `--retriever rerank` | **experiment (P2-2):** production dense top-20 re-scored by a small cross-encoder (`cross-encoder/ms-marco-MiniLM-L-6-v2`, downloaded on first use, ~90 MB) |
 | `--followups raw \| oracle \| rewrite` | how follow-up questions are searched: `raw` as typed (what happens with no follow-up handling), `oracle` with the hand-written ideal rewrite (the best a rewriter could do), `rewrite` with the real production rewriter (**calls Gemini**; refuses to run without `--env-file <secrets> --yes`) |
 | `--compare baseline.json --max-drop 0.05` | regression gate: exit code 3 if recall@5, hit@5, nDCG@5 or MRR dropped by more than 0.05 |
 

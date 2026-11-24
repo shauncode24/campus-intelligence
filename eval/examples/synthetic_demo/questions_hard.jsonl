@@ -1,0 +1,30 @@
+# SYNTHETIC questions on the demo corpus, written by the same author as the corpus. Half are bare identifiers/numbers
+# (where keyword search should help), half are colloquial with little word overlap (where it should not). Not real student questions.
+{"id": "h01", "question": "AR-3", "type": "fact", "answerable": true, "gold": [{"doc": "attendance_rules", "page": 2}], "must_include": ["AR-3"]}
+{"id": "h02", "question": "form F-7 where to submit", "type": "fact", "answerable": true, "gold": [{"doc": "fee_policy", "page": 2}], "must_include": ["Form F-7"]}
+{"id": "h03", "question": "Tahsildar certificate", "type": "fact", "answerable": true, "gold": [{"doc": "scholarships", "page": 2}], "must_include": ["Tahsildar"]}
+{"id": "h04", "question": "No Dues certificate", "type": "fact", "answerable": true, "gold": [{"doc": "hostel_rules", "page": 2}], "must_include": ["No Dues"]}
+{"id": "h05", "question": "Rs. 10,000", "type": "numeric", "answerable": true, "gold": [{"doc": "hostel_rules", "page": 2}], "must_include": ["Rs. 10,000"]}
+{"id": "h06", "question": "Block A Room 12 accounts", "type": "fact", "answerable": true, "gold": [{"doc": "fee_policy", "page": 1}], "must_include": ["Block A, Room 12"]}
+{"id": "h07", "question": "65 percent", "type": "numeric", "answerable": true, "gold": [{"doc": "attendance_rules", "page": 2}], "must_include": ["65 percent"]}
+{"id": "h08", "question": "Rs. 300 photocopy", "type": "numeric", "answerable": true, "gold": [{"doc": "exam_regulations", "page": 2}], "must_include": ["Rs. 300"]}
+{"id": "h09", "question": "CGPA 6.5 placement", "type": "numeric", "answerable": true, "gold": [{"doc": "placement_policy", "page": 1}], "must_include": ["6.5"]}
+{"id": "h10", "question": "10 lakh", "type": "numeric", "answerable": true, "gold": [{"doc": "placement_policy", "page": 2}], "must_include": ["10 lakh"]}
+{"id": "h11", "question": "can i get out of the dorm after the curfew if i tell the warden first", "type": "fact", "answerable": true, "gold": [{"doc": "hostel_rules", "page": 2}], "must_include": ["prior written permission"]}
+{"id": "h12", "question": "my exam paper got graded too low, what can i do", "type": "procedure", "answerable": true, "gold": [{"doc": "exam_regulations", "page": 2}], "must_include": ["revaluation"]}
+{"id": "h13", "question": "do i lose my free ride if my grades slip", "type": "eligibility", "answerable": true, "gold": [{"doc": "scholarships", "page": 1}], "must_include": ["8.5"]}
+{"id": "h14", "question": "i got a job offer, can i still apply elsewhere", "type": "eligibility", "answerable": true, "gold": [{"doc": "placement_policy", "page": 2}], "must_include": ["Rs. 10 lakh"]}
+{"id": "h15", "question": "what happens if i get caught cheating", "type": "fact", "answerable": true, "gold": [{"doc": "exam_regulations", "page": 1}], "must_include": ["malpractice"]}
+{"id": "h16", "question": "i skipped a lot of classes because of a hospital stay, any hope", "type": "eligibility", "answerable": true, "gold": [{"doc": "attendance_rules", "page": 2}], "must_include": ["medical certificate"]}
+{"id": "h17", "question": "who gets a room by themselves", "type": "eligibility", "answerable": true, "gold": [{"doc": "hostel_rules", "page": 1}], "must_include": ["single rooms"]}
+{"id": "h18", "question": "what proof of earnings do poor families need to show", "type": "procedure", "answerable": true, "gold": [{"doc": "scholarships", "page": 2}], "must_include": ["income certificate"]}
+{"id": "h19", "question": "when will i know my marks", "type": "deadline", "answerable": true, "gold": [{"doc": "exam_regulations", "page": 1}], "must_include": ["21 days"]}
+{"id": "h20", "question": "can my girlfriend visit me in my room in the evening", "type": "fact", "answerable": true, "gold": [{"doc": "hostel_rules", "page": 2}], "must_include": ["visitors' lounge"]}
+{"id": "hu01", "question": "How do I apply for a passport?", "type": "out_of_scope", "answerable": false, "gold": [], "must_include": []}
+{"id": "hu02", "question": "What is the canteen menu on Fridays?", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "hu03", "question": "Rs. 5 lakh", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "hu04", "question": "Form F-9", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "hu05", "question": "how do i get a library card", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "hu06", "question": "who is the vice chancellor", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}
+{"id": "hu07", "question": "best pizza place nearby", "type": "out_of_scope", "answerable": false, "gold": [], "must_include": []}
+{"id": "hu08", "question": "what is the parking fee for cars", "type": "absent_in_domain", "answerable": false, "gold": [], "must_include": []}

@@ -4,7 +4,7 @@ Living checklist. Claude updates it after every roadmap item. It assumes **nothi
 Do the sections **in order**: later ones depend on earlier ones. Commands are for **Windows PowerShell**
 unless marked otherwise. `<angle brackets>` are values you fill in.
 
-**Last updated:** after P2-1.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10, P1-11, P1-12, P2-1.
+**Last updated:** after P2-2.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10, P1-11, P1-12, P2-1, P2-2.
 
 Legend: ☐ = to do. ⚠️ = skipping it breaks something. 💸 = costs Gemini quota. 🔒 = security.
 
@@ -20,8 +20,19 @@ git status --short
 git log --oneline -8
 ```
 
-The last commit you should see is the P1-12 one ("Make the chat honest and useful…"). P2-1's changes are uncommitted.
-Message for it:
+The last commit you should see is the P1-12 one ("Make the chat honest and useful…"). P2-2 is uncommitted (P2-1 should already be committed).
+Message for P2-2:
+
+```
+Add hybrid-search and reranker experiments to the eval harness, with a harder question set (P2-2)
+
+Measured on synthetic data: both nudge hit rate and MRR up but within the noise, so nothing
+changes in production. Run them on the real golden set before deciding.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
+Message for P2-1:
 
 ```
 Search from an in-memory vector index instead of scanning every chunk per question (P2-1)
@@ -525,6 +536,7 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 ## Change log of this file
 
 - **After P1-5:** file created; covers P0-1 … P1-5.
+- **After P2-2:** commit message for P2-2; nothing to install for the app. Once you have the real golden set, run `--retriever production`, `hybrid`, `rerank` on it (eval README) and send me the three reports to decide. The reranker downloads ~90 MB the first time.
 - **After P2-1:** commit message for P2-1; nothing to install; after re-indexing (section 8) the first question is slower (it builds the index); optional env `VECTOR_INDEX_MAX_CHUNKS` / `VECTOR_INDEX_ENABLED=false`; do not edit chunks by hand in the console (the index follows the epoch).
 - **After P1-12:** commit message for P1-12; `npm ci` in frontend (new packages); smoke-test steps 25-28 (formatting, sources, not-found/reused, try again/stop, feedback); read/export the feedback.
 - **After P1-11:** commit message for P1-11; push and turn on CI + required checks + Dependabot; new test commands (`npm --prefix firestore-tests run test:api`, `npm test`/`npm run lint:ci` in frontend); frontend lockfile updated (run `npm ci` in `frontend`).

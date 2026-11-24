@@ -1,0 +1,2430 @@
+{
+  "meta": {
+    "name": "hard-bm25",
+    "date": "2026-11-24 18:53",
+    "git_commit": "9ce9dc0",
+    "dataset_fingerprint": "8d7560874e9e",
+    "n_pages": 12,
+    "synthetic": true,
+    "followups": "raw",
+    "warnings": [
+      "Only 20 answerable questions (recommended minimum 30). Differences between runs are likely to be noise; look at the confidence intervals.",
+      "Only 8 unanswerable questions (recommended minimum 15). Refusal/abstention figures are very rough."
+    ]
+  },
+  "results": {
+    "counts": {
+      "answerable": 20,
+      "unanswerable": 8
+    },
+    "retrieval": {
+      "mrr": {
+        "mean": 0.7216666666666667,
+        "ci95": [
+          0.5383333333333333,
+          0.8800000000000001
+        ]
+      },
+      "hit@1": {
+        "mean": 0.65,
+        "ci95": [
+          0.4,
+          0.85
+        ]
+      },
+      "hit@3": {
+        "mean": 0.8,
+        "ci95": [
+          0.6,
+          0.95
+        ]
+      },
+      "hit@5": {
+        "mean": 0.8,
+        "ci95": [
+          0.6,
+          0.95
+        ]
+      },
+      "hit@10": {
+        "mean": 0.85,
+        "ci95": [
+          0.7,
+          1.0
+        ]
+      },
+      "recall@1": {
+        "mean": 0.65,
+        "ci95": [
+          0.4,
+          0.85
+        ]
+      },
+      "recall@3": {
+        "mean": 0.8,
+        "ci95": [
+          0.6,
+          0.95
+        ]
+      },
+      "recall@5": {
+        "mean": 0.8,
+        "ci95": [
+          0.6,
+          0.95
+        ]
+      },
+      "recall@10": {
+        "mean": 0.85,
+        "ci95": [
+          0.7,
+          1.0
+        ]
+      },
+      "ndcg@1": {
+        "mean": 0.65,
+        "ci95": [
+          0.4,
+          0.85
+        ]
+      },
+      "ndcg@3": {
+        "mean": 0.7380929753571458,
+        "ci95": [
+          0.5565464876785728,
+          0.8880929753571458
+        ]
+      },
+      "ndcg@5": {
+        "mean": 0.7380929753571458,
+        "ci95": [
+          0.5565464876785728,
+          0.8880929753571458
+        ]
+      },
+      "ndcg@10": {
+        "mean": 0.7525462166730401,
+        "ci95": [
+          0.5735459456675074,
+          0.9025462166730401
+        ]
+      }
+    },
+    "by_type": {
+      "deadline": {
+        "n": 1,
+        "hit@5": 0.0,
+        "recall@5": 0.0,
+        "mrr": 0.0
+      },
+      "eligibility": {
+        "n": 4,
+        "hit@5": 0.5,
+        "recall@5": 0.5,
+        "mrr": 0.4
+      },
+      "fact": {
+        "n": 8,
+        "hit@5": 0.875,
+        "recall@5": 0.875,
+        "mrr": 0.7291666666666666
+      },
+      "numeric": {
+        "n": 5,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "procedure": {
+        "n": 2,
+        "hit@5": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    "abstention": {
+      "auc": 0.80625,
+      "answerable_top_score": {
+        "min": 0.0,
+        "median": 3.958757338693368,
+        "max": 9.298731165798491
+      },
+      "unanswerable_top_score": {
+        "min": 0.0,
+        "median": 1.802293953082624,
+        "max": 4.29643397696717
+      },
+      "sweep": []
+    },
+    "failures": [
+      {
+        "id": "h13",
+        "question": "do i lose my free ride if my grades slip",
+        "type": "eligibility",
+        "gold": [
+          [
+            "scholarships",
+            1
+          ]
+        ],
+        "top_retrieved": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ]
+        ],
+        "first_gold_rank": null
+      },
+      {
+        "id": "h15",
+        "question": "what happens if i get caught cheating",
+        "type": "fact",
+        "gold": [
+          [
+            "exam_regulations",
+            1
+          ]
+        ],
+        "top_retrieved": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ]
+        ],
+        "first_gold_rank": null
+      },
+      {
+        "id": "h17",
+        "question": "who gets a room by themselves",
+        "type": "eligibility",
+        "gold": [
+          [
+            "hostel_rules",
+            1
+          ]
+        ],
+        "top_retrieved": [
+          [
+            "fee_policy",
+            1,
+            1.8076
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.7903
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ]
+        ],
+        "first_gold_rank": 10
+      },
+      {
+        "id": "h19",
+        "question": "when will i know my marks",
+        "type": "deadline",
+        "gold": [
+          [
+            "exam_regulations",
+            1
+          ]
+        ],
+        "top_retrieved": [
+          [
+            "exam_regulations",
+            2,
+            3.8227
+          ],
+          [
+            "exam_regulations",
+            2,
+            3.0422
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ]
+        ],
+        "first_gold_rank": null
+      }
+    ],
+    "latency_ms": {
+      "p50": 0.10615000064717606,
+      "p95": 0.14947499948902987
+    },
+    "build_seconds": 0.001667700009420514,
+    "retriever": {
+      "retriever": "bm25",
+      "k1": 1.5,
+      "b": 0.75,
+      "chunk_size": 500,
+      "chunk_overlap": 100,
+      "num_chunks": 23
+    },
+    "followups": "raw",
+    "per_question": [
+      {
+        "id": "h01",
+        "question": "AR-3",
+        "searched": "AR-3",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "attendance_rules",
+            2
+          ]
+        ],
+        "top_score": 4.43158611938615,
+        "ranked": [
+          [
+            "attendance_rules",
+            2,
+            4.4316
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.15279999934136868,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h02",
+        "question": "form F-7 where to submit",
+        "searched": "form F-7 where to submit",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "fee_policy",
+            2
+          ]
+        ],
+        "top_score": 5.508765209927989,
+        "ranked": [
+          [
+            "fee_policy",
+            2,
+            5.5088
+          ],
+          [
+            "hostel_rules",
+            1,
+            3.3789
+          ],
+          [
+            "attendance_rules",
+            2,
+            3.3462
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.7903
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.12909999350085855,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h03",
+        "question": "Tahsildar certificate",
+        "searched": "Tahsildar certificate",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "scholarships",
+            2
+          ]
+        ],
+        "top_score": 3.5882722350927203,
+        "ranked": [
+          [
+            "scholarships",
+            2,
+            3.5883
+          ],
+          [
+            "hostel_rules",
+            2,
+            2.8379
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.3378
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.325
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.1044000091496855,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h04",
+        "question": "No Dues certificate",
+        "searched": "No Dues certificate",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_score": 6.672264275745736,
+        "ranked": [
+          [
+            "hostel_rules",
+            2,
+            6.6723
+          ],
+          [
+            "hostel_rules",
+            2,
+            3.1153
+          ],
+          [
+            "scholarships",
+            2,
+            1.3509
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.3378
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.10379999002907425,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h05",
+        "question": "Rs. 10,000",
+        "searched": "Rs. 10,000",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_score": 4.441446795507254,
+        "ranked": [
+          [
+            "hostel_rules",
+            2,
+            4.4414
+          ],
+          [
+            "fee_policy",
+            1,
+            3.206
+          ],
+          [
+            "attendance_rules",
+            2,
+            2.7677
+          ],
+          [
+            "hostel_rules",
+            1,
+            2.7375
+          ],
+          [
+            "placement_policy",
+            2,
+            2.3753
+          ],
+          [
+            "scholarships",
+            2,
+            1.856
+          ],
+          [
+            "exam_regulations",
+            2,
+            1.7056
+          ],
+          [
+            "fee_policy",
+            1,
+            1.5902
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.575
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.3457
+          ]
+        ],
+        "latency_ms": 0.10999999358318746,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h06",
+        "question": "Block A Room 12 accounts",
+        "searched": "Block A Room 12 accounts",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "fee_policy",
+            1
+          ]
+        ],
+        "top_score": 8.04669061437927,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            8.0467
+          ],
+          [
+            "fee_policy",
+            2,
+            1.7903
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.7903
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.10040000779554248,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h07",
+        "question": "65 percent",
+        "searched": "65 percent",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "attendance_rules",
+            2
+          ]
+        ],
+        "top_score": 4.094785033447521,
+        "ranked": [
+          [
+            "attendance_rules",
+            2,
+            4.0948
+          ],
+          [
+            "attendance_rules",
+            2,
+            3.6888
+          ],
+          [
+            "scholarships",
+            1,
+            1.3333
+          ],
+          [
+            "scholarships",
+            2,
+            1.2672
+          ],
+          [
+            "attendance_rules",
+            1,
+            1.1923
+          ],
+          [
+            "scholarships",
+            1,
+            1.1392
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7944
+          ],
+          [
+            "scholarships",
+            2,
+            0.7479
+          ],
+          [
+            "fee_policy",
+            2,
+            0.7336
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.10240000847261399,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h08",
+        "question": "Rs. 300 photocopy",
+        "searched": "Rs. 300 photocopy",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "exam_regulations",
+            2
+          ]
+        ],
+        "top_score": 4.84125205041351,
+        "ranked": [
+          [
+            "exam_regulations",
+            2,
+            4.8413
+          ],
+          [
+            "fee_policy",
+            1,
+            1.3733
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.0602
+          ],
+          [
+            "placement_policy",
+            2,
+            0.9868
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.9839
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7086
+          ],
+          [
+            "scholarships",
+            2,
+            0.6671
+          ],
+          [
+            "fee_policy",
+            1,
+            0.6607
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.6607
+          ],
+          [
+            "hostel_rules",
+            2,
+            0.6543
+          ]
+        ],
+        "latency_ms": 0.12439998681657016,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h09",
+        "question": "CGPA 6.5 placement",
+        "searched": "CGPA 6.5 placement",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "placement_policy",
+            1
+          ]
+        ],
+        "top_score": 9.298731165798491,
+        "ranked": [
+          [
+            "placement_policy",
+            1,
+            9.2987
+          ],
+          [
+            "scholarships",
+            1,
+            4.3491
+          ],
+          [
+            "placement_policy",
+            2,
+            2.7829
+          ],
+          [
+            "placement_policy",
+            1,
+            2.7225
+          ],
+          [
+            "fee_policy",
+            1,
+            2.3949
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.10520000068936497,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h10",
+        "question": "10 lakh",
+        "searched": "10 lakh",
+        "type": "numeric",
+        "answerable": true,
+        "gold": [
+          [
+            "placement_policy",
+            2
+          ]
+        ],
+        "top_score": 4.698079820709686,
+        "ranked": [
+          [
+            "placement_policy",
+            2,
+            4.6981
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.4917
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.3457
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.997
+          ],
+          [
+            "fee_policy",
+            1,
+            0.9296
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.9296
+          ],
+          [
+            "hostel_rules",
+            2,
+            0.9207
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.10380000458098948,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h11",
+        "question": "can i get out of the dorm after the curfew if i tell the warden first",
+        "searched": "can i get out of the dorm after the curfew if i tell the warden first",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_score": 3.6393988465017797,
+        "ranked": [
+          [
+            "exam_regulations",
+            2,
+            3.6394
+          ],
+          [
+            "hostel_rules",
+            2,
+            3.3489
+          ],
+          [
+            "fee_policy",
+            2,
+            2.7368
+          ],
+          [
+            "hostel_rules",
+            1,
+            2.6078
+          ],
+          [
+            "hostel_rules",
+            2,
+            2.4692
+          ],
+          [
+            "fee_policy",
+            1,
+            1.8327
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.5547
+          ],
+          [
+            "fee_policy",
+            1,
+            1.1774
+          ],
+          [
+            "placement_policy",
+            2,
+            1.1551
+          ],
+          [
+            "exam_regulations",
+            1,
+            1.1434
+          ]
+        ],
+        "latency_ms": 0.12270000297576189,
+        "metrics": {
+          "mrr": 0.5,
+          "hit@1": 0.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.6309297535714575,
+          "ndcg@5": 0.6309297535714575,
+          "ndcg@10": 0.6309297535714575
+        }
+      },
+      {
+        "id": "h12",
+        "question": "my exam paper got graded too low, what can i do",
+        "searched": "my exam paper got graded too low, what can i do",
+        "type": "procedure",
+        "answerable": true,
+        "gold": [
+          [
+            "exam_regulations",
+            2
+          ]
+        ],
+        "top_score": 3.042220635282157,
+        "ranked": [
+          [
+            "exam_regulations",
+            2,
+            3.0422
+          ],
+          [
+            "exam_regulations",
+            2,
+            1.9387
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.11969999468419701,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h13",
+        "question": "do i lose my free ride if my grades slip",
+        "searched": "do i lose my free ride if my grades slip",
+        "type": "eligibility",
+        "answerable": true,
+        "gold": [
+          [
+            "scholarships",
+            1
+          ]
+        ],
+        "top_score": 0.0,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.10900000052060932,
+        "metrics": {
+          "mrr": 0.0,
+          "hit@1": 0.0,
+          "hit@3": 0.0,
+          "hit@5": 0.0,
+          "hit@10": 0.0,
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "recall@10": 0.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.0,
+          "ndcg@5": 0.0,
+          "ndcg@10": 0.0
+        }
+      },
+      {
+        "id": "h14",
+        "question": "i got a job offer, can i still apply elsewhere",
+        "searched": "i got a job offer, can i still apply elsewhere",
+        "type": "eligibility",
+        "answerable": true,
+        "gold": [
+          [
+            "placement_policy",
+            2
+          ]
+        ],
+        "top_score": 8.827670998453705,
+        "ranked": [
+          [
+            "placement_policy",
+            2,
+            8.8277
+          ],
+          [
+            "exam_regulations",
+            2,
+            1.9387
+          ],
+          [
+            "fee_policy",
+            2,
+            1.7903
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.10710000060498714,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h15",
+        "question": "what happens if i get caught cheating",
+        "searched": "what happens if i get caught cheating",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "exam_regulations",
+            1
+          ]
+        ],
+        "top_score": 0.0,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.09780000254977494,
+        "metrics": {
+          "mrr": 0.0,
+          "hit@1": 0.0,
+          "hit@3": 0.0,
+          "hit@5": 0.0,
+          "hit@10": 0.0,
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "recall@10": 0.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.0,
+          "ndcg@5": 0.0,
+          "ndcg@10": 0.0
+        }
+      },
+      {
+        "id": "h16",
+        "question": "i skipped a lot of classes because of a hospital stay, any hope",
+        "searched": "i skipped a lot of classes because of a hospital stay, any hope",
+        "type": "eligibility",
+        "answerable": true,
+        "gold": [
+          [
+            "attendance_rules",
+            2
+          ]
+        ],
+        "top_score": 2.7194847944566702,
+        "ranked": [
+          [
+            "fee_policy",
+            2,
+            2.7195
+          ],
+          [
+            "attendance_rules",
+            2,
+            2.2274
+          ],
+          [
+            "attendance_rules",
+            1,
+            1.959
+          ],
+          [
+            "scholarships",
+            1,
+            1.569
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.5387
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.11609999637585133,
+        "metrics": {
+          "mrr": 0.5,
+          "hit@1": 0.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.6309297535714575,
+          "ndcg@5": 0.6309297535714575,
+          "ndcg@10": 0.6309297535714575
+        }
+      },
+      {
+        "id": "h17",
+        "question": "who gets a room by themselves",
+        "searched": "who gets a room by themselves",
+        "type": "eligibility",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            1
+          ]
+        ],
+        "top_score": 1.8075522474965593,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            1.8076
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.7903
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.9840999991865829,
+        "metrics": {
+          "mrr": 0.1,
+          "hit@1": 0.0,
+          "hit@3": 0.0,
+          "hit@5": 0.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.0,
+          "ndcg@5": 0.0,
+          "ndcg@10": 0.2890648263178879
+        }
+      },
+      {
+        "id": "h18",
+        "question": "what proof of earnings do poor families need to show",
+        "searched": "what proof of earnings do poor families need to show",
+        "type": "procedure",
+        "answerable": true,
+        "gold": [
+          [
+            "scholarships",
+            2
+          ]
+        ],
+        "top_score": 3.382868469140509,
+        "ranked": [
+          [
+            "scholarships",
+            2,
+            3.3829
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.13279999257065356,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "h19",
+        "question": "when will i know my marks",
+        "searched": "when will i know my marks",
+        "type": "deadline",
+        "answerable": true,
+        "gold": [
+          [
+            "exam_regulations",
+            1
+          ]
+        ],
+        "top_score": 3.822729643939215,
+        "ranked": [
+          [
+            "exam_regulations",
+            2,
+            3.8227
+          ],
+          [
+            "exam_regulations",
+            2,
+            3.0422
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.11159999121446162,
+        "metrics": {
+          "mrr": 0.0,
+          "hit@1": 0.0,
+          "hit@3": 0.0,
+          "hit@5": 0.0,
+          "hit@10": 0.0,
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "recall@10": 0.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.0,
+          "ndcg@5": 0.0,
+          "ndcg@10": 0.0
+        }
+      },
+      {
+        "id": "h20",
+        "question": "can my girlfriend visit me in my room in the evening",
+        "searched": "can my girlfriend visit me in my room in the evening",
+        "type": "fact",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_score": 2.401432708931754,
+        "ranked": [
+          [
+            "placement_policy",
+            1,
+            2.4014
+          ],
+          [
+            "fee_policy",
+            1,
+            1.8076
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.7903
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.11500000255182385,
+        "metrics": {
+          "mrr": 0.3333333333333333,
+          "hit@1": 0.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.5,
+          "ndcg@5": 0.5,
+          "ndcg@10": 0.5
+        }
+      },
+      {
+        "id": "hu01",
+        "question": "How do I apply for a passport?",
+        "searched": "How do I apply for a passport?",
+        "type": "out_of_scope",
+        "answerable": false,
+        "gold": [],
+        "top_score": 2.2374131003886424,
+        "ranked": [
+          [
+            "hostel_rules",
+            1,
+            2.2374
+          ],
+          [
+            "exam_regulations",
+            2,
+            1.9387
+          ],
+          [
+            "fee_policy",
+            2,
+            1.7903
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.09929999941959977
+      },
+      {
+        "id": "hu02",
+        "question": "What is the canteen menu on Fridays?",
+        "searched": "What is the canteen menu on Fridays?",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 0.0,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.09200000204145908
+      },
+      {
+        "id": "hu03",
+        "question": "Rs. 5 lakh",
+        "searched": "Rs. 5 lakh",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 4.29643397696717,
+        "ranked": [
+          [
+            "placement_policy",
+            2,
+            4.2964
+          ],
+          [
+            "fee_policy",
+            1,
+            3.7682
+          ],
+          [
+            "placement_policy",
+            1,
+            1.6676
+          ],
+          [
+            "scholarships",
+            1,
+            1.569
+          ],
+          [
+            "exam_regulations",
+            2,
+            1.1119
+          ],
+          [
+            "hostel_rules",
+            2,
+            1.0602
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.9839
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7086
+          ],
+          [
+            "scholarships",
+            2,
+            0.6671
+          ],
+          [
+            "fee_policy",
+            1,
+            0.6607
+          ]
+        ],
+        "latency_ms": 0.10109999857377261
+      },
+      {
+        "id": "hu04",
+        "question": "Form F-9",
+        "searched": "Form F-9",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 3.718512112425964,
+        "ranked": [
+          [
+            "fee_policy",
+            2,
+            3.7185
+          ],
+          [
+            "scholarships",
+            1,
+            2.2595
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.5537
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.5387
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.09460000728722662
+      },
+      {
+        "id": "hu05",
+        "question": "how do i get a library card",
+        "searched": "how do i get a library card",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 1.9797220842513061,
+        "ranked": [
+          [
+            "exam_regulations",
+            1,
+            1.9797
+          ],
+          [
+            "fee_policy",
+            1,
+            1.8076
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.09100000897888094
+      },
+      {
+        "id": "hu06",
+        "question": "who is the vice chancellor",
+        "searched": "who is the vice chancellor",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 0.0,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.08749999688006938
+      },
+      {
+        "id": "hu07",
+        "question": "best pizza place nearby",
+        "searched": "best pizza place nearby",
+        "type": "out_of_scope",
+        "answerable": false,
+        "gold": [],
+        "top_score": 0.0,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            1,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.08990000060293823
+      },
+      {
+        "id": "hu08",
+        "question": "what is the parking fee for cars",
+        "searched": "what is the parking fee for cars",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "gold": [],
+        "top_score": 1.624865821913942,
+        "ranked": [
+          [
+            "fee_policy",
+            1,
+            1.6249
+          ],
+          [
+            "fee_policy",
+            1,
+            1.5821
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.5547
+          ],
+          [
+            "exam_regulations",
+            2,
+            1.1197
+          ],
+          [
+            "hostel_rules",
+            1,
+            1.0541
+          ],
+          [
+            "attendance_rules",
+            2,
+            1.0439
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "fee_policy",
+            2,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.0
+          ]
+        ],
+        "latency_ms": 0.1432999997632578
+      }
+    ]
+  }
+}

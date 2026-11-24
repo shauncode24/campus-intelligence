@@ -117,7 +117,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--pages", required=True)
     ap.add_argument("--questions", required=True)
-    ap.add_argument("--retriever", default="production", choices=["production", "bm25"])
+    ap.add_argument("--retriever", default="production", choices=["production", "bm25", "hybrid", "rerank"])
     ap.add_argument("--embedding-backend", default=None, help="bge-small | clip (production retriever only)")
     ap.add_argument("--followups", default="raw", choices=ev.FOLLOWUP_MODES,
                     help="raw: follow-ups searched as typed | oracle: hand-written ideal rewrite | "
@@ -150,7 +150,7 @@ def main():
 
     from retrievers import RETRIEVERS
     cls = RETRIEVERS[args.retriever]
-    retriever = cls(args.embedding_backend) if args.retriever == "production" else cls()
+    retriever = cls() if args.retriever == "bm25" else cls(args.embedding_backend)
 
     if args.followups == "rewrite":
         from services.query_condenser import query_condenser
