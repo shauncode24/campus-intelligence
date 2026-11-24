@@ -40,6 +40,7 @@ from database.storage_service import storage_service
 from services.embedding_service import embedding_service
 from services.pdf_processor import pdf_processor
 from services.retrieval_service import retrieval_service
+from services.vector_index import vector_index
 from services.llm_service import llm_service, is_not_found, could_still_be_not_found
 from services.query_condenser import query_condenser, needs_condensing, CondenseResult
 from services.ingestion import ingestion_manager, fail_interrupted_jobs
@@ -358,8 +359,7 @@ async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=N
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
 
-        print(f"\n🔍 Query: {request.question}")
-        print(f"👤 User: {user_id}")
+        # No question text or user id in logs (privacy); the per-question JSON log has stages and cost.
         
         # Follow-ups: if the question leans on earlier turns, rewrite it into a
         # standalone question. History is used only for that, never as evidence.
@@ -392,7 +392,7 @@ async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=N
                                      ("documentType", request.documentType)) if v}
         cacheable = condensed.resolved and not filters and not request.documentIds
         if standalone_note:
-            print(f"✏️ Understood as: {question}")
+            print("✏️ Follow-up rewritten into a standalone question")
 
         obs.mark("condense")
         # Detect intent
@@ -675,21 +675,14 @@ async def admin_metrics(admin_id: str = Depends(require_admin)):
 
 @app.get("/health", response_model=HealthResponse)
 def health_check():
-    """Health check endpoint (reads the database; use /healthz for frequent liveness checks)"""
-    chunk_count = 0
-    
-    if firebase_client.is_connected:
-        try:
-            db = firebase_client.db
-            chunks_ref = db.collection('chunks')
-            # select([]) downloads only the document ids: chunks carry large embedding vectors
-            chunk_count = len(list(chunks_ref.select([]).limit(1000).stream()))
-        except Exception as e:
-            print(f"Error counting chunks: {e}")
-    
+    """
+    Public status. It makes NO database reads (anyone can call it, and each read is billed):
+    `chunks_in_firebase` is the number of passages in this process's in-memory search index,
+    which is 0 until the first question has loaded it.
+    """
     return HealthResponse(
         status="healthy",
-        chunks_in_firebase=chunk_count,
+        chunks_in_firebase=vector_index.size,
         model=f"{embedding_service.model_id} + {Config.GEMINI_MODEL_NAME}",
         firebase_connected=firebase_client.is_connected
     )
@@ -718,7 +711,7 @@ async def get_user_history(
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
 
-        print(f"📖 Fetching history for user: {user_id} (limit: {limit}, favorites_only: {favorites_only})")
+        print(f"📖 Fetching history (limit: {limit}, favorites_only: {favorites_only})")
         history = await cache_repository.get_user_history(user_id, limit, favorites_only)
         print(f"✅ Returning {len(history)} history items")
 
@@ -739,7 +732,7 @@ async def toggle_favorite(historyId: str, user_id: str = Depends(get_current_use
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
 
-        print(f"⭐ Toggling favorite for history {historyId} (user: {user_id})")
+        print("⭐ Toggling favorite")
 
         new_status = await cache_repository.toggle_favorite(user_id, historyId)
         
@@ -765,7 +758,7 @@ async def delete_user_question(historyId: str, user_id: str = Depends(get_curren
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
 
-        print(f"🗑️ Attempting to delete history {historyId} for user {user_id}")
+        print("🗑️ Attempting to delete a history item")
 
         success = await cache_repository.delete_user_question(user_id, historyId)
         
@@ -784,9 +777,11 @@ async def delete_user_question(historyId: str, user_id: str = Depends(get_curren
         raise internal_error(e)
 
 
-@app.get("/documents/{documentId}/exists")
-def check_document_exists(documentId: str):
-    """Check if a document exists in Firebase"""
+@app.get("/documents/{documentId}/exists", dependencies=[Depends(general_user_limit)])
+def check_document_exists(documentId: str, user_id: str = Depends(get_current_user_id)):
+    """Does this document still exist? (signed-in users only: it greys out deleted sources in History)"""
+    if len(documentId) > 128 or "/" in documentId:
+        return {"exists": False, "documentId": documentId[:128]}
     try:
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
@@ -795,8 +790,7 @@ def check_document_exists(documentId: str):
         doc_ref = db.collection('documents').document(documentId).get()
         
         exists = doc_ref.exists
-        print(f"📄 Document {documentId} exists: {exists}")
-        
+
         return {"exists": exists, "documentId": documentId}
         
     except Exception as e:

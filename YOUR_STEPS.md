@@ -522,13 +522,17 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 - ☐ **The 34 MB `GDG_OnCampus_Video.mp4`** is in git history and on GitHub (P0-9). Options: leave it; or ask Claude
   to prepare a history rewrite (`git filter-repo --path GDG_OnCampus_Video.mp4 --invert-paths` + force push;
   affects every clone, so only with your explicit go-ahead). Do **not** commit the file again (`*.mp4` is ignored).
-- ☐ **Put the Python service on a private network / behind Node** when deploying (P0-3): `/faq`, `/health` and
-  `/documents/{id}/exists` are still open.
+- ☐ **Put the Python service on a private network / behind Node** when deploying: its chat and history routes are
+  called by the browser directly, so it must be reachable by browsers, but nothing else needs to be. `/health` and
+  `/faq` are cheap now (no reads / one read a minute) and `/documents/{id}/exists` needs sign-in (fresh P0-4).
 - ☐ **Old data:** answers cached or saved before P0-4/P0-5 may contain stale page numbers. Clear the `questions`
   collection (the answer cache) in the Firebase console. Old chats' answers have no Save button (P1-5); old guest
   chats from before P0-1 are unreachable.
-- ☐ **Supabase bucket policies:** the browser still uploads with the public key (P0-3 limit). Check in Supabase that
-  only the `documents` bucket allows public *read* and who may *write*; paste the policies to Claude if unsure.
+- ☐ **Supabase bucket policies (fresh P0-1, REQUIRED):** uploads now use a one-time signed link from the server, so the
+  bucket must allow public *read* only. In Supabase → Storage → Policies → bucket `documents`: delete any policy that
+  allows INSERT/UPDATE/DELETE for `anon`/`public`. Set a file-size limit (e.g. 50 MB) and allowed type
+  `application/pdf` in the bucket settings. Then check: `curl -X POST "https://<ref>.supabase.co/storage/v1/object/documents/x.pdf" -H "apikey: <anon key>" -H "Authorization: Bearer <anon key>" -H "Content-Type: application/pdf" --data-binary @any.pdf` must answer 400/403 (row-level security), and an admin upload in the app must still work.
+  **`SUPABASE_SERVICE_ROLE_KEY` must be set in the backend env, or uploads answer 503.**
 - ☐ **Tune the limit numbers** (rate limits, daily Gemini budget) after you see real traffic (P0-7).
 - ☐ **Counters are per process** (rate limits reset on restart; multiple instances do not share them).
 - ☐ **Run exactly one Python instance** (P1-6): the processing queue and the start-up cleanup of interrupted jobs live
@@ -599,6 +603,7 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 
 ## Change log of this file
 
+- **After fresh-audit P0-1 … P0-4:** commit message given in chat. **Do these, in this order:** (1) put `SUPABASE_SERVICE_ROLE_KEY` in the backend env file (uploads answer 503 without it) and restart Node; (2) in Supabase, remove every anonymous INSERT/UPDATE/DELETE policy on the `documents` bucket and set a size limit and `application/pdf` type (section 11); (3) restart Node and Python (the Python service now trusts `X-Client-IP` from `127.0.0.1`/`::1`; in Docker set `TRUSTED_PROXY_IPS` to the Node container's address); (4) smoke test: upload a PDF as admin, ask a question, open History (sources of deleted documents are still greyed out). Nothing to install except that the project's `backend/venv` was missing the Python packages and I ran `pip install -r backend/python/requirements.txt` in it.
 - **After P1-5:** file created; covers P0-1 … P1-5.
 - **After the identical-questions fix:** commit message above; nothing to install. Behaviour change you may notice: if several people ask the same new question at the same second, all but one get their answer all at once when the first finishes, instead of streaming.
 - **After P2-6:** commit message for P2-6; nothing to install. Optional: run it yourself with `backend\venv\Scripts\python.exe loadtests\run.py --check-budgets` (about 4 minutes, uses ~1.5 GB RAM; do not run other heavy things at the same time, the numbers will be 3-5x worse); commit `loadtests\results\history.jsonl` if you want a history. After pushing to GitHub, run the "Load tests" workflow once by hand (Actions tab) and tell me if a budget fails on the CI machine. **Real load testing is still yours to do:** against the deployed service with real Gemini, using a dedicated test account and a spend-capped key (see `loadtests/README.md`, "Next step").

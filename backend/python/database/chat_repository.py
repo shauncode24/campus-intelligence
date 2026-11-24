@@ -99,7 +99,7 @@ class ChatRepository:
                     'messageCount': chat_data.get('messageCount', 0)
                 })
             
-            print(f"📋 Retrieved {len(chat_list)} chats for user {user_id}")
+            print(f"📋 Retrieved {len(chat_list)} chats")
             return chat_list
             
         except Exception as e:
@@ -124,7 +124,7 @@ class ChatRepository:
             return False
         
         try:
-            print(f"🗑️ Starting deletion of chat {chat_id} for user {user_id}")
+            print("🗑️ Starting deletion of a chat")
             
             # Step 1: Verify the chat exists and belongs to the user
             chat_ref = db.collection('chats').document(chat_id)
@@ -136,7 +136,7 @@ class ChatRepository:
             
             chat_data = chat_doc.to_dict()
             if chat_data.get('userId') != user_id:
-                print(f"⚠️ User {user_id} not authorized to delete chat {chat_id}")
+                print("⚠️ User not authorized to delete this chat")
                 return False
             
             print(f"✅ Chat verified, proceeding with deletion")
@@ -205,7 +205,7 @@ class ChatRepository:
             
             chat_data = chat_doc.to_dict()
             if chat_data.get('userId') != user_id:
-                print(f"⚠️ User {user_id} not authorized to update chat {chat_id}")
+                print("⚠️ User not authorized to update this chat")
                 return False
             
             chat_ref.update({

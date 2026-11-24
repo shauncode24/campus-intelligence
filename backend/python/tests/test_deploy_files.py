@@ -151,11 +151,20 @@ class TestLiveness(IngestCase):
             firebase_client._db = original
         self.assertEqual((r.status_code, r.json()), (200, {"status": "ok"}))
 
-    def test_health_still_reports_the_chunk_count(self):
-        for i in range(3):
-            self.db.collection("chunks").document(f"c{i}").set({"documentId": "d", "embedding": [0.1] * 4})
-        body = quiet(self.http.get, "/health").json()
-        self.assertEqual((body["status"], body["chunks_in_firebase"]), ("healthy", 3))
+    def test_health_is_public_and_costs_no_database_reads(self):
+        """P0-4: anyone can call /health, so it must not bill a read per call."""
+        class Exploding:
+            def collection(self, *_):
+                raise AssertionError("/health must not read the database")
+        original = firebase_client._db
+        firebase_client._db = Exploding()
+        try:
+            r = quiet(self.http.get, "/health")
+        finally:
+            firebase_client._db = original
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["status"], "healthy")
+        self.assertIn("chunks_in_firebase", r.json())
 
 
 if __name__ == "__main__":

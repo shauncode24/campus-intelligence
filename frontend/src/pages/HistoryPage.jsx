@@ -8,9 +8,9 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useApp } from "../contexts/AppContext";
 import { handleError } from "../utils/errors";
+import { apiFetch } from "../utils/api";
 import { parseTimestamp } from "../utils/validation";
 import Spinner from "../components/Loading/Spinner";
-import { apiFetch } from "../utils/api";
 
 const VITE_PYTHON_RAG_URL =
   import.meta.env.VITE_PYTHON_RAG_URL || "http://localhost:8000";
@@ -58,7 +58,7 @@ export default function HistoryPage() {
     // Check all documents in parallel
     const checks = Array.from(uniqueDocIds).map(async (docId) => {
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `${VITE_PYTHON_RAG_URL}/documents/${docId}/exists`
         );
         const data = await response.json();

@@ -260,17 +260,26 @@ export default function UploadDocument() {
       log: "Uploading file to storage...",
     });
 
-    const safeName = file.name.replace(/[^A-Za-z0-9._-]+/g, "_");
-    const filePath = `${Date.now()}_${safeName}`;
+    // The server (admin-only) issues a one-time signed upload target; the storage bucket
+    // itself accepts no anonymous writes.
+    const signed = await apiFetch(`${VITE_API_BASE_URL}/documents/upload-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: file.name }),
+    });
+    if (!signed.ok) {
+      const err = await signed.json().catch(() => ({}));
+      throw new Error(err.message || err.error || "Could not start the upload");
+    }
+    const { path, token, fileUrl } = await signed.json();
+
     const { error } = await supabase.storage
       .from("documents")
-      .upload(filePath, file);
+      .uploadToSignedUrl(path, token, file, { contentType: "application/pdf" });
 
     if (error) throw error;
 
-    const { data } = supabase.storage.from("documents").getPublicUrl(filePath);
-
-    return data.publicUrl;
+    return fileUrl;
   };
 
   const createFirestoreDocument = async (file, fileUrl) => {

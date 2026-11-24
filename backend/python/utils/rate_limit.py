@@ -58,7 +58,16 @@ limiter = SlidingWindowLimiter()
 
 
 def client_ip(request: Request) -> str:
-    """Caller IP. X-Forwarded-For is only trusted when TRUST_PROXY is set."""
+    """
+    Caller IP. Two headers are believed, each only from a caller we trust:
+    `X-Client-IP` (set by our own Node API, which saw the real client) when the direct caller is in
+    TRUSTED_PROXY_IPS, and `X-Forwarded-For` when TRUST_PROXY is set (a reverse proxy in front).
+    """
+    peer = request.client.host if request.client else None
+    if peer and peer in Config.TRUSTED_PROXY_IPS:
+        forwarded_ip = (request.headers.get("x-client-ip") or "").strip()
+        if forwarded_ip and len(forwarded_ip) <= 64:
+            return forwarded_ip
     if Config.TRUST_PROXY:
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:

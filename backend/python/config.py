@@ -136,6 +136,14 @@ class Config:
     # this when a trusted proxy sets that header, otherwise it can be spoofed.
     TRUST_PROXY = os.getenv("TRUST_PROXY", "").lower() in ("1", "true", "yes")
 
+    # The Node API forwards each student's real IP in `X-Client-IP` (without it every student
+    # looks like the Node server and shares one rate-limit bucket). That header is believed
+    # ONLY when the direct caller is one of these addresses; from anyone else it is ignored.
+    # Default: this machine. In Docker, add the Node container's address or network.
+    TRUSTED_PROXY_IPS = [
+        ip.strip() for ip in os.getenv("TRUSTED_PROXY_IPS", "127.0.0.1,::1").split(",") if ip.strip()
+    ]
+
     # Rate limits (requests per minute unless stated). 0 disables a limit.
     # These are starting points, not tuned values: adjust to real traffic.
     # Per-IP limits are deliberately generous because a whole campus can share

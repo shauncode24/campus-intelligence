@@ -7,7 +7,7 @@ import { adminUserLimiter } from "../middleware/rateLimit.js";
 import { failInternal } from "../utils/httpErrors.js";
 import { validateFileUrl } from "../utils/fileUrl.js";
 import { deleteChunksForDocument, invalidateCachedAnswers, bumpCorpusEpoch } from "../services/documentCleanup.js";
-import { deleteDocumentFile } from "../services/fileStorage.js";
+import { deleteDocumentFile, createSignedUploadTarget } from "../services/fileStorage.js";
 
 const router = express.Router();
 const PYTHON_RAG_URL = process.env.PYTHON_RAG_URL || "http://localhost:8000";
@@ -44,6 +44,30 @@ function validateMetadata(metadata) {
   }
   return errors;
 }
+
+/**
+ * POST /documents/upload-url
+ * Returns a one-time signed upload target for the storage bucket. The browser uploads the
+ * PDF with it (supabase.storage.uploadToSignedUrl), so the bucket needs no anonymous
+ * write access at all.
+ */
+router.post("/upload-url", async (req, res) => {
+  const fileName = req.body && req.body.fileName;
+  if (typeof fileName !== "string" || !/\.pdf$/i.test(fileName.trim()) || fileName.length > 300) {
+    return res.status(400).json({ error: "Invalid fileName", message: "fileName must be a .pdf file name" });
+  }
+  const target = await createSignedUploadTarget(fileName.trim());
+  if (!target.ok) {
+    console.error(`Could not create a signed upload URL: ${target.reason}`);
+    return res.status(target.status).json({
+      error: "Upload is not available",
+      message: target.status === 503
+        ? "Uploads are not configured on the server (missing storage key)."
+        : "The storage service refused the request. Try again.",
+    });
+  }
+  res.json({ path: target.path, token: target.token, fileUrl: target.publicUrl });
+});
 
 /**
  * POST /documents

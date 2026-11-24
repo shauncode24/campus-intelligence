@@ -18,7 +18,6 @@ PUBLIC = {
     ("GET", "/healthz"),                         # liveness only
     ("GET", "/health"),                          # counts and model name; no user data
     ("GET", "/faq"),                             # admin-curated, published FAQ
-    ("GET", "/documents/{documentId}/exists"),   # only whether an id exists
 }
 
 # Need the admin claim (a signed-in ordinary user gets 403)

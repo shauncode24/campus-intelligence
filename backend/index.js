@@ -117,8 +117,7 @@ app.post(
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    console.log(`🔍 Querying Python RAG service: ${question}`);
-    console.log(`👤 User: ${effectiveUserId}`);
+    // No question text or user id in logs (privacy); requests are traced by request id.
     console.log(`🔗 Python RAG URL: ${pythonRagUrl}`);
 
     // Build request body (no user id: Python derives it from the token)
@@ -148,6 +147,9 @@ app.post(
         "Content-Type": "application/json",
         Authorization: `Bearer ${req.authToken}`,
         "X-Request-ID": req.id,
+        // The real caller's address, so the RAG service's per-IP limits apply per student
+        // and not to this server (it only believes this header from TRUSTED_PROXY_IPS).
+        "X-Client-IP": req.ip || "",
       },
       body: JSON.stringify(requestBody),
       signal: upstream.signal,

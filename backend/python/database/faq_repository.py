@@ -7,15 +7,37 @@ personal circumstances, and an answer cached for one person is not a published
 fact. The `questions` collection is an internal answer cache and is not read
 here.
 """
+import time
+
 from database.firebase_client import firebase_client
 
 MAX_PUBLIC_FAQS = 200
 
 
+# The page is public, so a crowd must not turn into a crowd of database reads: the published
+# list is kept for this long (an admin's edit shows up within it).
+CACHE_SECONDS = 60
+
+
 class FaqRepository:
-    @staticmethod
-    def get_published(limit: int = 50):
+    _cache = None            # (loaded_at, all published entries)
+
+    @classmethod
+    def get_published(cls, limit: int = 50):
         """Published FAQs in the order the admins set (then oldest first)."""
+        if not firebase_client.db:
+            return []                      # nothing to keep: do not cache "no database"
+        now = time.monotonic()
+        if cls._cache is None or now - cls._cache[0] >= CACHE_SECONDS:
+            cls._cache = (now, cls._load())
+        return cls._cache[1][:limit]
+
+    @classmethod
+    def clear_cache(cls):
+        cls._cache = None
+
+    @staticmethod
+    def _load():
         db = firebase_client.db
         if not db:
             return []
@@ -44,7 +66,7 @@ class FaqRepository:
             })
 
         faqs.sort(key=lambda f: (f["order"], f["createdAt"] is None, str(f["createdAt"])))
-        return faqs[:limit]
+        return faqs
 
 
 faq_repository = FaqRepository()

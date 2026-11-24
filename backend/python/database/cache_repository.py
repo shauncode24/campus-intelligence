@@ -206,7 +206,7 @@ class CacheRepository:
             }
             
             doc_ref = db.collection('user_questions').add(user_question_data)
-            print(f"📝 Stored user question history for user: {user_id}, history ID: {doc_ref[1].id}")
+            print("📝 Stored user question history")
             return doc_ref[1].id
         except Exception as e:
             print(f"❌ Error storing user question: {e}")
@@ -230,7 +230,7 @@ class CacheRepository:
             
             doc_data = doc.to_dict()
             if doc_data.get('userId') != user_id:
-                print(f"⚠️ User {user_id} not authorized to modify history {history_id}")
+                print("⚠️ User not authorized to modify this history item")
                 return None
             
             current_favorite = doc_data.get('favorite', False)
@@ -273,7 +273,7 @@ class CacheRepository:
             
             doc_data = doc.to_dict()
             if doc_data.get('userId') != user_id:
-                print(f"⚠️ User {user_id} not authorized to modify history {history_id}")
+                print("⚠️ User not authorized to modify this history item")
                 return False
             
             doc_ref.update({
@@ -305,11 +305,11 @@ class CacheRepository:
             
             doc_data = doc.to_dict()
             if doc_data.get('userId') != user_id:
-                print(f"⚠️ User {user_id} not authorized to delete history {history_id}")
+                print("⚠️ User not authorized to delete this history item")
                 return False
             
             doc_ref.delete()
-            print(f"🗑️ Deleted history item {history_id} for user {user_id}")
+            print("🗑️ Deleted a history item")
             return True
             
         except Exception as e:
@@ -325,7 +325,7 @@ class CacheRepository:
             return []
         
         try:
-            print(f"📖 Fetching history for user: {user_id} (limit: {limit}, favorites_only: {favorites_only})")
+            print(f"📖 Fetching history (limit: {limit}, favorites_only: {favorites_only})")
             
             query = db.collection('user_questions').where('userId', '==', user_id)
             
@@ -355,7 +355,7 @@ class CacheRepository:
                 
                 history.append(history_item)
             
-            print(f"✅ Retrieved {len(history)} history items for user {user_id}")
+            print(f"✅ Retrieved {len(history)} history items")
             return history
             
         except Exception as e:

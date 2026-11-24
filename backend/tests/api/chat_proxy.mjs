@@ -93,6 +93,7 @@ mode = "ok";
   await r.text();
   check("a well-formed X-Request-ID is kept and returned", r.headers.get("x-request-id") === mine);
   check("and forwarded to the RAG service", seenHeaders.at(-1)["x-request-id"] === mine);
+  check("the caller's own address is forwarded as X-Client-IP (per-student IP limits in Python)", /(^|:)127\.0\.0\.1$/.test(seenHeaders.at(-1)["x-client-ip"] || ""));
   const r2 = await fetch("http://127.0.0.1:5074/document/query", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer t", "X-Request-ID": "bad id with spaces	<script>" }, body: JSON.stringify({ question: "q", chatId: "c1" }) }).catch(() => null);
   const made = r2 && r2.headers.get("x-request-id");
   await r2?.text();

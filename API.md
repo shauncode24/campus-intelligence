@@ -28,6 +28,7 @@ operational endpoint.
 | POST | `/calendar/create-event` | signed-in | Add a deadline to the user's calendar |
 | GET | `/calendar/status` | signed-in | Is the calendar connected? |
 | DELETE | `/calendar/disconnect` | signed-in | Disconnect the calendar |
+| POST | `/documents/upload-url` | admin | Get a one-time signed upload target for the PDF (the bucket accepts no anonymous writes) |
 | POST | `/documents` | admin | Register an uploaded file (creates the document record) |
 | DELETE | `/documents/:documentId` | admin | Delete a document, its passages, its file and cached answers |
 | POST | `/documents/process` | admin | Start processing a new document (returns at once; runs in the background) |
@@ -46,9 +47,9 @@ operational endpoint.
 | Method | Path | Who | Purpose |
 |---|---|---|---|
 | GET | `/healthz` | public | Liveness only (no database access) |
-| GET | `/health` | public | Counts and model names; no user data |
-| GET | `/faq` | public | The published, admin-curated FAQ |
-| GET | `/documents/{documentId}/exists` | public | Whether a document id exists (used to grey out deleted sources) |
+| GET | `/health` | public | Model names and the in-memory index size; no database reads, no user data |
+| GET | `/faq` | public | The published, admin-curated FAQ (kept 60 s in memory; at most one database read a minute) |
+| GET | `/documents/{documentId}/exists` | signed-in | Whether a document id exists (used to grey out deleted sources) |
 | POST | `/query` | signed-in | Ask a question; one JSON answer (kept for tools and tests) |
 | POST | `/query/stream` | signed-in | Same, streamed as one JSON event per line (the Node relay uses this) |
 | GET | `/chats` | signed-in | The user's chats |
