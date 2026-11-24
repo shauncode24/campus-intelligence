@@ -75,7 +75,7 @@ jobs:
             backend/package-lock.json
             firestore-tests/package-lock.json
 
-      - uses: actions/setup-java@v4       # the emulator is a Java program
+      - uses: actions/setup-java@v6       # the emulator is a Java program
         with:
           distribution: temurin
           java-version: "21"
