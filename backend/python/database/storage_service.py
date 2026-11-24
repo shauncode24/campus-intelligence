@@ -167,49 +167,5 @@ class StorageService:
             print(f"❌ Error updating document status: {e}")
             raise
 
-    @staticmethod
-    async def update_document_status_enhanced(doc_id: str, all_docs: List[Document], metadata: dict):
-        """
-        Update document processing status with enhanced metadata
-        
-        Args:
-            doc_id: str - Document identifier
-            all_docs: List[Document] - Processed document chunks
-            metadata: dict - Additional document metadata
-        """
-        db = firebase_client.db
-        if not db:
-            return
-        
-        try:
-            doc_ref = db.collection("documents").document(doc_id)
-            
-            update_data = {
-                "status": "Processed",
-                "processedAt": firestore.SERVER_TIMESTAMP,
-                "chunksCount": len(all_docs),
-                "textChunks": len([d for d in all_docs if d.metadata.get("type") == "text"]),
-                "visualChunks": len([d for d in all_docs if d.metadata.get("type") == "image"]),
-                "isMultiModal": True,
-            }
-            
-            # Add enhanced metadata if provided
-            if metadata:
-                update_data.update({
-                    'documentType': metadata.get('documentType'),
-                    'academicYear': metadata.get('academicYear'),
-                    'programs': metadata.get('programs', []),
-                    'years': metadata.get('years', []),
-                    'accessLevel': metadata.get('accessLevel', 'Public'),
-                    'version': metadata.get('version'),
-                    'owner': metadata.get('owner')
-                })
-            
-            doc_ref.update(update_data)
-            print(f"✅ Updated document with enhanced metadata: {doc_id}")
-            
-        except Exception as e:
-            print(f"⚠️ Error updating document status: {e}")
-
 # Singleton instance
 storage_service = StorageService()

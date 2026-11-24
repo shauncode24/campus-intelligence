@@ -3,7 +3,6 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import fetch from "node-fetch";
-import { getUserHistory } from "./services/questionCache.js";
 import calendarRoutes from "./routes/calendarRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
 import faqAdminRoutes from "./routes/faqAdminRoutes.js";
@@ -196,18 +195,6 @@ app.post(
   }
 );
 
-// Get the authenticated user's history (uid comes from the token, not the URL)
-app.get("/history", requireAuth, async (req, res) => {
-  try {
-    const limit = Math.min(parseInt(req.query.limit) || 20, 200);
-
-    const history = await getUserHistory(req.uid, limit);
-    res.json({ history });
-  } catch (err) {
-    failInternal(res, err, "Failed to load history");
-  }
-});
-
 // Calendar routes
 app.use("/calendar", calendarRoutes);
 
@@ -216,8 +203,6 @@ app.use("/documents", documentRoutes);
 
 // Admin-curated FAQ management (the public FAQ is served by the RAG service)
 app.use("/admin/faq", faqAdminRoutes);
-
-app.use("/api/documents", documentRoutes);
 
 // Last-resort error handler. Without it Express answers errors that escape a
 // route (e.g. malformed JSON) with an HTML page containing the stack trace and
@@ -241,36 +226,12 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 RAG backend running on ${PORT}`);
   console.log("\n📋 Available endpoints:");
-  console.log("  POST   /ask                        - Ask a question");
-  console.log("  POST   /ask-stream                 - Ask with streaming");
-  console.log(
-    "  POST   /document/query             - Query Python RAG (with caching!)"
-  );
-  console.log("  *      /admin/faq                  - Manage curated FAQs (admin)");
-  console.log("  GET    /history                    - Get user history (auth)");
-  console.log("  GET    /calendar/auth              - Google Calendar OAuth");
-  console.log("  GET    /calendar/callback          - OAuth callback");
-  console.log("  POST   /calendar/create-event      - Create calendar event");
-  console.log("  GET    /calendar/status            - Check calendar status");
-  console.log("  DELETE /calendar/disconnect        - Disconnect calendar");
-  console.log("  POST   /documents/process          - Process new document");
-  console.log(
-    "  POST   /documents/reprocess        - Reprocess existing document"
-  );
-  console.log("\n🐍 Python RAG endpoints:");
-  console.log(
-    "  POST   http://localhost:8000/query          - Query with caching"
-  );
-  console.log(
-    "  POST   http://localhost:8000/process-document - Process document"
-  );
-  console.log("  GET    http://localhost:8000/faq            - Public curated FAQ");
-  console.log(
-    "  GET    http://localhost:8000/history/{userId} - Get history from Python"
-  );
-  console.log(
-    "  GET    http://localhost:8000/health         - Python service health"
-  );
+  console.log("\n📋 Endpoints (the full list is in API.md):");
+  console.log("  POST   /document/query             - Ask a question (relayed to the RAG service, streamed)");
+  console.log("  GET    /calendar/*                 - Google Calendar connection and events");
+  console.log("  *      /documents/*                - Admin: upload, process, delete documents");
+  console.log("  *      /admin/faq                  - Admin: curated FAQ");
+  console.log("  (chats, history, feedback, public FAQ: the browser calls the RAG service directly)");
   console.log("\n✅ Server ready!");
   console.log(`🔗 Python RAG URL: ${pythonRagUrl || "NOT SET"}`);
 });

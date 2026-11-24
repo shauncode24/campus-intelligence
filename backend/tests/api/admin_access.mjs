@@ -54,11 +54,10 @@ const routes = [
   ["POST", "/documents/reprocess", { documentId: "seed1" }],
   ["POST", "/documents/process-bulk", { documents: [{ documentId: "seed1" }] }],
   ["POST", "/documents/check-duplicate", { name: "n", department: "d" }],
-  ["POST", "/documents/validate-metadata", { metadata: {} }],
   ["GET", "/documents/processing-status/seed1"],
   ["DELETE", "/documents/cancel-processing/proc1"],
 ];
-for (const prefix of ["/documents", "/api/documents"]) {
+for (const prefix of ["/documents"]) {
   for (const [m, p, b] of routes) {
     const path = p.replace(/^\/documents/, prefix);
     const label = `${m} ${path}`;

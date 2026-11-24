@@ -34,23 +34,6 @@ class QueryRequest(BaseModel):
     department: Optional[str] = Field(default=None, max_length=100)
     documentType: Optional[str] = Field(default=None, max_length=100)
 
-class SourceInfo(BaseModel):
-    page: Optional[int]
-    type: str
-    documentId: str
-    documentName: str
-    fileUrl: Optional[str]
-    content: str
-    similarity: float
-
-class DeadlineInfo(BaseModel):
-    canAddToCalendar: bool
-    date: str
-    title: str
-    description: str
-    context: str
-    sourceDocument: str
-
 class ConfidenceInfo(BaseModel):
     level: str
     score: int
@@ -86,19 +69,3 @@ class HealthResponse(BaseModel):
     chunks_in_firebase: int
     model: str
     firebase_connected: bool
-
-class FAQItem(BaseModel):
-    id: str
-    question: str
-    answer: str
-    count: int
-    intent: str
-
-class HistoryItem(BaseModel):
-    id: str
-    questionText: str
-    answer: str
-    askedAt: Any
-
-class UpdateNoteRequest(BaseModel):
-    note: str

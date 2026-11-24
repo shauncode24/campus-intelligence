@@ -8,10 +8,10 @@ Authentication and ownership for the whole Python API, driven by the real route 
 """
 import unittest
 
-from fastapi.routing import APIRoute
 
 from test_ingestion import IngestCase, quiet  # noqa: E402  (sets up the app)
 import main  # noqa: E402
+import route_table  # noqa: E402
 
 # Reachable without signing in. Keep this list short and deliberate.
 PUBLIC = {
@@ -29,10 +29,7 @@ ADMIN = {
 
 
 def api_routes():
-    for route in main.app.routes:
-        if isinstance(route, APIRoute):
-            for method in sorted(route.methods - {"HEAD", "OPTIONS"}):
-                yield method, route.path
+    yield from route_table.api_routes(main.app)
 
 
 def concrete(path):

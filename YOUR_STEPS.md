@@ -4,7 +4,7 @@ Living checklist. Claude updates it after every roadmap item. It assumes **nothi
 Do the sections **in order**: later ones depend on earlier ones. Commands are for **Windows PowerShell**
 unless marked otherwise. `<angle brackets>` are values you fill in.
 
-**Last updated:** after P2-3.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10, P1-11, P1-12, P2-1, P2-2, P2-3.
+**Last updated:** after P2-4.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10, P1-11, P1-12, P2-1, P2-2, P2-3, P2-4.
 
 Legend: ☐ = to do. ⚠️ = skipping it breaks something. 💸 = costs Gemini quota. 🔒 = security.
 
@@ -21,6 +21,19 @@ git log --oneline -8
 ```
 
 The last commit you should see is the P1-12 one ("Make the chat honest and useful…"). P2-2 is uncommitted (P2-1 should already be committed).
+Message for P2-4:
+
+```
+Remove duplicate and dead backend code, document every route, keep the doc honest with tests (P2-4)
+
+Drops the /api/documents alias, Node /history, validate-metadata, unused models and 8 unused Node
+packages (and applies in-range security updates: no high or critical advisories left in the Node
+runtime dependencies). API.md lists every route; tests fail if it drifts. Fixes the auth-matrix
+test, which was silently skipping the chat and feedback routes.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
 Message for P2-3:
 
 ```
@@ -549,6 +562,7 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 ## Change log of this file
 
 - **After P1-5:** file created; covers P0-1 … P1-5.
+- **After P2-4:** commit message for P2-4; run `npm --prefix backend ci --ignore-scripts` again (the dependency list shrank, the lockfile changed); delete the leftover folder `backend	emp` by hand (stale images, git-ignored); if anything of yours still calls `/api/documents/...` or Node `/history`, switch it to `/documents/...` and the RAG service's `/history`; read `API.md` once.
 - **After P2-3:** commit message for P2-3; nothing to install; add to smoke test: ask a long question and watch words appear while Gemini is still writing (step 27 again: Stop now cancels the model and the chat shows what you saw); if you put a reverse proxy in front (nginx etc.), make sure it does not buffer responses.
 - **After P2-2:** commit message for P2-2; nothing to install for the app. Once you have the real golden set, run `--retriever production`, `hybrid`, `rerank` on it (eval README) and send me the three reports to decide. The reranker downloads ~90 MB the first time.
 - **After P2-1:** commit message for P2-1; nothing to install; after re-indexing (section 8) the first question is slower (it builds the index); optional env `VECTOR_INDEX_MAX_CHUNKS` / `VECTOR_INDEX_ENABLED=false`; do not edit chunks by hand in the console (the index follows the epoch).

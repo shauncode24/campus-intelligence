@@ -409,54 +409,6 @@ router.get("/processing-status/:documentId", async (req, res) => {
 });
 
 /**
- * POST /documents/validate-metadata
- * Validate document metadata before upload
- */
-router.post("/validate-metadata", async (req, res) => {
-  try {
-    const { metadata } = req.body;
-
-    const errors = [];
-
-    // Required fields
-    if (!metadata.name || metadata.name.trim() === "") {
-      errors.push("Document name is required");
-    }
-
-    if (!metadata.department) {
-      errors.push("Department is required");
-    }
-
-    if (!metadata.documentType) {
-      errors.push("Document type is required");
-    }
-
-    // Date validation
-    if (metadata.effectiveDate && metadata.expiryDate) {
-      const effective = new Date(metadata.effectiveDate);
-      const expiry = new Date(metadata.expiryDate);
-
-      if (expiry <= effective) {
-        errors.push("Expiry date must be after effective date");
-      }
-    }
-
-    // Version format validation
-    if (metadata.version && !/^v?\d+(\.\d+)*$/.test(metadata.version)) {
-      errors.push("Version must be in format: v1.0 or 1.0");
-    }
-
-    res.json({
-      isValid: errors.length === 0,
-      errors: errors,
-    });
-  } catch (error) {
-    console.error("❌ Error validating metadata:", error);
-    failInternal(res, error, "Failed to validate metadata");
-  }
-});
-
-/**
  * DELETE /documents/cancel-processing/:documentId
  * Cancel ongoing document processing
  */

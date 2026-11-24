@@ -77,20 +77,6 @@ from routes.feedbackRoutes import router as feedback_router
 class UpdateNoteRequest(BaseModel):
     note: str = Field(max_length=5000)
 
-class BulkProcessRequest(BaseModel):
-    documents: List[dict]
-
-class ProcessingStatus(BaseModel):
-    documentId: str
-    fileName: str
-    status: str
-    stage: str
-    progress: Optional[dict] = None
-    error: Optional[str] = None
-    chunksCreated: Optional[int] = None
-    textChunks: Optional[int] = None
-    visualChunks: Optional[int] = None
-
 # Validate configuration
 Config.validate()
 
