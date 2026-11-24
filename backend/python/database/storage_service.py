@@ -84,6 +84,7 @@ class StorageService:
                     'embedding': embedding.tolist(),
                     'embeddingModel': doc.metadata.get('embedding_model') or embedding_model,
                     'embeddingDim': int(len(embedding)),
+                    'isCaption': bool(doc.metadata.get('caption', False)),
                     'metadata': {
                         'pageNumber': doc.metadata.get('page'),
                         'imageId': doc.metadata.get('image_id'),

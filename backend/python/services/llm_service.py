@@ -150,7 +150,10 @@ class LLMService:
         content = []
 
         # Separate text and image documents
-        text_docs = [doc for doc in retrieved_docs if doc.metadata.get("type") == "text"]
+        # image descriptions (captions) are part of the text context; the image
+        # pixels are attached separately below
+        text_docs = [doc for doc in retrieved_docs
+                     if doc.metadata.get("type") == "text" or doc.metadata.get("caption")]
         image_docs = [doc for doc in retrieved_docs if doc.metadata.get("type") == "image"]
 
         content.append({"type": "text", "text": "<context>\n"})
@@ -158,7 +161,9 @@ class LLMService:
         # Add text context, each excerpt labelled with its document and page
         if text_docs:
             text_context = "\n\n".join([
-                f"{_source_label(doc, doc_names)}\n{_neutralize(doc.page_content)}"
+                f"{_source_label(doc, doc_names)}"
+                f"{' (description of a figure)' if doc.metadata.get('caption') else ''}"
+                f"\n{_neutralize(doc.page_content)}"
                 for doc in text_docs
             ])
             content.append({

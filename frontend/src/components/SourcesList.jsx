@@ -60,8 +60,8 @@ export default function SourcesList({ sources }) {
               {sources[0].documentName}.pdf
               <div className="default">
                 {page !== null && <span>Page {page}</span>}
-                {sources[0].type === "visual" && (
-                  <span className="visual-badge">Visual</span>
+                {sources[0].type === "image" && (
+                  <span className="visual-badge">Figure</span>
                 )}
               </div>
             </div>

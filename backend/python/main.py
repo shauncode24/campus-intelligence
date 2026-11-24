@@ -354,7 +354,8 @@ async def process_document(
             "totalChunks": len(all_docs),
             "textChunks": len([d for d in all_docs if d.metadata.get("type") == "text"]),
             "visualChunks": len([d for d in all_docs if d.metadata.get("type") == "image"]),
-            "note": "Images stored as embeddings only"
+            "imageStats": pdf_processor.last_image_stats,
+            "note": "Images are described and indexed as text (or CLIP vectors); pixels are not stored"
         }
         
     except HTTPException:

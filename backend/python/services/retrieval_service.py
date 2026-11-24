@@ -83,7 +83,10 @@ class RetrievalService:
                 if chunk_data.get('documentId') not in document_ids:
                     continue
 
-            is_image = chunk_data.get('type', 'text') == 'image'
+            # A caption chunk is an image that was described in text: it is searched
+            # exactly like text. Only image chunks WITHOUT a caption are CLIP vectors.
+            is_caption = bool(chunk_data.get('isCaption'))
+            is_image = chunk_data.get('type', 'text') == 'image' and not is_caption
             chunk_model = chunk_data.get('embeddingModel') or Config.CLIP_MODEL_NAME
 
             if is_image:
@@ -113,7 +116,8 @@ class RetrievalService:
                     'image_id': chunk_data.get('metadata', {}).get('imageId'),
                     'documentId': chunk_data.get('documentId'),
                     'similarity': float(similarity),
-                    'xref': chunk_data.get('metadata', {}).get('xref')  # For re-extraction if needed
+                    'xref': chunk_data.get('metadata', {}).get('xref'),  # For re-extraction if needed
+                    'caption': is_caption,
                 }
             )
             (image_scored if is_image else text_scored).append((doc, similarity))
@@ -141,12 +145,18 @@ class RetrievalService:
         return top_text + top_images
 
     @staticmethod
+    def _is_textual(doc):
+        """Plain text, or an image that was described in text (scored like text)."""
+        return doc.metadata.get('type', 'text') == 'text' or bool(doc.metadata.get('caption'))
+
+    @staticmethod
     def filter_relevant(docs, min_score=None):
         """
         Drop chunks that are too dissimilar to the question to be worth showing
-        the model. Only TEXT chunks are scored against the threshold (image
-        chunks live on a different similarity scale); image chunks are kept only
-        if at least one text chunk is relevant. Returns [] if nothing is
+        the model. Text chunks AND image descriptions are scored against the
+        threshold. Legacy CLIP image chunks (no description) live on a different
+        similarity scale and were already filtered at retrieval, so they are kept
+        only if at least one textual chunk is relevant. Returns [] if nothing is
         relevant, which callers treat as "not in the documents".
         """
         if min_score is None:
@@ -154,10 +164,10 @@ class RetrievalService:
 
         kept = [
             d for d in docs
-            if d.metadata.get('type', 'text') != 'text'
+            if not RetrievalService._is_textual(d)
             or d.metadata.get('similarity', 0) >= min_score
         ]
-        if not any(d.metadata.get('type', 'text') == 'text' for d in kept):
+        if not any(RetrievalService._is_textual(d) for d in kept):
             return []
         return kept
 

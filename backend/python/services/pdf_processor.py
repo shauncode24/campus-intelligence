@@ -5,6 +5,7 @@ import fitz  # PyMuPDF
 import tempfile
 import os
 import io
+import hashlib
 import numpy as np
 from PIL import Image
 from langchain_core.documents import Document
@@ -12,6 +13,12 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import Config
 from services.embedding_service import embedding_service
 from utils.file_security import InvalidPdf
+from services.image_captioner import ImageCaptioner, OK, SKIP_DECORATIVE
+
+# After this many captioning failures in a row (e.g. an API outage) stop calling
+# the model for the rest of the document and fall back to CLIP instead.
+MAX_CONSECUTIVE_CAPTION_FAILURES = 3
+MAX_CAPTION_IMAGE_SIDE = 1600   # larger images are shrunk before being sent
 
 class PDFProcessor:
     def __init__(self):
@@ -19,6 +26,8 @@ class PDFProcessor:
             chunk_size=Config.CHUNK_SIZE,
             chunk_overlap=Config.CHUNK_OVERLAP
         )
+        self.captioner = ImageCaptioner()
+        self.last_image_stats = {}
     
     def process_pdf(self, pdf_bytes: bytes, doc_id: str):
         """
@@ -35,6 +44,11 @@ class PDFProcessor:
         """
         all_docs = []
         all_embeddings = []
+        self._image_state = {
+            "seen": set(), "considered": 0, "consecutive_failures": 0,
+            "stats": {"found": 0, "captioned": 0, "fell_back_to_clip": 0, "decorative": 0,
+                      "small": 0, "duplicate": 0, "over_cap": 0, "caption_failed": 0, "not_indexed": 0},
+        }
         
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
             tmp_file.write(pdf_bytes)
@@ -70,7 +84,10 @@ class PDFProcessor:
                 all_embeddings.extend(image_embeddings)
             
             doc.close()
+            self.last_image_stats = self._image_state["stats"]
             print(f"✅ Processing complete: {len(all_docs)} chunks created")
+            if self.last_image_stats["found"]:
+                print(f"🖼️ Images: {self.last_image_stats}")
             
         finally:
             os.unlink(tmp_path)
@@ -102,53 +119,103 @@ class PDFProcessor:
         
         return docs, embeddings
     
+    @staticmethod
+    def _png_for_model(pil_image):
+        """PNG bytes of the image, shrunk if very large (cheaper and faster to caption)."""
+        image = pil_image.copy()
+        image.thumbnail((MAX_CAPTION_IMAGE_SIDE, MAX_CAPTION_IMAGE_SIDE))
+        buf = io.BytesIO()
+        image.save(buf, format="PNG")
+        return buf.getvalue()
+
     def _process_images(self, page, doc, page_num: int, doc_id: str):
         """
-        Process images from a page
-        Only store embeddings - NOT the actual image data
+        Index the meaningful images on a page.
+
+        Filters first (so no model is called for junk): exact duplicates within the
+        document (a logo repeated on every page), images too small to carry
+        information, and anything beyond Config.MAX_IMAGES_PER_DOCUMENT.
+
+        Then, with captioning on, Gemini describes the image and the DESCRIPTION is
+        indexed as text (metadata caption=True). If the model says the image is
+        decorative it is dropped; if captioning fails or is off, the image falls
+        back to a CLIP vector. Image data itself is never stored: it is re-extracted
+        from the PDF when needed.
         """
         docs = []
         embeddings = []
-        
-        # Images are embedded with CLIP; skipped only if image search is disabled
-        if not embedding_service.supports_images:
-            return docs, embeddings
-        
+        state = self._image_state
+        stats = state["stats"]
+
         for img_index, img in enumerate(page.get_images(full=True)):
+            stats["found"] += 1
             try:
                 xref = img[0]
-                base_image = doc.extract_image(xref)
-                image_bytes = base_image["image"]
-                
-                # Convert to PIL Image
+                image_bytes = doc.extract_image(xref)["image"]
+
+                digest = hashlib.sha1(image_bytes).hexdigest()
+                if digest in state["seen"]:
+                    stats["duplicate"] += 1
+                    continue
+                state["seen"].add(digest)
+
                 pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-                
-                # Create unique identifier
+                width, height = pil_image.size
+                if min(width, height) < Config.MIN_IMAGE_SIDE or width * height < Config.MIN_IMAGE_PIXELS:
+                    stats["small"] += 1
+                    continue
+
+                if state["considered"] >= Config.MAX_IMAGES_PER_DOCUMENT:
+                    stats["over_cap"] += 1
+                    continue
+                state["considered"] += 1
+
                 image_id = f"{doc_id}_page_{page_num}_img_{img_index}"
-                
-                # ✅ Embed image using CLIP
-                embedding = embedding_service.embed_image(pil_image)
-                embeddings.append(embedding)
-                
-                # ✅ Create document with metadata only (no image data)
-                image_doc = Document(
-                    page_content=f"[Image on page {page_num + 1}]",
-                    metadata={
-                        "page": page_num,
-                        "type": "image",
-                        "image_id": image_id,
-                        "xref": xref,  # Store xref for potential re-extraction
-                        "embedding_model": embedding_service.image_model_id,
-                        "documentId": doc_id
-                    }
-                )
-                docs.append(image_doc)
-                print(f"      ✅ Processed image {img_index} (embedding only)")
-                
+                base_metadata = {
+                    "page": page_num,
+                    "type": "image",
+                    "image_id": image_id,
+                    "xref": xref,  # for re-extracting the pixels at question time
+                    "documentId": doc_id,
+                }
+
+                caption = None
+                if Config.IMAGE_CAPTIONING and state["consecutive_failures"] < MAX_CONSECUTIVE_CAPTION_FAILURES:
+                    status, caption = self.captioner.caption(self._png_for_model(pil_image))
+                    if status == SKIP_DECORATIVE:
+                        stats["decorative"] += 1
+                        state["consecutive_failures"] = 0
+                        continue
+                    if status == OK:
+                        state["consecutive_failures"] = 0
+                    else:
+                        stats["caption_failed"] += 1
+                        state["consecutive_failures"] += 1
+
+                if caption:
+                    docs.append(Document(
+                        page_content=caption,
+                        metadata={**base_metadata, "caption": True,
+                                  "embedding_model": embedding_service.model_id},
+                    ))
+                    embeddings.append(embedding_service.embed_text(caption))
+                    stats["captioned"] += 1
+                    print(f"      ✅ Image {img_index}: described and indexed as text")
+                elif embedding_service.supports_images:
+                    docs.append(Document(
+                        page_content=f"[Image on page {page_num + 1}]",
+                        metadata={**base_metadata, "embedding_model": embedding_service.image_model_id},
+                    ))
+                    embeddings.append(embedding_service.embed_image(pil_image))
+                    stats["fell_back_to_clip"] += 1
+                    print(f"      ✅ Image {img_index}: indexed with CLIP (no description)")
+                else:
+                    stats["not_indexed"] += 1
+
             except Exception as e:
                 print(f"      ⚠️ Error processing image {img_index}: {e}")
                 continue
-        
+
         return docs, embeddings
 
 # Singleton instance

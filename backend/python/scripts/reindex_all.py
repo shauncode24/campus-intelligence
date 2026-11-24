@@ -8,7 +8,9 @@ questions. This script rebuilds them all.
 
 For each document it: marks it "Processing" (so it is not used mid-update),
 downloads the stored PDF (only from the allow-listed storage host), re-chunks
-and re-embeds it, overwrites its chunks (stale ones are removed), and marks it
+and re-embeds it (images are described by Gemini: ONE API call per meaningful
+image, at most MAX_IMAGES_PER_DOCUMENT per document; set IMAGE_CAPTIONING=false
+to skip that and use CLIP vectors instead), overwrites its chunks (stale ones are removed), and marks it
 "Processed". A document that fails is marked "Error" with the reason and the
 script carries on. Finally it deletes cached answers that were produced under
 a different embedding model.
@@ -95,7 +97,9 @@ async def reindex(only=None, dry_run=False, runtime=None):
                 doc_id, all_docs, all_embeddings, embedding_model=embedding_service.model_id
             )
             await storage_service.update_document_status(doc_id, all_docs)
-            print(f"  done   {name}: {len(all_docs)} chunks")
+            images = getattr(pdf_processor, "last_image_stats", None) or {}
+            extra = f" | images: {images}" if images.get("found") else ""
+            print(f"  done   {name}: {len(all_docs)} chunks{extra}")
             totals["ok"] += 1
         except Exception as e:  # keep going: one bad document must not stop the rest
             db.collection("documents").document(doc_id).update({

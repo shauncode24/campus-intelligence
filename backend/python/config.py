@@ -49,6 +49,16 @@ class Config:
     # re-extracted from the PDF and shown to Gemini as pixels.
     IMAGE_RETRIEVAL = os.getenv("IMAGE_RETRIEVAL", "true").lower() in ("1", "true", "yes")
     IMAGE_TOP_K = int(os.getenv("IMAGE_TOP_K", "3"))
+
+    # Image captioning: at upload, Gemini describes each meaningful image and the
+    # description is indexed as text (same similarity scale as normal text). This
+    # costs ONE Gemini call per captioned image, bounded by the limits below.
+    # If a caption fails or captioning is off, the image falls back to CLIP.
+    IMAGE_CAPTIONING = os.getenv("IMAGE_CAPTIONING", "true").lower() in ("1", "true", "yes")
+    MAX_IMAGES_PER_DOCUMENT = int(os.getenv("MAX_IMAGES_PER_DOCUMENT", "30"))
+    # Smaller images (icons, bullets, logos) are not indexed. PROVISIONAL values.
+    MIN_IMAGE_SIDE = int(os.getenv("MIN_IMAGE_SIDE", "120"))
+    MIN_IMAGE_PIXELS = int(os.getenv("MIN_IMAGE_PIXELS", "20000"))
     MIN_IMAGE_SCORE = float(os.getenv("MIN_IMAGE_SCORE", "0.26"))
     GEMINI_MODEL_NAME = "gemini-2.5-flash"
     GEMINI_TEMPERATURE = 0.2

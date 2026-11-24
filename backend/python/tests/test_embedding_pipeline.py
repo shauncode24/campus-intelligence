@@ -88,6 +88,16 @@ class DbCase(unittest.TestCase):
 
 
 class TestPdfProcessing(DbCase):
+    def setUp(self):
+        super().setUp()
+        # These tests cover the CLIP image path; captioning (which calls Gemini) is tested separately.
+        self._captioning = Config.IMAGE_CAPTIONING
+        Config.IMAGE_CAPTIONING = False
+
+    def tearDown(self):
+        Config.IMAGE_CAPTIONING = self._captioning
+        super().tearDown()
+
     @classmethod
     def setUpClass(cls):
         text1 = ("Fee Payment Policy. " + "Tuition fees for each semester must be paid on or before the 15th of the month. " * 9
