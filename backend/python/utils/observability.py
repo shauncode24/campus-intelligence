@@ -107,6 +107,7 @@ class QueryObservation:
         self._gen_start = None
         self.tokens_in = self.tokens_out = self.model_calls = 0
         self.sources = 0
+        self.coalesced = False      # waited for an identical question already being answered
 
     def mark(self, stage: str) -> None:
         now = time.perf_counter()
@@ -135,6 +136,7 @@ class QueryObservation:
             "tokensOut": self.tokens_out,
             "costUsd": round(estimate_cost(self.tokens_in, self.tokens_out), 6),
             "sources": self.sources,
+            **({"coalesced": True} if self.coalesced else {}),
         }
 
 

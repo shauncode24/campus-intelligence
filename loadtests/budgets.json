@@ -62,5 +62,11 @@
   },
   "coldStart.firstRunSeconds": {
     "max": 150
+  },
+  "concurrency.10.sameQuestion.modelCalls": {
+    "max": 3
+  },
+  "concurrency.50.sameQuestion.modelCalls": {
+    "max": 3
   }
 }

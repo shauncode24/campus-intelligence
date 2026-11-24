@@ -46,6 +46,7 @@ from services.ingestion import ingestion_manager, fail_interrupted_jobs
 from services.document_validity import describe
 from utils.threads import run_blocking
 from utils import observability as obs
+from utils.single_flight import in_flight, Hold
 
 # Utilities
 from utils.intent_detector import detect_intent
@@ -324,8 +325,9 @@ async def query_documents(
 async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -> QueryResponse:
     """Runs the pipeline and records how it went: timings per stage, tokens, cost, outcome."""
     observation = obs.begin_query()
+    hold = Hold()
     try:
-        response = await _answer_question_inner(request, user_id, on_token)
+        response = await _answer_question_inner(request, user_id, on_token, hold)
         obs.set_outcome("stopped" if response.stopped else "cached" if response.cached
                         else "answered" if response.answered else "declined")
         return response
@@ -339,13 +341,14 @@ async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -
         obs.set_outcome("error")
         raise
     finally:
+        hold.release(observation.outcome)       # wake any identical questions waiting for this one
         summary = observation.summary()
         obs.metrics.record(summary)
         obs.log_event("query_done", user=obs.user_tag(user_id), inChat=bool(request.chatId),
                       regenerate=request.regenerate or None, streamed=on_token is not None, **summary)
 
 
-async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=None) -> QueryResponse:
+async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=None, hold=None) -> QueryResponse:
     """
     The whole question-answering pipeline. With `on_token` (an async function), the answer is
     streamed to it piece by piece as the model generates it; without, it is generated in one call.
@@ -413,26 +416,51 @@ async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=N
         corpus_epoch = await run_blocking(get_epoch, firebase_client.db) if cacheable else 0
         # "Try again" must produce a fresh answer, so it never reads the stored one (it still
         # replaces it below)
+        async def lookup_cached():
+            found = await cache_repository.find_similar_question(question, query_embedding, intent, corpus_epoch)
+            if found:
+                # A cached answer may cite a document that has since been replaced by a newer
+                # version, has expired, or was deleted. Serve it only if every cited document
+                # is still live; otherwise answer afresh from the current documents.
+                cited = {s_.get('documentId') for s_ in found.get('sources', []) if s_.get('documentId')}
+                live_ids = await run_blocking(retrieval_service.live_document_ids, firebase_client.db)
+                if cited - live_ids:
+                    print(f"♻️ Cached answer ignored: it cites documents that are no longer current "
+                          f"({len(cited - live_ids)})")
+                    return None
+            return found
+
+        refused_by_leader = False
         if cacheable and not request.regenerate:
-            cached_question = await cache_repository.find_similar_question(
-                question,
-                query_embedding,
-                intent,
-                corpus_epoch
-            )
-        
-        if cached_question:
-            # A cached answer may cite a document that has since been replaced by a newer
-            # version, has expired, or was deleted. Serve it only if every cited document
-            # is still live; otherwise answer afresh from the current documents.
-            cited = {s.get('documentId') for s in cached_question.get('sources', []) if s.get('documentId')}
-            live_ids = await run_blocking(retrieval_service.live_document_ids, firebase_client.db)
-            if cited - live_ids:
-                print(f"♻️ Cached answer ignored: it cites documents that are no longer current "
-                      f"({len(cited - live_ids)})")
-                cached_question = None
+            cached_question = await lookup_cached()
+            if not cached_question and Config.SINGLE_FLIGHT and hold is not None:
+                # The same question is already being answered right now? Wait for that answer
+                # instead of paying for a second model call.
+                flight_key = f"{cache_repository.question_fingerprint(question)}:{corpus_epoch}"
+                for _attempt in range(3):
+                    role, flight = in_flight.join_or_lead(flight_key)
+                    if role == "leader":
+                        hold.lead(flight_key, flight)
+                        break
+                    print("⏳ Same question already being answered: waiting for it")
+                    finished = await in_flight.wait(flight, Config.SINGLE_FLIGHT_WAIT_SECONDS)
+                    _q = obs.current_query()
+                    if _q is not None:
+                        _q.coalesced = True
+                    if not finished:
+                        break                                   # do not wait forever: answer it ourselves
+                    cached_question = await lookup_cached()
+                    if cached_question:
+                        break
+                    if flight.outcome == "declined":
+                        refused_by_leader = True
+                        break
+                    # the leader was stopped or failed: try to become the leader ourselves
 
         obs.mark("cache")
+        if refused_by_leader and not cached_question:
+            return await _decline(user_id, request.question, intent, "an identical question was just refused",
+                                  standalone_note, chat_id, regenerated=request.regenerate)
         if cached_question:
             print(f"♻️ Reusing cached answer (similarity: {cached_question.get('similarity', 1.0):.3f})")
             

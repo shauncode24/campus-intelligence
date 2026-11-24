@@ -65,6 +65,9 @@ class Config:
     MIN_IMAGE_PIXELS = int(os.getenv("MIN_IMAGE_PIXELS", "20000"))
     MIN_IMAGE_SCORE = float(os.getenv("MIN_IMAGE_SCORE", "0.26"))
     GEMINI_MODEL_NAME = "gemini-2.5-flash"
+    # Identical questions asked at the same moment share one model call (utils/single_flight.py)
+    SINGLE_FLIGHT = os.getenv("SINGLE_FLIGHT", "true").lower() != "false"
+    SINGLE_FLIGHT_WAIT_SECONDS = float(os.getenv("SINGLE_FLIGHT_WAIT_SECONDS", "120"))
     GEMINI_TEMPERATURE = 0.2
     # Used only to ESTIMATE the cost shown in the metrics (US dollars per million tokens). These are
     # the list prices I knew for gemini-2.5-flash and may be out of date: check the current price
