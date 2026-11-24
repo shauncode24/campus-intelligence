@@ -1,0 +1,45 @@
+.privacy-container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 100px 20px 60px;
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+.privacy-container h1 {
+  margin-bottom: 8px;
+}
+
+.privacy-container h2 {
+  margin-top: 32px;
+  font-size: 1.15rem;
+}
+
+.privacy-lead {
+  color: #5f6368;
+}
+
+.privacy-container ul {
+  padding-left: 20px;
+}
+
+.privacy-delete-btn {
+  background: #c92a2a;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.privacy-delete-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 768px) {
+  .privacy-container {
+    padding: 80px 16px 40px;
+  }
+}

@@ -17,6 +17,7 @@ const DocumentManagement = lazy(() => import("../pages/DocumentManagement"));
 const FAQManagement = lazy(() => import("../pages/FAQManagement"));
 const DocumentLibrary = lazy(() => import("../pages/DocumentLibrary"));
 const SavedAnswers = lazy(() => import("../pages/SavedAnswer"));
+const PrivacyPage = lazy(() => import("../pages/PrivacyPage"));
 
 const PageLoader = () => (
   <div
@@ -42,6 +43,7 @@ export default function AppRoutes() {
           <Route path="/user-login" element={<UserLogin />} />
           <Route path="/student" element={<StudentDashboard />} />
           <Route path="/faq" element={<FAQPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/documents" element={<DocumentLibrary />} />
           <Route path="/calendar/success" element={<CalendarCallback />} />
           <Route path="/calendar/error" element={<CalendarCallback />} />

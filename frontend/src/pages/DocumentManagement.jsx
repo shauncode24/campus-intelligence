@@ -379,6 +379,11 @@ export default function DocumentManagement() {
                             {note}
                           </div>
                         )}
+                        {status === "Processed" && doc.warning && (
+                          <div className="status-note warning-note" title={doc.warning}>
+                            ⚠ {doc.warning}
+                          </div>
+                        )}
                         {status === "Error" && doc.errorMessage && (
                           <div className="status-note error-note" title={doc.errorMessage}>
                             {doc.errorMessage}

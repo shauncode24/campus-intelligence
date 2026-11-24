@@ -194,6 +194,10 @@
   color: #c92a2a;
 }
 
+.status-note.warning-note {
+  color: #b45309;
+}
+
 .management-toolbar {
   display: flex;
   gap: 0.75rem;

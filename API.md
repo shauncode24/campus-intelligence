@@ -27,6 +27,7 @@ operational endpoint.
 | GET | `/calendar/callback` | public (Google redirects here; state is signed) | Finish the Google connection |
 | POST | `/calendar/create-event` | signed-in | Add a deadline to the user's calendar |
 | GET | `/calendar/status` | signed-in | Is the calendar connected? |
+| DELETE | `/me` | signed-in | Delete everything stored about me (chats, history, notes, feedback, calendar link) and my account; body `{"confirm": true}`; admins refused |
 | DELETE | `/calendar/disconnect` | signed-in | Disconnect the calendar |
 | POST | `/documents/upload-url` | admin | Get a one-time signed upload target for the PDF (the bucket accepts no anonymous writes) |
 | POST | `/documents` | admin | Register an uploaded file (creates the document record) |

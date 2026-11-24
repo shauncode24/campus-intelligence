@@ -62,6 +62,11 @@ class Config:
     MAX_IMAGES_PER_DOCUMENT = int(os.getenv("MAX_IMAGES_PER_DOCUMENT", "30"))
     # Smaller images (icons, bullets, logos) are not indexed. PROVISIONAL values.
     MIN_IMAGE_SIDE = int(os.getenv("MIN_IMAGE_SIDE", "120"))
+    # Scanned PDFs have no text layer (there is no OCR). A page counts as "has text" with at least
+    # this many characters; a document where fewer than this fraction of pages has text is flagged
+    # for the admin; one with no text at all is refused (PROVISIONAL values).
+    MIN_TEXT_CHARS_PER_PAGE = int(os.getenv("MIN_TEXT_CHARS_PER_PAGE", "25"))
+    MIN_TEXT_PAGE_FRACTION = float(os.getenv("MIN_TEXT_PAGE_FRACTION", "0.5"))
     MIN_IMAGE_PIXELS = int(os.getenv("MIN_IMAGE_PIXELS", "20000"))
     MIN_IMAGE_SCORE = float(os.getenv("MIN_IMAGE_SCORE", "0.26"))
     GEMINI_MODEL_NAME = "gemini-2.5-flash"

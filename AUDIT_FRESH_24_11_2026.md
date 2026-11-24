@@ -333,10 +333,10 @@ Rules I'll follow when you approve: **one item at a time, never commit, give a c
 | P0-3 ✅ **DONE** | Fix the shared per-IP bucket | S3 | `index.js`, `utils/rate_limit.py`, `config.py` | none | Per-IP limits apply per real client | Two-IP simulated test |
 | P0-4 ✅ **DONE** | Cheap public endpoints | S4 | `main.py` (`/health`, `/faq`, `/documents/{id}/exists`) | none | Zero Firestore reads from unauthenticated calls except cached FAQ | Emulator read count |
 | P0-5 | Abuse controls for free sign-up | S2 | `AuthContext.jsx`, `api.js`, `auth.py`, `index.js`, Firebase console (App Check) | P0-3 | One IP/script cannot exhaust the daily budget | Multi-account script |
-| P0-6 | Zero-text and low-text PDF guard | R1 | `ingestion.py`, `pdf_processor.py`, admin UI list | none | Scanned PDFs are flagged, not "Done" | Fixture scanned PDF |
-| P0-7 | Calendar correctness and safety | R10, S6.1 | `deadline_extractor.py`, `calendarService.js`, `CalendarPreviewModal.jsx` | none | Right date, all-day event, per-request OAuth client | Date-phrase unit tests; parallel-user test |
+| P0-6 ✅ **DONE** | Zero-text and low-text PDF guard | R1 | `ingestion.py`, `pdf_processor.py`, admin UI list | none | Scanned PDFs are flagged, not "Done" | Fixture scanned PDF |
+| P0-7 ✅ **DONE** | Calendar correctness and safety | R10, S6.1 | `deadline_extractor.py`, `calendarService.js`, `CalendarPreviewModal.jsx` | none | Right date, all-day event, per-request OAuth client | Date-phrase unit tests; parallel-user test |
 | P0-8 | Real golden set (you + me) and first real baseline | E1 | `eval/` (data outside git if documents are private) | your real PDFs and 60 questions | Measured retrieval quality on real data | Report in `eval/results/` |
-| P0-9 | Student data deletion and a privacy notice | S9 (part) | `chat_repository.py`, `cache_repository.py`, `feedback_repository.py`, new route, frontend settings | none | "Delete my data" removes everything | Script scans every collection for the uid |
+| P0-9 ✅ **DONE** | Student data deletion and a privacy notice | S9 (part) | `chat_repository.py`, `cache_repository.py`, `feedback_repository.py`, new route, frontend settings | none | "Delete my data" removes everything | Script scans every collection for the uid |
 
 ### P1: reliability, correctness, usability
 
@@ -418,3 +418,19 @@ Rules I'll follow when you approve: **one item at a time, never commit, give a c
 - **Changed:** `/health` does no database reads (`chunks_in_firebase` is now the in-memory index size, 0 until the first question); `/faq` is kept 60 s in memory (`faq_repository.py`); `/documents/{id}/exists` now needs sign-in and a per-user limit (frontend `HistoryPage.jsx` sends the token); `API.md` updated.
 - **Verified:** `tests/test_public_endpoints.py`: 400 calls to `/health` + `/healthz` = 0 database accesses; 100 calls to `/faq` = 1; cache expiry; limit still applies; `/exists` refuses anonymous callers without any read. Auth-matrix test updated (the route left the public list).
 - **Note:** the exact chunk count is no longer available on `/health`; if you want it, add it to the admin-only `/admin/metrics` (not done).
+
+### P0-6 ✅ Scanned PDFs are refused or flagged (R1)
+- **Changed:** `pdf_processor.py` counts readable pages; `ingestion.py` ends a PDF with no text as **Error** with an admin-readable message (nothing stored), and flags one where fewer than `MIN_TEXT_PAGE_FRACTION` (0.5) of pages have text with a `warning` shown in orange in the admin document list (`DocumentManagement.jsx`). Re-processing clears the warning. New settings `MIN_TEXT_CHARS_PER_PAGE`, `MIN_TEXT_PAGE_FRACTION` (provisional).
+- **Verified:** `tests/test_text_guard.py` with real PDFs built in memory (text, picture-only, mixed). Not verified: real-world scanned files, the orange note in a browser. No OCR was added: scans still cannot be searched.
+
+### P0-7 ✅ Calendar correctness and safety (R10, S6)
+- **Changed:** `deadline_extractor.py` rewritten (all date forms incl. "May 5, 2026", ordinals, abbreviations; day-first numeric; soonest upcoming date that sits near a deadline word; real title, sentence description, document NAME as source). `calendarService.js`: a new OAuth client per call (no cross-user credential mixing), all-day events (no time zone), strict `YYYY-MM-DD` validation, field limits (`cleanEventData`), token revoke helper. Preview modal shows the day, not a shifted time.
+- **Verified:** `tests/test_deadline_extractor.py` (10), `tests/api/calendar_events.mjs` (25, incl. two simultaneous users keep their own credentials). Not verified: a real Google insert; day-first reading of `05/03/2027` is an assumption for your documents.
+- **Not done:** calendar tokens are still stored in plaintext (P2).
+
+### P0-9 ✅ Delete my data and a privacy notice (S9 part)
+- **Changed:** `DELETE /me` (`routes/accountRoutes.js`, `services/userData.js`) erases chats, messages, history, feedback, calendar events/tokens/states and the profile, revokes the Google token, then deletes the sign-in account (data first, so a failure can be retried; admins refused). New `/privacy` page (`PrivacyPage.jsx`) with the notice and the delete button (the footer already linked to it).
+- **Verified:** `tests/api/account_deletion.mjs` (17): 450 rows per collection, then a scan of the WHOLE database finds no mention of the uid; another user untouched; a test also fails if the code starts using a new collection that is neither erased nor declared shared.
+- **Limits:** the shared answer cache (no user id) is not erased per user; deleting one chat still leaves its History rows; no automatic retention yet; the privacy text is my draft, not legal advice.
+
+All of P0-1..P0-4, P0-6, P0-7, P0-9 done. Remaining P0: P0-5 (deferred by you), P0-8 (needs your real PDFs and questions).

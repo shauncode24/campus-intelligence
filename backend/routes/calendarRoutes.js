@@ -4,7 +4,7 @@ import {
   getAuthUrl,
   getTokensFromCode,
   createCalendarEvent,
-  isValidFutureDate,
+  cleanEventData,
 } from "../services/calendarService.js";
 import { db } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
@@ -115,15 +115,12 @@ router.post("/create-event", requireAuth, calendarUserLimiter, async (req, res) 
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const { title, date, description, sourceDocument } = eventData;
-
-    // Validate date
-    if (!isValidFutureDate(date)) {
-      return res.status(400).json({
-        error: "Invalid or past date",
-        message: "The deadline has already passed or date format is invalid",
-      });
+    // Validate and clean what the browser sent (date format, lengths)
+    const cleaned = cleanEventData(eventData);
+    if (!cleaned.ok) {
+      return res.status(400).json({ error: "Invalid event", message: cleaned.message });
     }
+    const { title, date, sourceDocument } = cleaned.event;
 
     // Get the authenticated user's tokens
     const tokenDoc = await db
@@ -141,7 +138,7 @@ router.post("/create-event", requireAuth, calendarUserLimiter, async (req, res) 
     const { tokens } = tokenDoc.data();
 
     // Create event
-    const event = await createCalendarEvent(tokens, eventData);
+    const event = await createCalendarEvent(tokens, cleaned.event);
 
     // Store event record for history
     await db.collection("calendar_events").add({

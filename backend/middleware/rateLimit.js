@@ -67,6 +67,13 @@ export const calendarUserLimiter = makeLimiter({
   message: SLOW_DOWN,
 });
 
+/** Deleting one's own account, by user (a handful of tries is plenty). */
+export const accountUserLimiter = makeLimiter({
+  max: intEnv("ACCOUNT_RATE_PER_MINUTE", 5),
+  byUser: true,
+  message: SLOW_DOWN,
+});
+
 /** Admin actions, by user. */
 export const adminUserLimiter = makeLimiter({
   max: intEnv("ADMIN_RATE_PER_MINUTE", 120),

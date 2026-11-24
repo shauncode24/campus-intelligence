@@ -28,6 +28,7 @@ class PDFProcessor:
         )
         self.captioner = ImageCaptioner()
         self.last_image_stats = {}
+        self.last_text_stats = {}
     
     def process_pdf(self, pdf_bytes: bytes, doc_id: str, progress=None):
         """
@@ -47,6 +48,8 @@ class PDFProcessor:
         """
         all_docs = []
         all_embeddings = []
+        pages_with_text = 0
+        text_chars = 0
         self._image_state = {
             "seen": set(), "considered": 0, "consecutive_failures": 0,
             "stats": {"found": 0, "captioned": 0, "fell_back_to_clip": 0, "decorative": 0,
@@ -75,6 +78,10 @@ class PDFProcessor:
                 
                 # Process text
                 text = page.get_text()
+                page_chars = len(text.strip())
+                text_chars += page_chars
+                if page_chars >= Config.MIN_TEXT_CHARS_PER_PAGE:
+                    pages_with_text += 1
                 if text.strip():
                     text_docs, text_embeddings = self._process_text(
                         text, page_num, doc_id
@@ -92,6 +99,8 @@ class PDFProcessor:
                     progress(page_num + 1, total_pages)
             
             doc.close()
+            self.last_text_stats = {"pages": total_pages, "pagesWithText": pages_with_text,
+                                    "textChars": text_chars}
             self.last_image_stats = self._image_state["stats"]
             print(f"✅ Processing complete: {len(all_docs)} chunks created")
             if self.last_image_stats["found"]:

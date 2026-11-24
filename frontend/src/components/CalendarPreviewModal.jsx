@@ -9,16 +9,20 @@ export default function CalendarPreviewModal({
 }) {
   if (!isOpen) return null;
 
+  // The deadline is a calendar DAY ("2026-05-05"), added as an all-day event. Build the date
+  // from its parts: new Date("2026-05-05") means midnight UTC, which shows as the previous
+  // day for anyone west of Greenwich.
   const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const [y, m, d] = String(dateStr).split("-").map(Number);
+    if (!y || !m || !d) return String(dateStr);
+    return (
+      new Date(y, m - 1, d).toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }) + " (all day)"
+    );
   };
 
   return (
@@ -61,7 +65,7 @@ export default function CalendarPreviewModal({
           </div>
 
           <div className="preview-field">
-            <label>Date & Time</label>
+            <label>Date</label>
             <div className="preview-value preview-date">
               <svg
                 xmlns="http://www.w3.org/2000/svg"

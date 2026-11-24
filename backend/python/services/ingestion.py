@@ -39,12 +39,31 @@ from utils.threads import run_blocking
 # How often progress is written (and the document re-checked for cancellation)
 PROGRESS_INTERVAL_SECONDS = 1.5
 
-# Errors whose message was written for people (they were returned to the admin as
-# 400/413/415/502 before). Anything else is logged and reported generically.
-USER_FACING_ERRORS = (UnsafeFileUrl, FileTooLarge, InvalidPdf, DownloadFailed)
-
 INTERRUPTED_MESSAGE = ("Processing was interrupted because the service restarted. "
                        "Please re-process this document.")
+
+
+class NoReadableText(Exception):
+    """The PDF has no text layer (typically a scan). Message is written for the admin."""
+
+
+def low_text_warning(stats: dict):
+    """
+    Text for the admin when too few pages of a document have readable text (they are scans or
+    pictures, which this service cannot read: there is no OCR), else None.
+    """
+    pages = int(stats.get("pages") or 0)
+    with_text = int(stats.get("pagesWithText") or 0)
+    if pages and with_text / pages < Config.MIN_TEXT_PAGE_FRACTION:
+        return (f"Only {with_text} of {pages} pages have readable text. The other pages are probably "
+                "scans or pictures, which cannot be searched: questions about them will get \"not found\". "
+                "Upload a text version of the document if you have one.")
+    return None
+
+
+# Errors whose message was written for people (they were returned to the admin as
+# 400/413/415/502 before). Anything else is logged and reported generically.
+USER_FACING_ERRORS = (UnsafeFileUrl, FileTooLarge, InvalidPdf, DownloadFailed, NoReadableText)
 
 
 class JobCancelled(Exception):
@@ -135,6 +154,13 @@ class IngestionManager:
                     pdf_processor.process_pdf, pdf_bytes, doc_id, progress.pages
                 )
                 image_stats = dict(getattr(pdf_processor, "last_image_stats", None) or {})
+                text_stats = dict(getattr(pdf_processor, "last_text_stats", None) or {})
+                if not any(d.metadata.get("type") == "text" and not d.metadata.get("caption") for d in all_docs):
+                    raise NoReadableText(
+                        "This PDF has no readable text (it looks like a scan or a set of pictures), so nothing "
+                        "could be indexed. Upload a text version, or run it through OCR first."
+                    )
+                warning = low_text_warning(text_stats)
 
                 await run_blocking(progress.stage, "storing", 88, f"Saving {len(all_docs)} passages")
                 await storage_service.store_chunks(
@@ -157,6 +183,9 @@ class IngestionManager:
                             "updatedAtMs": int(time.time() * 1000),
                         },
                         "imageStats": image_stats,
+                        "textStats": text_stats,
+                        # shown to the admin next to the document; cleared when a re-run is fine
+                        "warning": warning if warning else firestore.DELETE_FIELD,
                         "contentSha256": content_sha256,
                         "errorMessage": firestore.DELETE_FIELD,
                     },

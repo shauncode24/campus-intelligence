@@ -7,6 +7,7 @@ import fetch from "node-fetch";
 import calendarRoutes from "./routes/calendarRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
 import faqAdminRoutes from "./routes/faqAdminRoutes.js";
+import accountRoutes from "./routes/accountRoutes.js";
 import { requireAuth } from "./middleware/auth.js";
 import { ipLimiter, queryIpLimiter, queryUserLimiter } from "./middleware/rateLimit.js";
 import { failInternal, logError } from "./utils/httpErrors.js";
@@ -229,6 +230,9 @@ app.post(
 
 // Calendar routes
 app.use("/calendar", calendarRoutes);
+
+// A person's own account: delete my data
+app.use("/me", accountRoutes);
 
 // Document processing routes
 app.use("/documents", documentRoutes);
