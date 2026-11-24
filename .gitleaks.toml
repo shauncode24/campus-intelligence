@@ -1,0 +1,15 @@
+# Secret scanning rules (used by CI and by `gitleaks detect`).
+title = "campus-intelligence"
+
+[extend]
+useDefault = true
+
+# These two files hold the Firebase WEB API key and the Supabase PUBLISHABLE key. Both are
+# designed to be shipped to every browser (they are protected by Firestore/Storage rules, not by
+# secrecy), and they were never anything else. Allow-listing the FILES, not the pattern, so a real
+# secret added to any other file, or to these files under another name, is still caught.
+[allowlist]
+description = "Public client-side keys by design"
+paths = [
+  '''(^|/)src/app/(firebase|supabase)\.js$''',
+]

@@ -1,0 +1,206 @@
+# Continuous integration: every pull request and every push to main runs the checks below.
+# Make them REQUIRED in GitHub: Settings > Branches > branch protection rule for `main` >
+# "Require status checks to pass" > select: python, node-api, frontend, docker, security.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"      # Mondays: new advisories can fail the security job without any code change
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------------------------
+  # Python service: lint for real bugs, then the whole test suite (including the auth/ownership
+  # matrix over every route) and the retrieval-evaluation harness tests.
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"        # the version the tests and the Docker image use
+          cache: pip
+          cache-dependency-path: backend/python/requirements.txt
+
+      - name: Cache the embedding models (about 600 MB, downloaded by the tests)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-${{ hashFiles('backend/python/config.py') }}
+
+      - name: Install the pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/python/requirements.txt
+          pip check
+
+      - name: Lint (syntax errors and undefined names)
+        run: |
+          pip install ruff==0.17.6
+          ruff check backend/python --select E9,F63,F7,F82
+
+      - name: Backend tests
+        working-directory: backend/python
+        run: python -m unittest discover -s tests
+
+      - name: Evaluation harness tests
+        run: python -m unittest discover -s eval/tests
+
+  # ---------------------------------------------------------------------------------------------
+  # Node API against the Firestore emulator (real HTTP requests to the real Express app; the
+  # Python service is a stand-in), plus the Firestore security rules.
+  node-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            firestore-tests/package-lock.json
+
+      - uses: actions/setup-java@v4       # the emulator is a Java program
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install
+        run: |
+          npm ci --ignore-scripts --prefix backend
+          npm ci --prefix firestore-tests
+
+      - name: Syntax check the server
+        working-directory: backend
+        run: |
+          node --check index.js
+          find config middleware routes services utils scripts -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: API tests (auth, admin, ownership, rate limits, uploads, versions, cache epoch)
+        run: npm --prefix firestore-tests run test:api
+
+      - name: Firestore security rules tests
+        run: npm --prefix firestore-tests test
+
+  # ---------------------------------------------------------------------------------------------
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      # Fails if any rule has MORE errors than frontend/lint-baseline.json (the existing backlog is
+      # allowed; new problems are not). See scripts/check-lint-baseline.mjs.
+      - name: Lint (no new errors)
+        run: npm run lint:ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+  # ---------------------------------------------------------------------------------------------
+  # The deployable image: build it, start it, and check it is healthy and unprivileged.
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: backend/python
+          load: true
+          tags: campus-rag:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run it and check health
+        run: |
+          docker run -d --name rag -p 8000:8000 \
+            -e GOOGLE_API_KEY=ci-not-a-real-key -e FIREBASE_PROJECT_ID=ci \
+            -e FIREBASE_PRIVATE_KEY=ci -e FIREBASE_CLIENT_EMAIL=ci@example.com campus-rag:ci
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8000/healthz; then echo; break; fi
+            sleep 3
+            if [ "$i" = 40 ]; then docker logs rag; echo "service did not come up"; exit 1; fi
+          done
+          test "$(docker exec rag id -u)" != "0" || { echo "container runs as root"; exit 1; }
+          # an unauthenticated question must be refused (never answered)
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8000/query \
+                   -H 'Content-Type: application/json' -d '{"question":"hi"}')
+          case "$code" in 401|503) echo "unauthenticated /query refused ($code)";; *) echo "unexpected $code"; exit 1;; esac
+
+      - name: Run the backend tests inside the image
+        run: docker run --rm --entrypoint python campus-rag:ci -m unittest discover -s tests
+
+  # ---------------------------------------------------------------------------------------------
+  # Secrets in the code or its history, and known-vulnerable dependencies.
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                  # gitleaks reads the whole history
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # Free for personal repositories. For an organisation account the action needs a
+          # GITLEAKS_LICENSE secret; or replace this step with: docker run zricethezav/gitleaks detect
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Python dependencies (pip-audit)
+        run: |
+          pip install pip-audit
+          pip-audit -r backend/python/requirements.txt --no-deps --disable-pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Node API dependencies (fail on high or critical)
+        working-directory: backend
+        run: npm audit --omit=dev --audit-level=high
+
+      # The remaining high advisory is @grpc/grpc-js pinned exactly by the firebase package; that
+      # package is Node-only and is not in the browser bundle (checked: no "grpc-js" in dist/).
+      # Fail on critical so a genuinely new serious problem is still caught.
+      - name: Frontend dependencies (fail on critical)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=critical

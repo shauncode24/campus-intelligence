@@ -4,7 +4,7 @@ Living checklist. Claude updates it after every roadmap item. It assumes **nothi
 Do the sections **in order**: later ones depend on earlier ones. Commands are for **Windows PowerShell**
 unless marked otherwise. `<angle brackets>` are values you fill in.
 
-**Last updated:** after P1-10.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10.
+**Last updated:** after P1-11.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10, P1-11.
 
 Legend: ☐ = to do. ⚠️ = skipping it breaks something. 💸 = costs Gemini quota. 🔒 = security.
 
@@ -20,8 +20,22 @@ git status --short
 git log --oneline -8
 ```
 
-The last commit you should see is the P1-9 one ("Fix the admin pages…"). P1-10's changes are
-uncommitted. Message for it:
+The last commit you should see is the P1-10 one ("Make the Python build reproducible…"). P1-11's
+changes are uncommitted. Message for it:
+
+```
+Add CI: tests, lint gate, Docker build, secret and dependency scans (P1-11)
+
+GitHub Actions run the Python and Node API tests (emulator), rules tests, a frontend lint gate
+that blocks new errors, the Docker image build and health check, gitleaks, pip-audit and npm
+audit. Node API tests move into the repo; adds a route-by-route auth/ownership test for the
+Python API. Fixes a missing toast import, removes a dead function, updates frontend lockfile
+(2 critical and 3 high advisories).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
+Message for P1-10 (if you have not committed it yet):
 
 ```
 Make the Python build reproducible: pinned dependencies, working Dockerfile (P1-10)
@@ -155,6 +169,11 @@ Needs Python 3.14 (what the tests ran on; `python --version`). If you only have 
 untested: tell Claude. The first start downloads two small models from Hugging Face (bge-small and CLIP); you need
 internet once. To change a dependency: edit `backend\python\requirements.in` and regenerate `requirements.txt`
 (the commands are in that file's header).
+
+### 2.3b Node API dependencies for the tests (P1-11)
+
+`npm --prefix backend ci --ignore-scripts` (the `--ignore-scripts` skips native builds nothing uses). This is also
+what CI runs.
 
 ### 2.4 Docker image (optional, for deploying the Python service)
 
@@ -331,8 +350,11 @@ backend\venv\Scripts\python.exe -m unittest discover -s eval\tests
 # Firestore rules tests (needs Java 17+ and the firestore-tests dependencies)
 cd firestore-tests; npm install; cd ..
 npm --prefix firestore-tests test
-# Frontend helper tests (upload form logic; no install needed)
-node --test "frontend/src/utils/*.test.mjs"
+# Frontend tests and the lint gate
+cd frontend; npm test; npm run lint:ci; cd ..
+# Node API tests against the Firestore emulator (needs Java; 11 files, ~300 checks)
+npm --prefix backend ci --ignore-scripts
+npm --prefix firestore-tests run test:api
 # Frontend production build
 cd frontend; npm run build
 ```
@@ -405,6 +427,21 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 - ☐ **Fill in versions and dates on your real documents** (P1-7): version, effective date and expiry date only do
   something once they are entered. Documents without dates stay live forever. For each policy that has a newer edition,
   re-upload the new one with "Replaces an older document" (or delete the old one).
+- ☐ **Turn on CI (P1-11): push, then make it required.**
+  1. `git push` (the workflow files are in `.github/workflows/`). GitHub → your repo → **Actions** tab: the **CI** run starts.
+     Expect it to need one or two small fixes the first time (it has never run on GitHub's machines; I validated the files
+     with actionlint and ran every step's command locally, but not the runners themselves). Tell Claude what is red.
+  2. Settings → Branches → **Add branch protection rule** for `main` → tick **Require a pull request before merging** and
+     **Require status checks to pass**, then select `python`, `node-api`, `frontend`, `docker`, `security`. From then on
+     nothing reaches `main` with a red check.
+  3. The **security** job uses `gitleaks-action`: free for personal repositories. If the repo moves to a GitHub
+     *organisation* it needs a `GITLEAKS_LICENSE` secret (or swap that step for the docker command in the comment).
+  4. Settings → Code security → enable **Dependabot alerts** (the weekly update PRs from `.github/dependabot.yml` need nothing).
+     Dependabot PRs that change `requirements.txt` directly will fail the "requirements.in and requirements.txt agree" test:
+     that is intended, edit `requirements.in` and regenerate (command in `requirements.txt`'s header).
+  5. If the **security** job turns red on a day nothing changed, a new advisory was published: read the log, update the package.
+- ☐ **Lower the frontend lint baseline as you fix things** (P1-11): `frontend/lint-baseline.json` allows the 32 errors that
+  existed. After fixing some, run `cd frontend; node scripts/check-lint-baseline.mjs --update` and commit the file.
 - ☐ **Delete `backend\venv-old`** once the new virtual environment works (P1-10). It is thousands of files that OneDrive is
   syncing. Consider keeping the new `venv` outside OneDrive (e.g. `C:\Users\Shaun\venvs\campus`) and using that path in the
   commands in this file.
@@ -449,6 +486,7 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 ## Change log of this file
 
 - **After P1-5:** file created; covers P0-1 … P1-5.
+- **After P1-11:** commit message for P1-11; push and turn on CI + required checks + Dependabot; new test commands (`npm --prefix firestore-tests run test:api`, `npm test`/`npm run lint:ci` in frontend); frontend lockfile updated (run `npm ci` in `frontend`).
 - **After P1-10:** commit message for P1-10; new pinned Python environment (2.3), optional Docker build (2.4), delete the old venv; step 24.
 - **After P1-9:** commit message for P1-9; smoke-test steps 21-23 (admin list, duplicates, retry); old documents have no content fingerprint until re-processed.
 - **After P1-8:** commit message for P1-8; smoke-test steps 19-20 (exact reuse, invalidation); purge old cache entries; the cache is exact-match only (semantic mode needs your own calibration).

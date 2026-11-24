@@ -690,45 +690,6 @@ def check_duplicate_document(
         raise internal_error(e)
 
 
-# Enhance the existing update_document_status in storage_service.py
-async def update_document_status_enhanced(doc_id: str, all_docs: List[Document], metadata: dict):
-    """
-    Update document processing status with enhanced metadata
-    """
-    db = firebase_client.db
-    if not db:
-        return
-    
-    try:
-        doc_ref = db.collection("documents").document(doc_id)
-        
-        update_data = {
-            "status": "Processed",
-            "processedAt": firestore.SERVER_TIMESTAMP,
-            "chunksCount": len(all_docs),
-            "textChunks": len([d for d in all_docs if d.metadata.get("type") == "text"]),
-            "visualChunks": len([d for d in all_docs if d.metadata.get("type") == "image"]),
-            "isMultiModal": True,
-        }
-        
-        # Add enhanced metadata if provided
-        if metadata:
-            update_data.update({
-                'documentType': metadata.get('documentType'),
-                'academicYear': metadata.get('academicYear'),
-                'programs': metadata.get('programs', []),
-                'years': metadata.get('years', []),
-                'accessLevel': metadata.get('accessLevel', 'Public'),
-                'version': metadata.get('version'),
-                'owner': metadata.get('owner')
-            })
-        
-        doc_ref.update(update_data)
-        print(f"✅ Updated document status with enhanced metadata: {doc_id}")
-        
-    except Exception as e:
-        print(f"Error updating document status: {e}")
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,0 +1,7 @@
+{
+  "no-unused-vars": 19,
+  "react-hooks/immutability": 5,
+  "react-hooks/preserve-manual-memoization": 2,
+  "react-hooks/set-state-in-effect": 4,
+  "react-refresh/only-export-components": 2
+}
