@@ -1,4 +1,5 @@
 import "./config/loadEnv.js"; // must be first: loads backend/.env or $ENV_FILE
+import crypto from "crypto";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -12,6 +13,33 @@ import { failInternal, logError } from "./utils/httpErrors.js";
 import { sanitizeHistory } from "./utils/chatHistory.js";
 
 const app = express();
+
+// Every request gets an id (the caller's X-Request-ID if well formed), returned in the response,
+// forwarded to the RAG service and written to one JSON access-log line, so a single question can be
+// followed across both services. Query strings are not logged (they can carry tokens or codes).
+const REQUEST_ID_FORMAT = /^[A-Za-z0-9._-]{8,64}$/;
+app.use((req, res, next) => {
+  const inbound = req.get("x-request-id");
+  req.id = REQUEST_ID_FORMAT.test(inbound || "") ? inbound : crypto.randomBytes(8).toString("hex");
+  res.setHeader("X-Request-ID", req.id);
+  const started = Date.now();
+  res.on("close", () => {
+    console.log(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        event: "http",
+        service: "node",
+        requestId: req.id,
+        method: req.method,
+        path: req.path,
+        status: res.statusCode,
+        ms: Date.now() - started,
+        aborted: !res.writableEnded || undefined,
+      })
+    );
+  });
+  next();
+});
 
 const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 const pythonRagUrl = process.env.PYTHON_RAG_URL || "http://localhost:8000";
@@ -29,7 +57,8 @@ app.use(
   cors({
     origin: [frontendUrl, ...extraOrigins],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Request-ID"],
+    exposedHeaders: ["X-Request-ID"],
     credentials: false,
   })
 );
@@ -118,6 +147,7 @@ app.post(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${req.authToken}`,
+        "X-Request-ID": req.id,
       },
       body: JSON.stringify(requestBody),
       signal: upstream.signal,
@@ -183,7 +213,7 @@ app.post(
     res.end();
   } catch (error) {
     if (error?.name === "AbortError" || res.destroyed) return; // the browser stopped or left
-    const ref = logError(error, "document query");
+    const ref = logError(error, "document query", req.id);
     res.write(
       `data: ${JSON.stringify({
         type: "error",

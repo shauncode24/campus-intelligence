@@ -8,15 +8,15 @@ import crypto from "crypto";
  * error is logged under a short reference id; the client only gets the id,
  * which an operator can search for in the logs.
  */
-export function logError(error, context) {
+export function logError(error, context, requestId) {
   const ref = crypto.randomBytes(4).toString("hex");
-  console.error(`❌ [${ref}] ${context}:`, error);
+  console.error(`❌ [${ref}] [request ${requestId || "-"}] ${context}:`, error);
   return ref;
 }
 
 /** Send a generic 500. `label` is a short, safe description of what failed. */
 export function failInternal(res, error, label) {
-  const ref = logError(error, label);
+  const ref = logError(error, label, res.getHeader?.("X-Request-ID"));
   res.status(500).json({
     error: label,
     message: `Something went wrong (ref ${ref})`,

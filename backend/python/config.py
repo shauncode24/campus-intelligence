@@ -66,6 +66,11 @@ class Config:
     MIN_IMAGE_SCORE = float(os.getenv("MIN_IMAGE_SCORE", "0.26"))
     GEMINI_MODEL_NAME = "gemini-2.5-flash"
     GEMINI_TEMPERATURE = 0.2
+    # Used only to ESTIMATE the cost shown in the metrics (US dollars per million tokens). These are
+    # the list prices I knew for gemini-2.5-flash and may be out of date: check the current price
+    # and set the env vars. They never affect behaviour.
+    GEMINI_PRICE_IN_PER_MTOK = float(os.getenv("GEMINI_PRICE_IN_PER_MTOK", "0.30"))
+    GEMINI_PRICE_OUT_PER_MTOK = float(os.getenv("GEMINI_PRICE_OUT_PER_MTOK", "2.50"))
     
     # RAG Configuration
     CHUNK_SIZE = 500

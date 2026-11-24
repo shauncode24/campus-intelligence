@@ -45,6 +45,7 @@ from services.query_condenser import query_condenser, needs_condensing, Condense
 from services.ingestion import ingestion_manager, fail_interrupted_jobs
 from services.document_validity import describe
 from utils.threads import run_blocking
+from utils import observability as obs
 
 # Utilities
 from utils.intent_detector import detect_intent
@@ -94,13 +95,27 @@ async def lifespan(_app):
 app = FastAPI(title="Campus Intel RAG Service", version="1.0.0", lifespan=lifespan)
 
 async def _ip_rate_limit(request: Request, call_next):
-    """Coarse per-IP limit on every request (protects even unauthenticated endpoints)."""
+    """
+    Gives every request an id (the caller's `X-Request-ID` if well formed), applies the coarse
+    per-IP limit (protects even unauthenticated endpoints), returns the id in the response and
+    writes one access-log line.
+    """
+    request_id = obs.accept_request_id(request.headers.get("x-request-id"))
+    obs.set_request_id(request_id)
+    started = time.perf_counter()
+    response = None
     if request.method != "OPTIONS":
         wait = limiter.check(f"ip:{client_ip(request)}", Config.IP_RATE_PER_MINUTE, 60)
         if wait > 0:
             err = too_many(wait, "Too many requests. Please wait a moment and try again.")
-            return JSONResponse(status_code=429, content={"detail": err.detail}, headers=err.headers)
-    return await call_next(request)
+            response = JSONResponse(status_code=429, content={"detail": err.detail}, headers=err.headers)
+    if response is None:
+        response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    if request.url.path != "/healthz":
+        obs.log_event("http", method=request.method, path=request.url.path, status=response.status_code,
+                      msToResponse=round((time.perf_counter() - started) * 1000))
+    return response
 
 
 app.add_middleware(BaseHTTPMiddleware, dispatch=_ip_rate_limit)
@@ -159,6 +174,7 @@ async def _save_exchange(user_id: str, chat_id, typed_question: str, response: Q
         print(f"❌ Could not save the exchange: {e}")
         response.saved = False
     response.metadata = metadata
+    obs.mark("save")
     return response
 
 
@@ -170,6 +186,7 @@ async def _decline(user_id: str, question: str, intent: str, reason: str,
     be served back as if it were a verified answer).
     """
     print(f"🚫 Declining to answer ({reason})")
+    obs.set_outcome("declined")
     response = QueryResponse(
         answer=Config.NO_ANSWER_MESSAGE,
         sources=[],
@@ -193,6 +210,9 @@ async def _generate_streaming(message, on_token, shown: list) -> str:
     holding = True
     async for piece in llm_service.stream_answer(message):
         full.append(piece)
+        _q = obs.current_query()
+        if _q is not None:
+            _q.first_piece()
         if holding:
             held += piece
             if could_still_be_not_found(held):
@@ -302,6 +322,30 @@ async def query_documents(
 
 
 async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -> QueryResponse:
+    """Runs the pipeline and records how it went: timings per stage, tokens, cost, outcome."""
+    observation = obs.begin_query()
+    try:
+        response = await _answer_question_inner(request, user_id, on_token)
+        obs.set_outcome("stopped" if response.stopped else "cached" if response.cached
+                        else "answered" if response.answered else "declined")
+        return response
+    except asyncio.CancelledError:
+        obs.set_outcome("stopped")
+        raise
+    except HTTPException as e:
+        obs.set_outcome("rejected" if e.status_code < 500 else "error")
+        raise
+    except BaseException:
+        obs.set_outcome("error")
+        raise
+    finally:
+        summary = observation.summary()
+        obs.metrics.record(summary)
+        obs.log_event("query_done", user=obs.user_tag(user_id), inChat=bool(request.chatId),
+                      regenerate=request.regenerate or None, streamed=on_token is not None, **summary)
+
+
+async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=None) -> QueryResponse:
     """
     The whole question-answering pipeline. With `on_token` (an async function), the answer is
     streamed to it piece by piece as the model generates it; without, it is generated in one call.
@@ -328,6 +372,7 @@ async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -
                 history = []
         else:
             history = [turn.model_dump() for turn in request.history]
+        obs.mark("context")
         if Config.QUERY_CONDENSING and needs_condensing(request.question, history):
             consume_llm_budget(user_id)   # a model call: charged like any other
             condensed = await run_blocking(query_condenser.condense, request.question, history)
@@ -346,6 +391,7 @@ async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -
         if standalone_note:
             print(f"✏️ Understood as: {question}")
 
+        obs.mark("condense")
         # Detect intent
         intent = detect_intent(question)
         print(f"🎯 Detected intent: {intent}")
@@ -359,6 +405,7 @@ async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -
         )
         print("✅ Query embedded")
         
+        obs.mark("embed")
         # Check cache first (only for questions that stand on their own)
         cached_question = None
         # The document set this answer is produced from. Read BEFORE searching and stored with
@@ -385,6 +432,7 @@ async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -
                       f"({len(cited - live_ids)})")
                 cached_question = None
 
+        obs.mark("cache")
         if cached_question:
             print(f"♻️ Reusing cached answer (similarity: {cached_question.get('similarity', 1.0):.3f})")
             
@@ -426,6 +474,7 @@ async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -
             filters=filters
         )
         
+        obs.mark("retrieve")
         # Only show the model chunks that are plausibly relevant. If nothing is,
         # decline without calling the LLM.
         relevant_docs = retrieval_service.filter_relevant(context_docs)
@@ -453,11 +502,18 @@ async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -
             for s_ in sources
         }
 
+        obs.mark("sources")
+        _q = obs.current_query()
+        if _q is not None:
+            _q.sources = len(sources)
         # Create multimodal message with labelled excerpts (async: re-extracts images)
         message = await llm_service.create_multimodal_message(
             question, relevant_docs, doc_names
         )
 
+        obs.mark("prompt")
+        if _q is not None:
+            _q.generation_started()
         # Generate answer (grounded: the model must reply NOT_FOUND if unsupported)
         if on_token is None:
             answer = await run_blocking(llm_service.generate_answer, message)
@@ -472,6 +528,7 @@ async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -
                                         standalone_note, intent)
                 raise
 
+        obs.mark("generate")
         if is_not_found(answer):
             return await _decline(
                 user_id, request.question, intent, "model found no support in context",
@@ -577,6 +634,15 @@ def liveness():
     """Is the process up and answering? No database access, so it is free to call often
     (the container healthcheck uses it). /health below reports on the database too."""
     return {"status": "ok"}
+
+
+@app.get("/admin/metrics", dependencies=[Depends(admin_limit)])
+async def admin_metrics(admin_id: str = Depends(require_admin)):
+    """
+    How the service is doing, from the last questions this process answered: time per stage
+    (p50/p95), time to first word, outcomes, token use and estimated cost per question.
+    """
+    return obs.metrics.snapshot()
 
 
 @app.get("/health", response_model=HealthResponse)

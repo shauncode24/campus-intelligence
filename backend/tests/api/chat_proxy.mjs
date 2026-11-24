@@ -3,13 +3,13 @@ process.env.PORT = "5074";
 process.env.FIREBASE_PROJECT_ID = "demo-campus-intel";
 process.env.PYTHON_RAG_URL = "http://127.0.0.1:5084";
 process.env.QUERY_RATE_PER_MINUTE = "1000"; process.env.QUERY_RATE_PER_MINUTE_PER_IP = "1000"; process.env.IP_RATE_PER_MINUTE = "1000";
-const bodies = []; let mode = "ok"; let upstreamClosed = 0;
+const seenHeaders = []; const bodies = []; let mode = "ok"; let upstreamClosed = 0;
 const line = (o) => JSON.stringify(o) + "\n";
 const metadata = (saved) => ({ cached: false, answered: true, sources: [{ documentName: "Fees", displayPage: 2 }], historyId: "h1", favorite: false, saved });
 http.createServer((req, res) => {
   let raw = ""; req.on("data", (c) => (raw += c));
   req.on("end", () => {
-    bodies.push(JSON.parse(raw || "{}"));
+    bodies.push(JSON.parse(raw || "{}")); seenHeaders.push(req.headers);
     if (mode === "404") { res.statusCode = 404; res.setHeader("Content-Type", "application/json"); return res.end(JSON.stringify({ detail: "Chat not found" })); }
     res.setHeader("Content-Type", "application/x-ndjson");
     res.on("close", () => { if (!res.writableEnded) upstreamClosed++; });
@@ -86,4 +86,18 @@ mode = "hang";
   check("when the browser leaves, the request to the RAG service is cancelled", upstreamClosed === before + 1);
 }
 mode = "ok";
+// ---- P2-5: request ids ----
+{
+  const mine = "trace-abc12345.def";
+  const r = await fetch("http://127.0.0.1:5074/document/query", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer t", "X-Request-ID": mine }, body: JSON.stringify({ question: "q", chatId: "c1" }) });
+  await r.text();
+  check("a well-formed X-Request-ID is kept and returned", r.headers.get("x-request-id") === mine);
+  check("and forwarded to the RAG service", seenHeaders.at(-1)["x-request-id"] === mine);
+  const r2 = await fetch("http://127.0.0.1:5074/document/query", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer t", "X-Request-ID": "bad id with spaces	<script>" }, body: JSON.stringify({ question: "q", chatId: "c1" }) }).catch(() => null);
+  const made = r2 && r2.headers.get("x-request-id");
+  await r2?.text();
+  check("a malformed one is replaced by a fresh id", !!made && /^[a-f0-9]{16}$/.test(made));
+  const r3 = await post({ question: "q", chatId: "c1" }); await r3.text();
+  check("a request without one gets one, and it is forwarded", /^[a-f0-9]{16}$/.test(r3.headers.get("x-request-id") || "") && seenHeaders.at(-1)["x-request-id"] === r3.headers.get("x-request-id"));
+}
 console.log(fails ? `\nFAILED: ${fails}` : "\nALL PASSED"); process.exit(fails ? 1 : 0);

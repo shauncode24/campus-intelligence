@@ -11,6 +11,7 @@ import base64
 import re
 from utils.file_security import download_pdf
 from utils.threads import run_blocking
+from utils.observability import add_usage, note_model_call
 
 NOT_FOUND_TOKEN = "NOT_FOUND"
 
@@ -252,6 +253,8 @@ class LLMService:
                 content=[{"type": "text", "text": system_prompt + "\n\n"}] + list(content)
             )
             response = self.llm.invoke([merged])
+        note_model_call()
+        add_usage(response)
         return _answer_text(response.content)
 
     async def stream_answer(self, message):
@@ -262,8 +265,10 @@ class LLMService:
         (only possible before the first piece arrives).
         """
         started = False
+        note_model_call()
         try:
             async for chunk in self.llm.astream([SystemMessage(content=SYSTEM_PROMPT), message]):
+                add_usage(chunk)
                 piece = _answer_text(chunk.content)
                 if piece:
                     started = True
@@ -276,6 +281,7 @@ class LLMService:
                 content = [{"type": "text", "text": content}]
             merged = HumanMessage(content=[{"type": "text", "text": SYSTEM_PROMPT + "\n\n"}] + list(content))
             async for chunk in self.llm.astream([merged]):
+                add_usage(chunk)
                 piece = _answer_text(chunk.content)
                 if piece:
                     yield piece

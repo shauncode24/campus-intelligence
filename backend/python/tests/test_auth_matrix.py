@@ -25,6 +25,7 @@ PUBLIC = {
 ADMIN = {
     ("POST", "/process-document"),
     ("POST", "/check-duplicate"),
+    ("GET", "/admin/metrics"),
 }
 
 

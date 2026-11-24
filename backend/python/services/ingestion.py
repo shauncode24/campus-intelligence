@@ -33,6 +33,7 @@ from utils.file_security import (
     DownloadFailed, FileTooLarge, InvalidPdf, UnsafeFileUrl, download_pdf,
 )
 from database.corpus_epoch import bump_epoch
+from utils.observability import log_event
 from utils.threads import run_blocking
 
 # How often progress is written (and the document re-checked for cancellation)
@@ -165,6 +166,8 @@ class IngestionManager:
                 # answer made before now is out of date.
                 await run_blocking(bump_epoch, firebase_client.db)
                 print(f"✅ Ingestion finished for {doc_id}: {len(all_docs)} chunks")
+                log_event("ingest_done", documentId=doc_id, chunks=len(all_docs),
+                          seconds=round(time.time() - progress.started, 1), images=image_stats)
         except JobCancelled:
             print(f"🚫 Ingestion of {doc_id} stopped: cancelled or deleted")
             try:      # whatever this run wrote must not stay searchable
@@ -203,6 +206,7 @@ class IngestionManager:
             reference = uuid.uuid4().hex[:8]
             message = f"Processing failed (ref {reference}). See the service log for details."
             print(f"❌ [{reference}] Ingestion of {doc_id} failed: {type(error).__name__}: {error}")
+            log_event("ingest_failed", documentId=doc_id, ref=reference, error=type(error).__name__)
         try:
             snap = await run_blocking(ref.get)
             if snap.exists and (snap.to_dict() or {}).get("status") == "Processing":

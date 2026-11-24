@@ -61,6 +61,7 @@ operational endpoint.
 | PUT | `/history/{historyId}/favorite` | signed-in (owner) | Save / unsave an answer |
 | PUT | `/history/{history_id}/note` | signed-in (owner) | Write a personal note on an answer |
 | PUT | `/messages/{message_id}/feedback` | signed-in (owner) | 👍 / 👎 with an optional reason and comment |
+| GET | `/admin/metrics` | admin | How the service is doing: time per stage (p50/p95), time to first word, outcomes, tokens and estimated cost per question (last questions, this process) |
 | POST | `/process-document` | admin | Start processing a document (called by the Node API) |
 | POST | `/check-duplicate` | admin | Duplicate check (called by the Node API) |
 
