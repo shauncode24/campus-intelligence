@@ -257,18 +257,28 @@ class TestRetrievalRouting(DbCase):
 
 
 class TestAnswerCacheModelSafety(DbCase):
+    """The OPTIONAL semantic cache path (off by default, see P1-8): vectors from another model are never compared."""
+    def setUp(self):
+        super().setUp()
+        self._semantic = Config.CACHE_SEMANTIC_MATCH
+        Config.CACHE_SEMANTIC_MATCH = True
+
+    def tearDown(self):
+        Config.CACHE_SEMANTIC_MATCH = self._semantic
+        super().tearDown()
+
     def _seed(self, **overrides):
         q = "how much is the late fee"
         entry = {"question": q, "fingerprint": "different-fingerprint", "entities": {}, "intent": "general",
                  "answer": "Rs. 200 per day", "sources": [], "confidence": None, "embedding": es.embed_query(q).tolist(),
-                 "embeddingModel": BGE}
+                 "embeddingModel": BGE, "corpusEpoch": 0, "cachedAtMs": int(__import__("time").time() * 1000)}
         entry.update(overrides)
         self.db.collection("questions").docs[overrides.get("_id", "q1")] = {k: v for k, v in entry.items() if k != "_id"}
 
     def lookup(self, question="how much is the late fee"):
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            return asyncio.run(cache_repository.find_similar_question(question, es.embed_query(question), "general"))
+            return asyncio.run(cache_repository.find_similar_question(question, es.embed_query(question), "general", 0))
 
     def test_a_matching_entry_from_the_current_model_is_found(self):
         self._seed()

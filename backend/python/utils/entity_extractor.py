@@ -1,58 +1,57 @@
 """
-Entity extraction utilities for academic queries
+Entities used to decide whether two questions may share a cached answer.
+
+Two questions that are nearly identical in wording but differ in a detail that changes the
+answer ("fees for sem 5" / "fees for sem 6", "BTech" / "MTech", "Rs 500" / "Rs 5000") must
+NEVER share an answer, however similar their embeddings are. So the rule is strict: every
+such detail in one question must be present, and equal, in the other.
+
+Everything is matched on whole words/numbers. (The first version used substring tests, so
+"ty" matched in "university" and "penalty", and only semesters 1-4 were recognised.)
 """
+import re
+
+_YEARS = {"fy": "FY", "sy": "SY", "ty": "TY", "ly": "LY"}
+_PROGRAMS = {"btech": "BTech", "b.tech": "BTech", "mtech": "MTech", "m.tech": "MTech",
+             "phd": "PhD", "diploma": "Diploma", "mba": "MBA", "bsc": "BSc", "msc": "MSc"}
+
+_YEAR_RE = re.compile(r"\b(fy|sy|ty|ly)\b")
+_PROGRAM_RE = re.compile(r"(?<![a-z])(b\.?tech|m\.?tech|phd|diploma|mba|bsc|msc)(?![a-z])")
+_SEMESTER_RE = re.compile(r"\b(?:sem|semester)\s*[-:]?\s*(\d{1,2})\b")
+_NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)*")
+
+
+def _numbers(q: str) -> list:
+    """All numbers in the question ('Rs. 5,000' -> '5000'), sorted, as strings."""
+    found = []
+    for raw in _NUMBER_RE.findall(q):
+        found.append(re.sub(r"(?<=\d),(?=\d{3}\b)", "", raw).rstrip(".,"))
+    return sorted(found)
+
 
 def extract_entities(question: str) -> dict:
     """
-    Extract academic entities from question (year, program, semester)
-    
-    Args:
-        question: str - User question
-        
-    Returns:
-        dict: Extracted entities
+    Details that change an answer: academic year (FY/SY/TY/LY), programme, semester and every
+    number in the question. Returns only what is present.
     """
-    q = question.lower()
+    q = (question or "").lower()
     entities = {}
-    
-    # Academic year
-    if "fy" in q:
-        entities["year"] = "FY"
-    elif "sy" in q:
-        entities["year"] = "SY"
-    elif "ty" in q:
-        entities["year"] = "TY"
-    elif "ly" in q:
-        entities["year"] = "LY"
-    
-    # Program
-    if "btech" in q:
-        entities["program"] = "BTech"
-    elif "mtech" in q:
-        entities["program"] = "MTech"
-    
-    # Semester
-    if "sem 1" in q or "semester 1" in q:
-        entities["semester"] = 1
-    elif "sem 2" in q or "semester 2" in q:
-        entities["semester"] = 2
-    elif "sem 3" in q or "semester 3" in q:
-        entities["semester"] = 3
-    elif "sem 4" in q or "semester 4" in q:
-        entities["semester"] = 4
-    
+
+    years = sorted({_YEARS[m] for m in _YEAR_RE.findall(q)})
+    if years:
+        entities["year"] = years
+    programs = sorted({_PROGRAMS[m] for m in _PROGRAM_RE.findall(q)})
+    if programs:
+        entities["program"] = programs
+    semesters = sorted({int(m) for m in _SEMESTER_RE.findall(q)})
+    if semesters:
+        entities["semester"] = semesters
+    numbers = _numbers(q)
+    if numbers:
+        entities["numbers"] = numbers
     return entities
 
 
 def entities_match(a: dict, b: dict) -> bool:
-    """
-    Check if two entity dictionaries match
-    
-    Args:
-        a: dict - First entity dict
-        b: dict - Second entity dict
-        
-    Returns:
-        bool: True if entities match
-    """
-    return a == b
+    """True only if both questions mention exactly the same details."""
+    return (a or {}) == (b or {})

@@ -31,6 +31,7 @@ from services.pdf_processor import pdf_processor
 from utils.file_security import (
     DownloadFailed, FileTooLarge, InvalidPdf, UnsafeFileUrl, download_pdf,
 )
+from database.corpus_epoch import bump_epoch
 from utils.threads import run_blocking
 
 # How often progress is written (and the document re-checked for cancellation)
@@ -151,6 +152,9 @@ class IngestionManager:
                     "errorMessage": firestore.DELETE_FIELD,
                 })
                 await run_blocking(self._supersede_old_version, doc_id, record)
+                # The set of documents that can answer questions just changed: every cached
+                # answer made before now is out of date.
+                await run_blocking(bump_epoch, firebase_client.db)
                 print(f"✅ Ingestion finished for {doc_id}: {len(all_docs)} chunks")
         except JobCancelled:
             print(f"🚫 Ingestion of {doc_id} stopped: cancelled or deleted")

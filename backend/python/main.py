@@ -28,6 +28,7 @@ from utils.rate_limit import (
 )
 from database.firebase_client import firebase_client
 from database.cache_repository import cache_repository
+from database.corpus_epoch import get_epoch
 from database.chat_repository import chat_repository
 from database.faq_repository import faq_repository
 from database.storage_service import storage_service
@@ -251,11 +252,15 @@ async def query_documents(
         
         # Check cache first (only for questions that stand on their own)
         cached_question = None
+        # The document set this answer is produced from. Read BEFORE searching and stored with
+        # the answer: if documents change meanwhile, the stored answer is simply not reused.
+        corpus_epoch = await run_blocking(get_epoch, firebase_client.db) if cacheable else 0
         if cacheable:
             cached_question = await cache_repository.find_similar_question(
                 question,
                 query_embedding,
-                intent
+                intent,
+                corpus_epoch
             )
         
         if cached_question:
@@ -368,7 +373,8 @@ async def query_documents(
                 intent,
                 confidence,
                 sources,
-                deadline=deadline
+                deadline=deadline,
+                corpus_epoch=corpus_epoch
             )
         
         print("✅ Answer generated")

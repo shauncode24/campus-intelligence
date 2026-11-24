@@ -90,7 +90,13 @@ class Config:
         "answer it reliably. Please check with the relevant office, or try "
         "rephrasing your question."
     )
-    SIMILARITY_THRESHOLD = 0.90
+    # Answer cache. Reuse is EXACT-question only by default. Matching a *different* question by
+    # embedding similarity is off: on labelled pairs no threshold separated paraphrases from
+    # near-duplicates needing another answer (eval/results/cache-threshold-bge-small.md).
+    CACHE_SEMANTIC_MATCH = os.getenv("CACHE_SEMANTIC_MATCH", "false").lower() in ("1", "true", "yes")
+    CACHE_SEMANTIC_THRESHOLD = float(os.getenv("CACHE_SEMANTIC_THRESHOLD", "0.95"))
+    CACHE_MAX_CANDIDATES = int(os.getenv("CACHE_MAX_CANDIDATES", "500"))
+    CACHE_TTL_DAYS = int(os.getenv("CACHE_TTL_DAYS", "30"))   # 0 = never expires
     
     # Document file safety (SSRF / resource limits)
     # Exact hostnames the server may download documents from (comma-separated

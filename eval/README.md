@@ -41,6 +41,11 @@ backend\venv\Scripts\python.exe eval\run_retrieval_eval.py ^
 Output goes to `eval/results/<name>.md` (readable) and `.json` (machine-readable, used by
 `--compare`). Exit codes: `0` ok, `2` the dataset has labelling errors, `3` regression.
 
+Cache-threshold calibration (P1-8): `python eval/calibrate_cache.py --pairs <pairs.jsonl> --embedding-backend bge-small --name my-cache`
+measures, on labelled question pairs (`{"a","b","same","kind"}`), how many true paraphrases a similarity
+threshold reuses and how many near-duplicates that need a different answer it wrongly reuses. The demo pairs
+(`examples/synthetic_demo/cache_pairs.jsonl`) are synthetic; build a real set from real near-duplicate questions.
+
 Unit tests (no models needed): `backend\venv\Scripts\python.exe -m unittest discover -s eval\tests`
 
 ## How to read a report

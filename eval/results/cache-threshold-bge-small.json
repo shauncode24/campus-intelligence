@@ -1,0 +1,809 @@
+{
+ "embedding_model": "BAAI/bge-small-en-v1.5",
+ "recommended": 0.97,
+ "highest_false_hit_similarity": 0.9482558250875701,
+ "table": [
+  {
+   "threshold": 0.7,
+   "embedding_hit_rate": 0.9714285714285714,
+   "embedding_false_hits": 32,
+   "production_hit_rate": 0.6285714285714286,
+   "production_false_hits": 25,
+   "production_false_upper95": 0.8367363660170443
+  },
+  {
+   "threshold": 0.71,
+   "embedding_hit_rate": 0.9714285714285714,
+   "embedding_false_hits": 31,
+   "production_hit_rate": 0.6285714285714286,
+   "production_false_hits": 24,
+   "production_false_upper95": 0.8144934194021753
+  },
+  {
+   "threshold": 0.72,
+   "embedding_hit_rate": 0.9714285714285714,
+   "embedding_false_hits": 31,
+   "production_hit_rate": 0.6285714285714286,
+   "production_false_hits": 24,
+   "production_false_upper95": 0.8144934194021753
+  },
+  {
+   "threshold": 0.73,
+   "embedding_hit_rate": 0.9714285714285714,
+   "embedding_false_hits": 29,
+   "production_hit_rate": 0.6285714285714286,
+   "production_false_hits": 22,
+   "production_false_upper95": 0.7683439263110893
+  },
+  {
+   "threshold": 0.74,
+   "embedding_hit_rate": 0.9714285714285714,
+   "embedding_false_hits": 29,
+   "production_hit_rate": 0.6285714285714286,
+   "production_false_hits": 22,
+   "production_false_upper95": 0.7683439263110893
+  },
+  {
+   "threshold": 0.75,
+   "embedding_hit_rate": 0.9428571428571428,
+   "embedding_false_hits": 28,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 21,
+   "production_false_upper95": 0.7444949506669275
+  },
+  {
+   "threshold": 0.76,
+   "embedding_hit_rate": 0.9428571428571428,
+   "embedding_false_hits": 25,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 18,
+   "production_false_upper95": 0.6700601960874725
+  },
+  {
+   "threshold": 0.77,
+   "embedding_hit_rate": 0.9428571428571428,
+   "embedding_false_hits": 25,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 18,
+   "production_false_upper95": 0.6700601960874725
+  },
+  {
+   "threshold": 0.78,
+   "embedding_hit_rate": 0.9428571428571428,
+   "embedding_false_hits": 24,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 17,
+   "production_false_upper95": 0.6443146037328836
+  },
+  {
+   "threshold": 0.79,
+   "embedding_hit_rate": 0.9428571428571428,
+   "embedding_false_hits": 23,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 17,
+   "production_false_upper95": 0.6443146037328836
+  },
+  {
+   "threshold": 0.8,
+   "embedding_hit_rate": 0.9428571428571428,
+   "embedding_false_hits": 23,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 17,
+   "production_false_upper95": 0.6443146037328836
+  },
+  {
+   "threshold": 0.81,
+   "embedding_hit_rate": 0.9428571428571428,
+   "embedding_false_hits": 23,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 17,
+   "production_false_upper95": 0.6443146037328836
+  },
+  {
+   "threshold": 0.82,
+   "embedding_hit_rate": 0.9428571428571428,
+   "embedding_false_hits": 20,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 14,
+   "production_false_upper95": 0.5642758041848053
+  },
+  {
+   "threshold": 0.83,
+   "embedding_hit_rate": 0.9428571428571428,
+   "embedding_false_hits": 19,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 13,
+   "production_false_upper95": 0.5366335951197893
+  },
+  {
+   "threshold": 0.84,
+   "embedding_hit_rate": 0.9142857142857143,
+   "embedding_false_hits": 17,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 11,
+   "production_false_upper95": 0.47980071879251973
+  },
+  {
+   "threshold": 0.85,
+   "embedding_hit_rate": 0.8571428571428571,
+   "embedding_false_hits": 15,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 10,
+   "production_false_upper95": 0.4505524806982108
+  },
+  {
+   "threshold": 0.86,
+   "embedding_hit_rate": 0.8,
+   "embedding_false_hits": 13,
+   "production_hit_rate": 0.6,
+   "production_false_hits": 9,
+   "production_false_upper95": 0.42069624270648726
+  },
+  {
+   "threshold": 0.87,
+   "embedding_hit_rate": 0.7714285714285715,
+   "embedding_false_hits": 12,
+   "production_hit_rate": 0.5714285714285714,
+   "production_false_hits": 9,
+   "production_false_upper95": 0.42069624270648726
+  },
+  {
+   "threshold": 0.88,
+   "embedding_hit_rate": 0.7428571428571429,
+   "embedding_false_hits": 10,
+   "production_hit_rate": 0.5714285714285714,
+   "production_false_hits": 7,
+   "production_false_upper95": 0.35891936609462516
+  },
+  {
+   "threshold": 0.89,
+   "embedding_hit_rate": 0.7142857142857143,
+   "embedding_false_hits": 8,
+   "production_hit_rate": 0.5428571428571428,
+   "production_false_hits": 6,
+   "production_false_upper95": 0.3268260763958882
+  },
+  {
+   "threshold": 0.9,
+   "embedding_hit_rate": 0.6571428571428571,
+   "embedding_false_hits": 6,
+   "production_hit_rate": 0.5142857142857142,
+   "production_false_hits": 5,
+   "production_false_upper95": 0.2937588030867426
+  },
+  {
+   "threshold": 0.91,
+   "embedding_hit_rate": 0.5428571428571428,
+   "embedding_false_hits": 4,
+   "production_hit_rate": 0.45714285714285713,
+   "production_false_hits": 3,
+   "production_false_upper95": 0.22379599071162518
+  },
+  {
+   "threshold": 0.92,
+   "embedding_hit_rate": 0.5428571428571428,
+   "embedding_false_hits": 2,
+   "production_hit_rate": 0.45714285714285713,
+   "production_false_hits": 1,
+   "production_false_upper95": 0.14533409093271313
+  },
+  {
+   "threshold": 0.93,
+   "embedding_hit_rate": 0.45714285714285713,
+   "embedding_false_hits": 2,
+   "production_hit_rate": 0.37142857142857144,
+   "production_false_hits": 1,
+   "production_false_upper95": 0.14533409093271313
+  },
+  {
+   "threshold": 0.94,
+   "embedding_hit_rate": 0.42857142857142855,
+   "embedding_false_hits": 2,
+   "production_hit_rate": 0.34285714285714286,
+   "production_false_hits": 1,
+   "production_false_upper95": 0.14533409093271313
+  },
+  {
+   "threshold": 0.95,
+   "embedding_hit_rate": 0.22857142857142856,
+   "embedding_false_hits": 0,
+   "production_hit_rate": 0.2,
+   "production_false_hits": 0,
+   "production_false_upper95": 0.09890426758938868
+  },
+  {
+   "threshold": 0.96,
+   "embedding_hit_rate": 0.17142857142857143,
+   "embedding_false_hits": 0,
+   "production_hit_rate": 0.14285714285714285,
+   "production_false_hits": 0,
+   "production_false_upper95": 0.09890426758938868
+  },
+  {
+   "threshold": 0.97,
+   "embedding_hit_rate": 0.11428571428571428,
+   "embedding_false_hits": 0,
+   "production_hit_rate": 0.08571428571428572,
+   "production_false_hits": 0,
+   "production_false_upper95": 0.09890426758938868
+  },
+  {
+   "threshold": 0.98,
+   "embedding_hit_rate": 0.11428571428571428,
+   "embedding_false_hits": 0,
+   "production_hit_rate": 0.08571428571428572,
+   "production_false_hits": 0,
+   "production_false_upper95": 0.09890426758938868
+  },
+  {
+   "threshold": 0.99,
+   "embedding_hit_rate": 0.08571428571428572,
+   "embedding_false_hits": 0,
+   "production_hit_rate": 0.08571428571428572,
+   "production_false_hits": 0,
+   "production_false_upper95": 0.09890426758938868
+  }
+ ],
+ "pairs": [
+  {
+   "a": "What is the late fee for tuition?",
+   "b": "how much is the late fee for tuition",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9803733233650404,
+   "guard_ok": false
+  },
+  {
+   "a": "What is the late fee for tuition?",
+   "b": "tuition late fee amount?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9460450746309294,
+   "guard_ok": false
+  },
+  {
+   "a": "What is the late fee for tuition?",
+   "b": "What is the late fee for tuiton?",
+   "same": true,
+   "kind": "typo",
+   "similarity": 0.7478978518349934,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the late fee for tuition?",
+   "b": "WHAT IS THE LATE FEE FOR TUITION",
+   "same": true,
+   "kind": "case",
+   "similarity": 0.9933981289271642,
+   "guard_ok": true
+  },
+  {
+   "a": "When is the last date to pay semester fees?",
+   "b": "What is the deadline for paying semester fees?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9077847213478115,
+   "guard_ok": true
+  },
+  {
+   "a": "When is the last date to pay semester fees?",
+   "b": "last date for semester fee payment",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9671762464453374,
+   "guard_ok": true
+  },
+  {
+   "a": "How do I apply for a bonafide certificate?",
+   "b": "How can I get a bonafide certificate?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9452816679159766,
+   "guard_ok": true
+  },
+  {
+   "a": "How do I apply for a bonafide certificate?",
+   "b": "procedure to apply for bonafide certificate",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9299600091061363,
+   "guard_ok": true
+  },
+  {
+   "a": "How do I apply for a bonafide certificate?",
+   "b": "how do i apply for a bonafide certificate",
+   "same": true,
+   "kind": "case",
+   "similarity": 0.9948716560390145,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the minimum attendance required to sit for exams?",
+   "b": "How much attendance do I need to be allowed in exams?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.8943652864387454,
+   "guard_ok": false
+  },
+  {
+   "a": "What is the minimum attendance required to sit for exams?",
+   "b": "minimum attendance for exam eligibility",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9043963433676334,
+   "guard_ok": false
+  },
+  {
+   "a": "What is the minimum attendance required to sit for exams?",
+   "b": "What is the minimum attendence required to sit for exams?",
+   "same": true,
+   "kind": "typo",
+   "similarity": 0.950568811251999,
+   "guard_ok": true
+  },
+  {
+   "a": "Can I get a refund if I withdraw from the course?",
+   "b": "Is a refund given when a student withdraws from a course?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9207962262112686,
+   "guard_ok": true
+  },
+  {
+   "a": "Can I get a refund if I withdraw from the course?",
+   "b": "refund on course withdrawal?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9438975138838134,
+   "guard_ok": true
+  },
+  {
+   "a": "How many books can I borrow from the library?",
+   "b": "What is the borrowing limit at the library?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.8458907393586826,
+   "guard_ok": false
+  },
+  {
+   "a": "How many books can I borrow from the library?",
+   "b": "number of books allowed to borrow library",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9315776436195189,
+   "guard_ok": true
+  },
+  {
+   "a": "What are the hostel visiting hours?",
+   "b": "When can visitors come to the hostel?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.8308604106141756,
+   "guard_ok": false
+  },
+  {
+   "a": "What are the hostel visiting hours?",
+   "b": "hostel visitor timings",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.8578983694517397,
+   "guard_ok": false
+  },
+  {
+   "a": "What are the hostel visiting hours?",
+   "b": "what are the hostel visiting hours?",
+   "same": true,
+   "kind": "case",
+   "similarity": 1.0000000112089154,
+   "guard_ok": true
+  },
+  {
+   "a": "How do I apply for a scholarship?",
+   "b": "What is the process to apply for a scholarship?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9253072520512248,
+   "guard_ok": true
+  },
+  {
+   "a": "How do I apply for a scholarship?",
+   "b": "scholarship application steps",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.8865850320969265,
+   "guard_ok": true
+  },
+  {
+   "a": "Where do I submit the leave application?",
+   "b": "To whom do I hand in a leave application?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.8669779937059635,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the fine for losing the ID card?",
+   "b": "How much do I pay if I lose my ID card?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.8780518584998254,
+   "guard_ok": false
+  },
+  {
+   "a": "What is the fine for losing the ID card?",
+   "b": "fine for lost id card",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9409243911031919,
+   "guard_ok": false
+  },
+  {
+   "a": "Is a medical certificate needed for a missed exam?",
+   "b": "Do I need a medical certificate if I miss an exam?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9657245021818537,
+   "guard_ok": true
+  },
+  {
+   "a": "What documents are needed for admission?",
+   "b": "Which documents do I need to submit for admission?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9548535634837324,
+   "guard_ok": true
+  },
+  {
+   "a": "What documents are needed for admission?",
+   "b": "admission documents required",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.941406550670546,
+   "guard_ok": true
+  },
+  {
+   "a": "How long does the bonafide certificate take to issue?",
+   "b": "How many days to receive a bonafide certificate?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9400194288514909,
+   "guard_ok": true
+  },
+  {
+   "a": "Who is eligible for the fee waiver?",
+   "b": "Which students qualify for a fee waiver?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.8939045593930824,
+   "guard_ok": true
+  },
+  {
+   "a": "Who is eligible for the fee waiver?",
+   "b": "fee waiver eligibility",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9435031758577833,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the re-exam fee?",
+   "b": "How much do I pay for a re-exam?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9045367444573255,
+   "guard_ok": false
+  },
+  {
+   "a": "What is the penalty for late submission of assignments?",
+   "b": "What happens if I submit an assignment late?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.8522210378904069,
+   "guard_ok": false
+  },
+  {
+   "a": "Can I change my elective after the first week?",
+   "b": "Is it possible to switch electives after week one?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.9019604959325298,
+   "guard_ok": true
+  },
+  {
+   "a": "What are the library opening hours?",
+   "b": "When does the library open and close?",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.8431315004435327,
+   "guard_ok": false
+  },
+  {
+   "a": "What are the library opening hours?",
+   "b": "library timings",
+   "same": true,
+   "kind": "paraphrase",
+   "similarity": 0.6967071340542936,
+   "guard_ok": false
+  },
+  {
+   "a": "What is the late fee for tuition?",
+   "b": "What is the late fee for hostel?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.8188599272745972,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the late fee for tuition?",
+   "b": "What is the late fee for the library?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.8368367734797093,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the late fee for tuition?",
+   "b": "What is the refund policy for tuition?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.6910555035786548,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the late fee for tuition?",
+   "b": "When is the last date to pay tuition?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.8401495946873632,
+   "guard_ok": false
+  },
+  {
+   "a": "What are the fees for sem 5?",
+   "b": "What are the fees for sem 6?",
+   "same": false,
+   "kind": "different number",
+   "similarity": 0.8892313724906838,
+   "guard_ok": false
+  },
+  {
+   "a": "What are the fees for semester 1 BTech?",
+   "b": "What are the fees for semester 1 MTech?",
+   "same": false,
+   "kind": "different programme",
+   "similarity": 0.8976323987762507,
+   "guard_ok": false
+  },
+  {
+   "a": "What is the attendance requirement for FY?",
+   "b": "What is the attendance requirement for TY?",
+   "same": false,
+   "kind": "different year",
+   "similarity": 0.7874834750545311,
+   "guard_ok": false
+  },
+  {
+   "a": "What is the exam fee for BTech?",
+   "b": "What is the exam fee for MTech?",
+   "same": false,
+   "kind": "different programme",
+   "similarity": 0.8576691056253984,
+   "guard_ok": false
+  },
+  {
+   "a": "How many books can I borrow from the library?",
+   "b": "How many days can I keep a library book?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.7721794961760617,
+   "guard_ok": true
+  },
+  {
+   "a": "How many books can I borrow from the library?",
+   "b": "How many books can I borrow from the hostel library?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.8811645094212945,
+   "guard_ok": true
+  },
+  {
+   "a": "What are the hostel visiting hours?",
+   "b": "What are the hostel mess timings?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.7443627837940644,
+   "guard_ok": true
+  },
+  {
+   "a": "What are the hostel visiting hours?",
+   "b": "What are the library visiting hours?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.8259022054018541,
+   "guard_ok": true
+  },
+  {
+   "a": "How do I apply for a bonafide certificate?",
+   "b": "How do I apply for a transfer certificate?",
+   "same": false,
+   "kind": "different document",
+   "similarity": 0.7280722103518563,
+   "guard_ok": true
+  },
+  {
+   "a": "How do I apply for a bonafide certificate?",
+   "b": "How do I cancel a bonafide certificate application?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.8422815696297935,
+   "guard_ok": true
+  },
+  {
+   "a": "How do I apply for a scholarship?",
+   "b": "How do I renew a scholarship?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.8564390265543474,
+   "guard_ok": true
+  },
+  {
+   "a": "How do I apply for a scholarship?",
+   "b": "How do I apply for a hostel room?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.7030682462793247,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the minimum attendance required to sit for exams?",
+   "b": "What is the minimum marks required to pass the exams?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.8143600459287167,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the minimum attendance required to sit for exams?",
+   "b": "What is the maximum attendance relaxation allowed?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.6808043185490106,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the fine for losing the ID card?",
+   "b": "What is the fine for losing a library book?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.7598701140709512,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the fine for losing the ID card?",
+   "b": "How do I get a new ID card?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.6958757061917771,
+   "guard_ok": false
+  },
+  {
+   "a": "Is a medical certificate needed for a missed exam?",
+   "b": "Is a medical certificate needed for a missed lecture?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.9178895398035255,
+   "guard_ok": true
+  },
+  {
+   "a": "What documents are needed for admission?",
+   "b": "What documents are needed for a scholarship?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.8711933688008374,
+   "guard_ok": true
+  },
+  {
+   "a": "What documents are needed for admission?",
+   "b": "What documents are needed for hostel admission?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.8787209276338493,
+   "guard_ok": true
+  },
+  {
+   "a": "Who is eligible for the fee waiver?",
+   "b": "Who is eligible for the hostel?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.7292816313946937,
+   "guard_ok": true
+  },
+  {
+   "a": "Who is eligible for the fee waiver?",
+   "b": "How do I apply for the fee waiver?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.8603581080262928,
+   "guard_ok": false
+  },
+  {
+   "a": "What is the re-exam fee?",
+   "b": "What is the re-evaluation fee?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.897245889670763,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the re-exam fee?",
+   "b": "What is the re-exam fee for the final year?",
+   "same": false,
+   "kind": "different scope",
+   "similarity": 0.900179950246062,
+   "guard_ok": true
+  },
+  {
+   "a": "Can I change my elective after the first week?",
+   "b": "Can I change my branch after the first year?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.7514795764862947,
+   "guard_ok": true
+  },
+  {
+   "a": "What are the library opening hours?",
+   "b": "What are the library opening hours during exams?",
+   "same": false,
+   "kind": "different scope",
+   "similarity": 0.9168943596463028,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the penalty for late submission of assignments?",
+   "b": "What is the penalty for plagiarism in assignments?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.8188423127694,
+   "guard_ok": true
+  },
+  {
+   "a": "How long does the bonafide certificate take to issue?",
+   "b": "How long is the bonafide certificate valid?",
+   "same": false,
+   "kind": "different question",
+   "similarity": 0.9045467609150162,
+   "guard_ok": true
+  },
+  {
+   "a": "Late fee of Rs. 200 per day: when does it start?",
+   "b": "Late fee of Rs. 2000 per day: when does it start?",
+   "same": false,
+   "kind": "different number",
+   "similarity": 0.9409562825435936,
+   "guard_ok": false
+  },
+  {
+   "a": "Can I get a refund if I withdraw from the course?",
+   "b": "Can I get a refund if I withdraw from the hostel?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.8383765313562792,
+   "guard_ok": true
+  },
+  {
+   "a": "Is there a penalty at the university for a missed deadline?",
+   "b": "Is there a penalty at the faculty for a missed deadline?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.9482558250875701,
+   "guard_ok": true
+  },
+  {
+   "a": "What is the deadline for exam form submission?",
+   "b": "What is the deadline for fee payment?",
+   "same": false,
+   "kind": "different subject",
+   "similarity": 0.7537338598594847,
+   "guard_ok": true
+  }
+ ]
+}

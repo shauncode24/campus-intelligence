@@ -1,0 +1,70 @@
+{"a": "What is the late fee for tuition?", "b": "how much is the late fee for tuition", "same": true, "kind": "paraphrase"}
+{"a": "What is the late fee for tuition?", "b": "tuition late fee amount?", "same": true, "kind": "paraphrase"}
+{"a": "What is the late fee for tuition?", "b": "What is the late fee for tuiton?", "same": true, "kind": "typo"}
+{"a": "What is the late fee for tuition?", "b": "WHAT IS THE LATE FEE FOR TUITION", "same": true, "kind": "case"}
+{"a": "When is the last date to pay semester fees?", "b": "What is the deadline for paying semester fees?", "same": true, "kind": "paraphrase"}
+{"a": "When is the last date to pay semester fees?", "b": "last date for semester fee payment", "same": true, "kind": "paraphrase"}
+{"a": "How do I apply for a bonafide certificate?", "b": "How can I get a bonafide certificate?", "same": true, "kind": "paraphrase"}
+{"a": "How do I apply for a bonafide certificate?", "b": "procedure to apply for bonafide certificate", "same": true, "kind": "paraphrase"}
+{"a": "How do I apply for a bonafide certificate?", "b": "how do i apply for a bonafide certificate", "same": true, "kind": "case"}
+{"a": "What is the minimum attendance required to sit for exams?", "b": "How much attendance do I need to be allowed in exams?", "same": true, "kind": "paraphrase"}
+{"a": "What is the minimum attendance required to sit for exams?", "b": "minimum attendance for exam eligibility", "same": true, "kind": "paraphrase"}
+{"a": "What is the minimum attendance required to sit for exams?", "b": "What is the minimum attendence required to sit for exams?", "same": true, "kind": "typo"}
+{"a": "Can I get a refund if I withdraw from the course?", "b": "Is a refund given when a student withdraws from a course?", "same": true, "kind": "paraphrase"}
+{"a": "Can I get a refund if I withdraw from the course?", "b": "refund on course withdrawal?", "same": true, "kind": "paraphrase"}
+{"a": "How many books can I borrow from the library?", "b": "What is the borrowing limit at the library?", "same": true, "kind": "paraphrase"}
+{"a": "How many books can I borrow from the library?", "b": "number of books allowed to borrow library", "same": true, "kind": "paraphrase"}
+{"a": "What are the hostel visiting hours?", "b": "When can visitors come to the hostel?", "same": true, "kind": "paraphrase"}
+{"a": "What are the hostel visiting hours?", "b": "hostel visitor timings", "same": true, "kind": "paraphrase"}
+{"a": "What are the hostel visiting hours?", "b": "what are the hostel visiting hours?", "same": true, "kind": "case"}
+{"a": "How do I apply for a scholarship?", "b": "What is the process to apply for a scholarship?", "same": true, "kind": "paraphrase"}
+{"a": "How do I apply for a scholarship?", "b": "scholarship application steps", "same": true, "kind": "paraphrase"}
+{"a": "Where do I submit the leave application?", "b": "To whom do I hand in a leave application?", "same": true, "kind": "paraphrase"}
+{"a": "What is the fine for losing the ID card?", "b": "How much do I pay if I lose my ID card?", "same": true, "kind": "paraphrase"}
+{"a": "What is the fine for losing the ID card?", "b": "fine for lost id card", "same": true, "kind": "paraphrase"}
+{"a": "Is a medical certificate needed for a missed exam?", "b": "Do I need a medical certificate if I miss an exam?", "same": true, "kind": "paraphrase"}
+{"a": "What documents are needed for admission?", "b": "Which documents do I need to submit for admission?", "same": true, "kind": "paraphrase"}
+{"a": "What documents are needed for admission?", "b": "admission documents required", "same": true, "kind": "paraphrase"}
+{"a": "How long does the bonafide certificate take to issue?", "b": "How many days to receive a bonafide certificate?", "same": true, "kind": "paraphrase"}
+{"a": "Who is eligible for the fee waiver?", "b": "Which students qualify for a fee waiver?", "same": true, "kind": "paraphrase"}
+{"a": "Who is eligible for the fee waiver?", "b": "fee waiver eligibility", "same": true, "kind": "paraphrase"}
+{"a": "What is the re-exam fee?", "b": "How much do I pay for a re-exam?", "same": true, "kind": "paraphrase"}
+{"a": "What is the penalty for late submission of assignments?", "b": "What happens if I submit an assignment late?", "same": true, "kind": "paraphrase"}
+{"a": "Can I change my elective after the first week?", "b": "Is it possible to switch electives after week one?", "same": true, "kind": "paraphrase"}
+{"a": "What are the library opening hours?", "b": "When does the library open and close?", "same": true, "kind": "paraphrase"}
+{"a": "What are the library opening hours?", "b": "library timings", "same": true, "kind": "paraphrase"}
+{"a": "What is the late fee for tuition?", "b": "What is the late fee for hostel?", "same": false, "kind": "different subject"}
+{"a": "What is the late fee for tuition?", "b": "What is the late fee for the library?", "same": false, "kind": "different subject"}
+{"a": "What is the late fee for tuition?", "b": "What is the refund policy for tuition?", "same": false, "kind": "different question"}
+{"a": "What is the late fee for tuition?", "b": "When is the last date to pay tuition?", "same": false, "kind": "different question"}
+{"a": "What are the fees for sem 5?", "b": "What are the fees for sem 6?", "same": false, "kind": "different number"}
+{"a": "What are the fees for semester 1 BTech?", "b": "What are the fees for semester 1 MTech?", "same": false, "kind": "different programme"}
+{"a": "What is the attendance requirement for FY?", "b": "What is the attendance requirement for TY?", "same": false, "kind": "different year"}
+{"a": "What is the exam fee for BTech?", "b": "What is the exam fee for MTech?", "same": false, "kind": "different programme"}
+{"a": "How many books can I borrow from the library?", "b": "How many days can I keep a library book?", "same": false, "kind": "different question"}
+{"a": "How many books can I borrow from the library?", "b": "How many books can I borrow from the hostel library?", "same": false, "kind": "different subject"}
+{"a": "What are the hostel visiting hours?", "b": "What are the hostel mess timings?", "same": false, "kind": "different subject"}
+{"a": "What are the hostel visiting hours?", "b": "What are the library visiting hours?", "same": false, "kind": "different subject"}
+{"a": "How do I apply for a bonafide certificate?", "b": "How do I apply for a transfer certificate?", "same": false, "kind": "different document"}
+{"a": "How do I apply for a bonafide certificate?", "b": "How do I cancel a bonafide certificate application?", "same": false, "kind": "different question"}
+{"a": "How do I apply for a scholarship?", "b": "How do I renew a scholarship?", "same": false, "kind": "different question"}
+{"a": "How do I apply for a scholarship?", "b": "How do I apply for a hostel room?", "same": false, "kind": "different subject"}
+{"a": "What is the minimum attendance required to sit for exams?", "b": "What is the minimum marks required to pass the exams?", "same": false, "kind": "different question"}
+{"a": "What is the minimum attendance required to sit for exams?", "b": "What is the maximum attendance relaxation allowed?", "same": false, "kind": "different question"}
+{"a": "What is the fine for losing the ID card?", "b": "What is the fine for losing a library book?", "same": false, "kind": "different subject"}
+{"a": "What is the fine for losing the ID card?", "b": "How do I get a new ID card?", "same": false, "kind": "different question"}
+{"a": "Is a medical certificate needed for a missed exam?", "b": "Is a medical certificate needed for a missed lecture?", "same": false, "kind": "different subject"}
+{"a": "What documents are needed for admission?", "b": "What documents are needed for a scholarship?", "same": false, "kind": "different subject"}
+{"a": "What documents are needed for admission?", "b": "What documents are needed for hostel admission?", "same": false, "kind": "different subject"}
+{"a": "Who is eligible for the fee waiver?", "b": "Who is eligible for the hostel?", "same": false, "kind": "different subject"}
+{"a": "Who is eligible for the fee waiver?", "b": "How do I apply for the fee waiver?", "same": false, "kind": "different question"}
+{"a": "What is the re-exam fee?", "b": "What is the re-evaluation fee?", "same": false, "kind": "different subject"}
+{"a": "What is the re-exam fee?", "b": "What is the re-exam fee for the final year?", "same": false, "kind": "different scope"}
+{"a": "Can I change my elective after the first week?", "b": "Can I change my branch after the first year?", "same": false, "kind": "different subject"}
+{"a": "What are the library opening hours?", "b": "What are the library opening hours during exams?", "same": false, "kind": "different scope"}
+{"a": "What is the penalty for late submission of assignments?", "b": "What is the penalty for plagiarism in assignments?", "same": false, "kind": "different question"}
+{"a": "How long does the bonafide certificate take to issue?", "b": "How long is the bonafide certificate valid?", "same": false, "kind": "different question"}
+{"a": "Late fee of Rs. 200 per day: when does it start?", "b": "Late fee of Rs. 2000 per day: when does it start?", "same": false, "kind": "different number"}
+{"a": "Can I get a refund if I withdraw from the course?", "b": "Can I get a refund if I withdraw from the hostel?", "same": false, "kind": "different subject"}
+{"a": "Is there a penalty at the university for a missed deadline?", "b": "Is there a penalty at the faculty for a missed deadline?", "same": false, "kind": "different subject"}
+{"a": "What is the deadline for exam form submission?", "b": "What is the deadline for fee payment?", "same": false, "kind": "different subject"}

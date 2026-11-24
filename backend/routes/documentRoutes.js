@@ -6,7 +6,7 @@ import { requireAdmin } from "../middleware/auth.js";
 import { adminUserLimiter } from "../middleware/rateLimit.js";
 import { failInternal } from "../utils/httpErrors.js";
 import { validateFileUrl } from "../utils/fileUrl.js";
-import { deleteChunksForDocument, invalidateCachedAnswers } from "../services/documentCleanup.js";
+import { deleteChunksForDocument, invalidateCachedAnswers, bumpCorpusEpoch } from "../services/documentCleanup.js";
 import { deleteDocumentFile } from "../services/fileStorage.js";
 
 const router = express.Router();
@@ -172,6 +172,8 @@ router.delete("/:documentId", async (req, res) => {
     }
 
     await ref.delete();
+    // The documents that can answer questions changed: no earlier cached answer may be reused
+    await bumpCorpusEpoch(db, admin);
 
     res.json({ success: true, chunksDeleted, cacheEntriesRemoved, file, reinstated });
   } catch (error) {

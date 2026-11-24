@@ -110,6 +110,9 @@ async def reindex(only=None, dry_run=False, runtime=None):
             totals["failed"] += 1
 
     removed = delete_stale_cache(db, embedding_service.model_id, dry_run=dry_run)
+    if not dry_run and totals["ok"]:
+        from database.corpus_epoch import bump_epoch
+        bump_epoch(db)          # documents were rebuilt: no cached answer from before is trustworthy
     verb = "would delete" if dry_run else "deleted"
     print(f"\n{totals['ok']} re-processed, {totals['failed']} failed, {totals['skipped']} skipped; "
           f"{verb} {removed} cached answers from another embedding model")

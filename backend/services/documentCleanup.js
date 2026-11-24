@@ -67,3 +67,19 @@ export async function invalidateCachedAnswers(db, documentId) {
   if (pending > 0) await batch.commit();
   return removed;
 }
+
+/**
+ * Bump the "corpus epoch" (the Python service's cache key for the document set). Call it
+ * whenever the documents that can answer questions change outside the processing job, such as
+ * a delete: every cached answer made before now stops being served. Same document as
+ * python/database/corpus_epoch.py: meta/corpus.
+ */
+export async function bumpCorpusEpoch(db, admin) {
+  await db.collection("meta").doc("corpus").set(
+    {
+      epoch: admin.firestore.FieldValue.increment(1),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
