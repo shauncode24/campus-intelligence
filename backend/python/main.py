@@ -447,16 +447,24 @@ async def process_document(
         raise internal_error(e)
 
 
+@app.get("/healthz")
+def liveness():
+    """Is the process up and answering? No database access, so it is free to call often
+    (the container healthcheck uses it). /health below reports on the database too."""
+    return {"status": "ok"}
+
+
 @app.get("/health", response_model=HealthResponse)
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint (reads the database; use /healthz for frequent liveness checks)"""
     chunk_count = 0
     
     if firebase_client.is_connected:
         try:
             db = firebase_client.db
             chunks_ref = db.collection('chunks')
-            chunk_count = len(list(chunks_ref.limit(1000).stream()))
+            # select([]) downloads only the document ids: chunks carry large embedding vectors
+            chunk_count = len(list(chunks_ref.select([]).limit(1000).stream()))
         except Exception as e:
             print(f"Error counting chunks: {e}")
     

@@ -1,0 +1,35 @@
+# Nothing here goes into the image.
+
+# Secrets and local configuration: pass these at run time instead
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+firebase*.json
+
+# Local environments and caches
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# Version control, editors, OS
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Large local files
+*.mp4
+temp/
+*.log
+
+# The image does not need to build itself
+Dockerfile
+.dockerignore

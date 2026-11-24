@@ -123,28 +123,39 @@ class StorageService:
             raise
     
     @staticmethod
-    async def update_document_status(doc_id: str, all_docs: List[Document]):
+    async def update_document_status(doc_id: str, all_docs: List[Document],
+                                     extra: Dict = None, also: List = None):
         """
-        Update document processing status in Firebase
-        
+        Mark a document "Processed" in Firebase.
+
         Args:
             doc_id: str - Document identifier
             all_docs: List[Document] - Processed document chunks
+            extra: optional further fields to set in the same write
+            also: optional [(other_document_id, fields)] written in the SAME atomic batch, so
+                  that for example the new version becomes current and the old one is retired
+                  at the same instant (never both current, never neither)
         """
         db = firebase_client.db
         if not db:
             return
-        
+
         try:
             doc_ref = db.collection("documents").document(doc_id)
-            doc_ref.update({
+            fields = {
                 "status": "Processed",
                 "processedAt": firestore.SERVER_TIMESTAMP,
                 "chunksCount": len(all_docs),
                 "textChunks": len([d for d in all_docs if d.metadata.get("type") == "text"]),
                 "visualChunks": len([d for d in all_docs if d.metadata.get("type") == "image"]),
                 "isMultiModal": True,
-            })
+                **(extra or {}),
+            }
+            batch = db.batch()
+            batch.update(doc_ref, fields)
+            for other_id, other_fields in (also or []):
+                batch.update(db.collection("documents").document(other_id), other_fields)
+            batch.commit()
             print(f"✅ Updated document status: {doc_id}")
         except Exception as e:
             # Not swallowed: a document that finished indexing but could not be marked

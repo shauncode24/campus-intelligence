@@ -154,7 +154,7 @@ class TestSupersedeFlow(VersionCase):
     def test_a_document_cannot_supersede_itself(self):
         ref = self.db.collection("documents").document()
         ref.set({"name": "X", "status": "Processing", "fileUrl": GOOD_URL, "supersedes": ref.id})
-        ingestion.IngestionManager._supersede_old_version(ref.id, {"supersedes": ref.id})
+        self.assertEqual(ingestion.IngestionManager._supersede_plan(ref.id, {"supersedes": ref.id}), [])
         self.assertNotIn("supersededBy", self.record(ref.id) or {})
 
 

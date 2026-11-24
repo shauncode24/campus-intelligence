@@ -264,7 +264,7 @@ class TestFailures(IngestCase):
 
     def test_a_failed_status_write_is_an_error_not_a_document_stuck_in_processing(self):
         """B2: update_document_status used to swallow its exception."""
-        async def boom(doc_id, docs):
+        async def boom(doc_id, docs, **kwargs):
             raise RuntimeError("firestore unavailable")
         original = ingestion.storage_service.update_document_status
         ingestion.storage_service.update_document_status = boom

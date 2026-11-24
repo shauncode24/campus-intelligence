@@ -142,19 +142,25 @@ class IngestionManager:
 
                 # The last look before the document becomes searchable
                 await run_blocking(progress.check)
-                await storage_service.update_document_status(doc_id, all_docs)
-                await run_blocking(ref.update, {
-                    "processing": {
-                        "stage": "done", "percent": 100,
-                        "message": f"Done: {len(all_docs)} passages",
-                        "startedAtMs": int(progress.started * 1000),
-                        "updatedAtMs": int(time.time() * 1000),
+                # ONE atomic write: this document becomes Processed (with its final progress
+                # and fingerprint) and, if it replaces an older version, that version is retired
+                # in the same instant: never both current, never neither.
+                retire = await run_blocking(self._supersede_plan, doc_id, record)
+                await storage_service.update_document_status(
+                    doc_id, all_docs,
+                    extra={
+                        "processing": {
+                            "stage": "done", "percent": 100,
+                            "message": f"Done: {len(all_docs)} passages",
+                            "startedAtMs": int(progress.started * 1000),
+                            "updatedAtMs": int(time.time() * 1000),
+                        },
+                        "imageStats": image_stats,
+                        "contentSha256": content_sha256,
+                        "errorMessage": firestore.DELETE_FIELD,
                     },
-                    "imageStats": image_stats,
-                    "contentSha256": content_sha256,
-                    "errorMessage": firestore.DELETE_FIELD,
-                })
-                await run_blocking(self._supersede_old_version, doc_id, record)
+                    also=retire,
+                )
                 # The set of documents that can answer questions just changed: every cached
                 # answer made before now is out of date.
                 await run_blocking(bump_epoch, firebase_client.db)
@@ -171,23 +177,23 @@ class IngestionManager:
             self._active.discard(doc_id)
 
     @staticmethod
-    def _supersede_old_version(doc_id: str, record: dict):
+    def _supersede_plan(doc_id: str, record: dict) -> list:
         """
-        If this document was uploaded as the new version of another, retire the old one
-        now that the new one is searchable (never before: until then the old version keeps
-        answering). The old record stays for the admin but is no longer used for answers.
+        If this document was uploaded as the new version of another, the write that retires
+        the old one: [(old_id, fields)] to be committed together with this document becoming
+        Processed (never before: until then the old version keeps answering). The old record
+        stays for the admin but is no longer used for answers. Empty if nothing to retire.
         """
         old_id = (record or {}).get("supersedes")
         if not old_id or old_id == doc_id:
-            return
-        old_ref = firebase_client.db.collection("documents").document(old_id)
-        old = old_ref.get()
+            return []
+        old = firebase_client.db.collection("documents").document(old_id).get()
         if not old.exists:
-            return
+            return []
         if (old.to_dict() or {}).get("supersededBy") not in (None, "", doc_id):
-            return                      # already replaced by something else; leave that alone
-        old_ref.update({"supersededBy": doc_id, "supersededAt": firestore.SERVER_TIMESTAMP})
-        print(f"📚 {old_id} is now superseded by {doc_id}")
+            return []                   # already replaced by something else; leave that alone
+        print(f"📚 {old_id} will be superseded by {doc_id}")
+        return [(old_id, {"supersededBy": doc_id, "supersededAt": firestore.SERVER_TIMESTAMP})]
 
     async def _fail(self, ref, doc_id: str, error: Exception):
         if isinstance(error, USER_FACING_ERRORS):

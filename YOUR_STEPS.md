@@ -4,7 +4,7 @@ Living checklist. Claude updates it after every roadmap item. It assumes **nothi
 Do the sections **in order**: later ones depend on earlier ones. Commands are for **Windows PowerShell**
 unless marked otherwise. `<angle brackets>` are values you fill in.
 
-**Last updated:** after P1-9.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9.
+**Last updated:** after P1-10.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10.
 
 Legend: ☐ = to do. ⚠️ = skipping it breaks something. 💸 = costs Gemini quota. 🔒 = security.
 
@@ -20,8 +20,21 @@ git status --short
 git log --oneline -8
 ```
 
-The last commit you should see is the P1-8 one ("Rework the answer cache…"). P1-9's changes are
+The last commit you should see is the P1-9 one ("Fix the admin pages…"). P1-10's changes are
 uncommitted. Message for it:
+
+```
+Make the Python build reproducible: pinned dependencies, working Dockerfile (P1-10)
+
+requirements.txt now pins every package to the tested set (generated from requirements.in);
+the image runs as non-root with a healthcheck, bakes in the embedding models and keeps secrets
+out. Verified by building the image and running the whole suite inside it. Also makes the
+"new version replaces old" step atomic (both versions could answer for a moment).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
+Message for P1-9 (if you have not committed it yet):
 
 ```
 Fix the admin pages and make upload duplicate detection work (P1-9)
@@ -124,25 +137,42 @@ npm install
 
 ### 2.3 Python RAG service ⚠️
 
-`backend\python\requirements.txt` is **stale** (it pins versions from 2023 that do not match the code; audit
-item T3, not fixed yet). The code was tested with the versions below. Your existing `backend\venv` is
-missing several packages. In PowerShell:
+`backend\python\requirements.txt` is now a **pinned, tested set** (P1-10): every package at the exact version the
+tests ran against, with CPU-only PyTorch. Your existing `backend\venv` has different versions and is missing
+packages, so make a fresh one. In PowerShell:
 
 ```powershell
 cd C:\Users\Shaun\OneDrive\Desktop\Projects\Hackathons\Campus_Intelligence\backend
+Rename-Item venv venv-old          # keep it until the new one works, then delete venv-old
+python -m venv venv
 .\venv\Scripts\python.exe -m pip install --upgrade pip
-.\venv\Scripts\python.exe -m pip install fastapi uvicorn firebase-admin pymupdf pillow numpy aiohttp httpx python-dotenv pydantic langchain-core langchain-text-splitters langchain-google-genai transformers torch
+.\venv\Scripts\python.exe -m pip install -r python\requirements.txt
+.\venv\Scripts\python.exe -m pip check
 ```
 
-Then check that everything imports (no output = good):
+The install takes several minutes and downloads about 1 GB. `pip check` should say "No broken requirements found".
+Needs Python 3.14 (what the tests ran on; `python --version`). If you only have 3.12/3.13 it will probably work but is
+untested: tell Claude. The first start downloads two small models from Hugging Face (bge-small and CLIP); you need
+internet once. To change a dependency: edit `backend\python\requirements.in` and regenerate `requirements.txt`
+(the commands are in that file's header).
+
+### 2.4 Docker image (optional, for deploying the Python service)
+
+Needs Docker Desktop running. The image is about 4.6 GB (PyTorch and the two models are baked in).
 
 ```powershell
-.\venv\Scripts\python.exe -c "import fastapi, uvicorn, firebase_admin, fitz, PIL, numpy, aiohttp, dotenv, langchain_core, langchain_text_splitters, langchain_google_genai, transformers, torch; print('imports ok')"
+cd C:\Users\Shaun\OneDrive\Desktop\Projects\Hackathons\Campus_Intelligence
+docker build -t campus-rag backend\python
+# run it with your secrets passed in at run time (they are never copied into the image):
+docker run --rm -p 8000:8000 --env-file C:\Users\Shaun\secrets\campus-intel.env campus-rag
+# in another terminal:
+curl http://localhost:8000/healthz         # {"status":"ok"}
+docker ps                                  # STATUS shows (healthy) after about 30-120 s
 ```
 
-If a package fails to install (Python 3.14 is new), create a venv with Python 3.12 instead and install the same list.
-The first start downloads two small models from Hugging Face (about 130 MB for bge-small plus CLIP);
-you need internet once.
+`--env-file` takes `NAME=value` lines without quotes around multi-line values: if your Firebase private key breaks it,
+set `FIREBASE_PRIVATE_KEY` another way (your host's secret manager). Hosts that assign a port (Render) set `PORT`; the
+image honours it.
 
 ---
 
@@ -347,6 +377,8 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
     already uploaded" appears after a short pause (not on every keystroke). Select a `.docx` or a 60 MB file → a message says why it was refused.
 23. **Retry (P1-9):** stop the Python service, upload a PDF (it fails), start Python, click "Retry the 1 failed" → it
     completes and the Documents page shows ONE record for it.
+24. **Container (P1-10, optional):** after step 2.4, `docker ps` shows the container as `(healthy)` and
+    `curl http://localhost:8000/healthz` answers. With real credentials, step 1 (a question with sources) also works against it.
 18. **Expiry:** edit a document's `expiryDate` in the Firebase console (Firestore → documents → that doc) to yesterday's
     date (format `2025-01-31`) → questions it alone covered now answer "couldn't find"; set it to a future date → works again.
     (The upload form's own expiry date field does the same; this just avoids waiting.)
@@ -373,6 +405,9 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 - ☐ **Fill in versions and dates on your real documents** (P1-7): version, effective date and expiry date only do
   something once they are entered. Documents without dates stay live forever. For each policy that has a newer edition,
   re-upload the new one with "Replaces an older document" (or delete the old one).
+- ☐ **Delete `backend\venv-old`** once the new virtual environment works (P1-10). It is thousands of files that OneDrive is
+  syncing. Consider keeping the new `venv` outside OneDrive (e.g. `C:\Users\Shaun\venvs\campus`) and using that path in the
+  commands in this file.
 - ☐ **Old documents have no content fingerprint** (P1-9): exact-duplicate detection only knows files processed from now on.
   To fingerprint existing ones, run `reindex_all.py` (it re-processes everything, which re-captions images: see step 8 and the
   cost note) or reprocess just the documents you care about from the Documents page.
@@ -414,6 +449,7 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 ## Change log of this file
 
 - **After P1-5:** file created; covers P0-1 … P1-5.
+- **After P1-10:** commit message for P1-10; new pinned Python environment (2.3), optional Docker build (2.4), delete the old venv; step 24.
 - **After P1-9:** commit message for P1-9; smoke-test steps 21-23 (admin list, duplicates, retry); old documents have no content fingerprint until re-processed.
 - **After P1-8:** commit message for P1-8; smoke-test steps 19-20 (exact reuse, invalidation); purge old cache entries; the cache is exact-match only (semantic mode needs your own calibration).
 - **After P1-7:** commit message for P1-7; smoke-test steps 16-18 (versions, undo, expiry); chores: enter versions/dates on real documents, replace old editions.
