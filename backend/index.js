@@ -10,6 +10,7 @@ import faqAdminRoutes from "./routes/faqAdminRoutes.js";
 import { requireAuth } from "./middleware/auth.js";
 import { ipLimiter, queryIpLimiter, queryUserLimiter } from "./middleware/rateLimit.js";
 import { failInternal, logError } from "./utils/httpErrors.js";
+import { sanitizeHistory } from "./utils/chatHistory.js";
 
 const app = express();
 
@@ -56,7 +57,7 @@ app.post(
   try {
     // Identity comes from the verified token only (req.uid); a userId in the
     // body is ignored.
-    const { question } = req.body;
+    const { question, history } = req.body;
 
     if (typeof question !== "string" || !question.trim()) {
       return res.status(400).json({ error: "Question required" });
@@ -65,6 +66,12 @@ app.post(
       return res
         .status(400)
         .json({ error: `Question is too long (max ${MAX_QUESTION_CHARS} characters)` });
+    }
+
+    // Recent chat turns, used only to understand follow-up questions
+    const cleanHistory = sanitizeHistory(history);
+    if (cleanHistory === null) {
+      return res.status(400).json({ error: "history must be an array" });
     }
 
     const effectiveUserId = req.uid;
@@ -82,6 +89,7 @@ app.post(
     // Build request body (no user id: Python derives it from the token)
     const requestBody = {
       question: question,
+      history: cleanHistory,
     };
 
     // Call Python RAG service, forwarding the caller's token so Python
@@ -152,6 +160,8 @@ app.post(
         data: {
           cached: result.cached || false,
           answered: result.answered !== false,
+          // set when a follow-up was rewritten into a standalone question
+          standaloneQuestion: result.standaloneQuestion || null,
           similarity: result.similarity,
           // No confidence value is sent: the previous number was derived from
           // the count of retrieved chunks (always the same), so it said nothing

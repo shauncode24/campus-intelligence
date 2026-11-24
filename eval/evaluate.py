@@ -12,8 +12,29 @@ PRODUCTION_K = 5            # production gives the model the top-5 chunks
 SWEEP = [round(0.30 + 0.05 * i, 2) for i in range(14)]    # 0.30 .. 0.95
 
 
-def evaluate(pages, questions, retriever, ks=KS):
+FOLLOWUP_MODES = ("raw", "oracle", "rewrite")
+
+
+def query_text(q, followups, rewrite):
+    """
+    The text actually searched for. Only follow-up questions differ by mode:
+      raw      the question exactly as typed (what happens with NO follow-up handling)
+      oracle   the hand-written ideal standalone question (the best a rewriter could do)
+      rewrite  what the production rewriter (a model call) produced: `rewrite(question, history)`
+    """
+    if q.get("type") != "follow_up" or followups == "raw":
+        return q["question"]
+    if followups == "oracle":
+        return q["standalone"]
+    if followups == "rewrite":
+        return rewrite(q["question"], q["history"])
+    raise ValueError(f"followups must be one of {FOLLOWUP_MODES}")
+
+
+def evaluate(pages, questions, retriever, ks=KS, followups="raw", rewrite=None):
     """Returns a result dict (JSON-serialisable)."""
+    if followups == "rewrite" and rewrite is None:
+        raise ValueError("followups='rewrite' needs a rewrite(question, history) function")
     depth = max(ks)
 
     t0 = time.perf_counter()
@@ -22,14 +43,16 @@ def evaluate(pages, questions, retriever, ks=KS):
 
     per_question = []
     for q in questions:
+        searched = query_text(q, followups, rewrite)
         t0 = time.perf_counter()
-        hits = retriever.search(q["question"], depth)
+        hits = retriever.search(searched, depth)
         latency_ms = (time.perf_counter() - t0) * 1000.0
         ranked = [(h["doc"], h["page"]) for h in hits]
         gold = {(g["doc"], g["page"]) for g in q.get("gold", [])}
         rec = {
             "id": q["id"],
             "question": q["question"],
+            "searched": searched,
             "type": q["type"],
             "answerable": q["answerable"],
             "gold": sorted(gold),
@@ -108,6 +131,7 @@ def evaluate(pages, questions, retriever, ks=KS):
         "latency_ms": {"p50": m.percentile(latencies, 50), "p95": m.percentile(latencies, 95)},
         "build_seconds": build_seconds,
         "retriever": retriever.describe(),
+        "followups": followups,
         "per_question": per_question,
     }
 

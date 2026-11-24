@@ -137,6 +137,12 @@ class Config:
 
     # Input size limits
     MAX_QUESTION_CHARS = _int_env("MAX_QUESTION_CHARS", 2000)
+
+    # Follow-up questions: the last few chat turns are used to rewrite a question
+    # like "and the deadline?" into a standalone one (one cheap model call, only
+    # when the question looks like it depends on earlier turns).
+    QUERY_CONDENSING = os.getenv("QUERY_CONDENSING", "true").lower() in ("1", "true", "yes")
+    MAX_HISTORY_MESSAGES = _int_env("MAX_HISTORY_MESSAGES", 6)
     
     @classmethod
     def get_firebase_credentials(cls):

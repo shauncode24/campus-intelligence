@@ -90,6 +90,31 @@ class TestValidator(unittest.TestCase):
         big = [dict(GOOD, id=f"q{i}") for i in range(30)] + [dict(UNANS, id=f"u{i}") for i in range(15)]
         self.assertEqual(d.size_warnings(big), [])
 
+    def test_follow_up_questions_need_history_and_a_different_standalone_rewrite(self):
+        good = dict(GOOD, id="f1", question="And the maximum?", type="follow_up",
+                    history=[{"role": "user", "text": "What is the late fee?"}, {"role": "bot", "text": "Rs. 200 per day."}],
+                    standalone="What is the maximum late fee?")
+        self.assertEqual(d.validate(PAGES, [good]), [])
+        errs = d.validate(PAGES, [{k: v for k, v in good.items() if k != "history"}])
+        self.assertTrue(any("non-empty 'history'" in e for e in errs))
+        errs = d.validate(PAGES, [dict(good, history=[{"role": "robot", "text": "x"}])])
+        self.assertTrue(any("every history turn" in e for e in errs))
+        errs = d.validate(PAGES, [{k: v for k, v in good.items() if k != "standalone"}])
+        self.assertTrue(any("'standalone' rewrite" in e for e in errs))
+        errs = d.validate(PAGES, [dict(good, standalone="  AND the maximum?  ")])
+        self.assertTrue(any("must differ from the question" in e for e in errs))
+
+    def test_history_and_standalone_are_rejected_on_other_question_types(self):
+        errs = errors_for(history=[{"role": "user", "text": "x"}])
+        self.assertTrue(any("only for type 'follow_up'" in e for e in errs))
+        errs = errors_for(standalone="something")
+        self.assertTrue(any("only for type 'follow_up'" in e for e in errs))
+
+    def test_follow_ups_are_labelled_and_checked_like_any_other_answerable_question(self):
+        bad = dict(GOOD, id="f2", question="and more?", type="follow_up", must_include=["not on the page"],
+                   history=[{"role": "user", "text": "x"}], standalone="more what?")
+        self.assertTrue(any("does not appear on any gold page" in e for e in d.validate(PAGES, [bad])))
+
     def test_comment_lines_and_bad_json_are_handled(self):
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False, encoding="utf-8") as f:

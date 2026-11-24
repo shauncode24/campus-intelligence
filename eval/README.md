@@ -16,7 +16,7 @@ reranker) should be run through this before it is trusted.
   "Building the real golden set" below.
 - **Retrieval only.** Answer-level scoring (correctness, faithfulness, citation accuracy,
   refusal behaviour of the LLM, cost per question) needs real Gemini calls and is still to
-  do. Text retrieval is measured; **image retrieval and multi-turn follow-ups are not**.
+  do. Text retrieval and follow-up question handling are measured; **image retrieval is not**.
 
 ## Running it
 
@@ -35,6 +35,7 @@ backend\venv\Scripts\python.exe eval\run_retrieval_eval.py ^
 | `--retriever production` | the real backend code: same chunker, embedding model and cosine ranking as the service |
 | `--embedding-backend bge-small \| clip` | which embedding model `production` uses (run once per model to compare) |
 | `--retriever bm25` | plain keyword search, a sanity reference ("does the embedding beat word matching?") |
+| `--followups raw \| oracle \| rewrite` | how follow-up questions are searched: `raw` as typed (what happens with no follow-up handling), `oracle` with the hand-written ideal rewrite (the best a rewriter could do), `rewrite` with the real production rewriter (**calls Gemini**; refuses to run without `--env-file <secrets> --yes`) |
 | `--compare baseline.json --max-drop 0.05` | regression gate: exit code 3 if recall@5, hit@5, nDCG@5 or MRR dropped by more than 0.05 |
 
 Output goes to `eval/results/<name>.md` (readable) and `.json` (machine-readable, used by
@@ -72,7 +73,9 @@ chunker or embedder changes.
 2. **Keep their wording.** Do not rewrite questions to echo the document's phrases; that
    makes retrieval look better than it is. Include typos, short forms and vague questions.
 3. **Cover the types:** `fact`, `numeric`, `deadline`, `procedure`, `eligibility`,
-   `multi_doc` (answer spans pages or documents), and, importantly, unanswerable ones:
+   `multi_doc` (answer spans pages or documents), `follow_up` (a question that only makes
+   sense after an earlier turn; add `history` (the earlier turns) and `standalone` (your ideal
+   rewrite), and the harness shows how much the follow-up handling matters), and, importantly, unanswerable ones:
    `absent_in_domain` (a campus question the documents do not cover, the hard realistic
    case) and `out_of_scope` (unrelated). At least half of the unanswerable set should be
    `absent_in_domain`.
@@ -99,7 +102,7 @@ chunker or embedder changes.
 Done: dataset schema + mechanical label validation, retrieval metrics (hit/recall/MRR/nDCG)
 with confidence intervals, abstention analysis, failure listing, latency, regression gate.
 
-Still to build (audit P1-1): answer-level evaluation with Gemini (correctness proxy via
+Still to build (audit P1-1): running the real rewriter on a real follow-up set, answer-level evaluation with Gemini (correctness proxy via
 `must_include`, citation accuracy against gold pages, refusal accuracy, an LLM-judged
 faithfulness score calibrated against human labels, tokens and cost per question), a
 multi-turn set for follow-up questions, an image set, and a CI job that runs the gate.

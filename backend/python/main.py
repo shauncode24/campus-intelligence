@@ -34,6 +34,7 @@ from services.embedding_service import embedding_service
 from services.pdf_processor import pdf_processor
 from services.retrieval_service import retrieval_service
 from services.llm_service import llm_service, is_not_found
+from services.query_condenser import query_condenser, needs_condensing, CondenseResult
 
 # Utilities
 from utils.intent_detector import detect_intent
@@ -109,7 +110,8 @@ app.add_middleware(
 app.include_router(chat_router, tags=["chats"])
 
 
-async def _decline(user_id: str, question: str, intent: str, reason: str) -> QueryResponse:
+async def _decline(user_id: str, question: str, intent: str, reason: str,
+                   standalone: str = None) -> QueryResponse:
     """
     The documents do not contain an answer. Say so plainly, show no sources,
     record it in the user's history, and do NOT cache it (a refusal must never
@@ -122,6 +124,7 @@ async def _decline(user_id: str, question: str, intent: str, reason: str) -> Que
         hasVisualContent=False,
         cached=False,
         answered=False,
+        standaloneQuestion=standalone,
     )
     await cache_repository.store_user_question(
         user_id,
@@ -152,25 +155,44 @@ async def query_documents(
         print(f"\n🔍 Query: {request.question}")
         print(f"👤 User: {user_id}")
         
+        # Follow-ups: if the question leans on earlier turns, rewrite it into a
+        # standalone question. History is used only for that, never as evidence.
+        history = [turn.model_dump() for turn in request.history]
+        if Config.QUERY_CONDENSING and needs_condensing(request.question, history):
+            consume_llm_budget(user_id)   # a model call: charged like any other
+            condensed = query_condenser.condense(request.question, history)
+        else:
+            condensed = CondenseResult(request.question, attempted=False, resolved=True)
+        question = condensed.standalone          # what we search for and answer
+        standalone_note = question if condensed.rewritten and question != request.question else None
+        # A question that needed rewriting but could not be rewritten is still
+        # ambiguous ("and the deadline?"), so it must never be read from or written
+        # to the shared answer cache.
+        cacheable = condensed.resolved
+        if standalone_note:
+            print(f"✏️ Understood as: {question}")
+
         # Detect intent
-        intent = detect_intent(request.question)
+        intent = detect_intent(question)
         print(f"🎯 Detected intent: {intent}")
         
         # Embed the query
-        query_embedding = embedding_service.embed_query(request.question)
+        query_embedding = embedding_service.embed_query(question)
         # CLIP vector of the question, used only to look for relevant images
         image_query_embedding = (
-            embedding_service.embed_image_query(request.question)
+            embedding_service.embed_image_query(question)
             if embedding_service.supports_images else None
         )
         print("✅ Query embedded")
         
-        # Check cache first
-        cached_question = await cache_repository.find_similar_question(
-            request.question,
-            query_embedding,
-            intent
-        )
+        # Check cache first (only for questions that stand on their own)
+        cached_question = None
+        if cacheable:
+            cached_question = await cache_repository.find_similar_question(
+                question,
+                query_embedding,
+                intent
+            )
         
         if cached_question:
             print(f"♻️ Reusing cached answer (similarity: {cached_question.get('similarity', 1.0):.3f})")
@@ -200,6 +222,7 @@ async def query_documents(
                 sources=cached_question.get('sources', []),
                 hasVisualContent=any(s.get('type') == 'image' for s in cached_question.get('sources', [])),
                 cached=True,
+                standaloneQuestion=standalone_note,
                 similarity=cached_question.get('similarity'),
                 deadline=deadline,
                 confidence=cached_question.get('confidence')
@@ -224,7 +247,7 @@ async def query_documents(
                   f"{len(relevant_docs)}/{len(context_docs)} chunks kept")
 
         if not relevant_docs:
-            return await _decline(user_id, request.question, intent, "no relevant chunks")
+            return await _decline(user_id, request.question, intent, "no relevant chunks", standalone_note)
 
         print(f"📚 Using {len(relevant_docs)} relevant chunks")
 
@@ -237,7 +260,7 @@ async def query_documents(
 
         # Create multimodal message with labelled excerpts (async: re-extracts images)
         message = await llm_service.create_multimodal_message(
-            request.question, relevant_docs, doc_names
+            question, relevant_docs, doc_names
         )
 
         # Generate answer (grounded: the model must reply NOT_FOUND if unsupported)
@@ -245,7 +268,7 @@ async def query_documents(
 
         if is_not_found(answer):
             return await _decline(
-                user_id, request.question, intent, "model found no support in context"
+                user_id, request.question, intent, "model found no support in context", standalone_note
             )
 
         has_visual = any(doc.metadata.get('type') == 'image' for doc in relevant_docs)
@@ -257,28 +280,30 @@ async def query_documents(
         # Extract deadline info
         deadline = extract_deadline_info(answer, sources)
         
-        # Store in cache
-        question_id = await cache_repository.store_question(
-            request.question,
-            query_embedding,
-            answer,
-            intent,
-            confidence,
-            sources,
-            deadline=deadline
-        )
-        
-        # Store user question history with full data
-        if question_id:
-            await cache_repository.store_user_question(
-                user_id,
-                question_id,
-                request.question,
-                answer=answer,
-                intent=intent,
-                confidence=confidence,
-                sources=sources
+        # Store in the shared cache under the STANDALONE question (never under an
+        # unresolved follow-up)
+        question_id = None
+        if cacheable:
+            question_id = await cache_repository.store_question(
+                question,
+                query_embedding,
+                answer,
+                intent,
+                confidence,
+                sources,
+                deadline=deadline
             )
+        
+        # Store the user's own history entry (with the question as THEY typed it)
+        await cache_repository.store_user_question(
+            user_id,
+            question_id or "uncached",
+            request.question,
+            answer=answer,
+            intent=intent,
+            confidence=confidence,
+            sources=sources
+        )
         
         print(f"✅ Answer generated and cached\n")
         
@@ -288,7 +313,8 @@ async def query_documents(
             hasVisualContent=has_visual,
             cached=False,
             deadline=deadline,
-            confidence=confidence
+            confidence=confidence,
+            standaloneQuestion=standalone_note
         )
         
     except HTTPException:

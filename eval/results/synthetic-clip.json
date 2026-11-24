@@ -1,111 +1,111 @@
 {
   "meta": {
     "name": "synthetic-clip",
-    "date": "2026-11-24 00:47",
-    "git_commit": "2404c00",
-    "dataset_fingerprint": "f2f4cb840c86",
+    "date": "2026-11-24 09:28",
+    "git_commit": "541c36d",
+    "dataset_fingerprint": "f7c6931f3826",
     "n_pages": 12,
     "synthetic": true,
+    "followups": "raw",
     "warnings": [
-      "Only 24 answerable questions (recommended minimum 30). Differences between runs are likely to be noise; look at the confidence intervals.",
       "Only 10 unanswerable questions (recommended minimum 15). Refusal/abstention figures are very rough."
     ]
   },
   "results": {
     "counts": {
-      "answerable": 24,
+      "answerable": 32,
       "unanswerable": 10
     },
     "retrieval": {
       "mrr": {
-        "mean": 0.29037698412698415,
+        "mean": 0.29026537698412697,
         "ci95": [
-          0.21046626984126984,
-          0.37956349206349205
+          0.21117311507936506,
+          0.3776785714285714
         ]
       },
       "hit@1": {
-        "mean": 0.041666666666666664,
+        "mean": 0.0625,
         "ci95": [
           0.0,
-          0.125
+          0.15625
         ]
       },
       "hit@3": {
-        "mean": 0.3333333333333333,
+        "mean": 0.34375,
         "ci95": [
-          0.16666666666666666,
-          0.5416666666666666
+          0.1875,
+          0.5
         ]
       },
       "hit@5": {
-        "mean": 0.5833333333333334,
+        "mean": 0.5625,
         "ci95": [
-          0.375,
-          0.7916666666666666
+          0.40625,
+          0.75
         ]
       },
       "hit@10": {
-        "mean": 0.9583333333333334,
+        "mean": 0.90625,
         "ci95": [
-          0.875,
+          0.78125,
           1.0
         ]
       },
       "recall@1": {
-        "mean": 0.041666666666666664,
+        "mean": 0.0625,
         "ci95": [
           0.0,
-          0.125
+          0.15625
         ]
       },
       "recall@3": {
-        "mean": 0.3125,
+        "mean": 0.328125,
         "ci95": [
-          0.14583333333333334,
-          0.5
+          0.171875,
+          0.484375
         ]
       },
       "recall@5": {
-        "mean": 0.5625,
+        "mean": 0.546875,
         "ci95": [
-          0.3541666666666667,
-          0.75
+          0.390625,
+          0.71875
         ]
       },
       "recall@10": {
-        "mean": 0.9583333333333334,
+        "mean": 0.90625,
         "ci95": [
-          0.875,
+          0.78125,
           1.0
         ]
       },
       "ndcg@1": {
-        "mean": 0.041666666666666664,
+        "mean": 0.0625,
         "ci95": [
           0.0,
-          0.125
+          0.15625
         ]
       },
       "ndcg@3": {
-        "mean": 0.21006256562882622,
+        "mean": 0.2241384790207277,
         "ci95": [
-          0.09498508616453809,
-          0.3360508578907358
+          0.11811381462340356,
+          0.3377905479910805
         ]
       },
       "ndcg@5": {
-        "mean": 0.3170209457967908,
+        "mean": 0.31781590658649467,
         "ci95": [
-          0.19651062831258911,
-          0.4393270781389298
+          0.21504637428735224,
+          0.4272634579226643
         ]
       },
       "ndcg@10": {
-        "mean": 0.44776153070575897,
+        "mean": 0.4351368100322743,
         "ci95": [
-          0.3716921242645124,
-          0.526352700303221
+          0.35656340423914484,
+          0.512746934794389
         ]
       }
     },
@@ -128,6 +128,12 @@
         "recall@5": 0.25,
         "mrr": 0.18571428571428572
       },
+      "follow_up": {
+        "n": 8,
+        "hit@5": 0.5,
+        "recall@5": 0.5,
+        "mrr": 0.2899305555555556
+      },
       "multi_doc": {
         "n": 2,
         "hit@5": 1.0,
@@ -148,10 +154,10 @@
       }
     },
     "abstention": {
-      "auc": 0.9333333333333333,
+      "auc": 0.91875,
       "answerable_top_score": {
         "min": 0.7069823741912842,
-        "median": 0.8669301569461823,
+        "median": 0.8651891946792603,
         "max": 0.9153743386268616
       },
       "unanswerable_top_score": {
@@ -207,22 +213,22 @@
         },
         {
           "floor": 0.75,
-          "answerable_kept": 0.9583333333333334,
+          "answerable_kept": 0.96875,
           "unanswerable_refused": 0.1
         },
         {
           "floor": 0.8,
-          "answerable_kept": 0.9583333333333334,
+          "answerable_kept": 0.96875,
           "unanswerable_refused": 0.5
         },
         {
           "floor": 0.85,
-          "answerable_kept": 0.8333333333333334,
+          "answerable_kept": 0.71875,
           "unanswerable_refused": 1.0
         },
         {
           "floor": 0.9,
-          "answerable_kept": 0.125,
+          "answerable_kept": 0.09375,
           "unanswerable_refused": 1.0
         },
         {
@@ -522,13 +528,129 @@
           ]
         ],
         "first_gold_rank": 7
+      },
+      {
+        "id": "f01",
+        "question": "And what is the maximum?",
+        "type": "follow_up",
+        "gold": [
+          [
+            "fee_policy",
+            1
+          ]
+        ],
+        "top_retrieved": [
+          [
+            "scholarships",
+            1,
+            0.8399
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.8073
+          ],
+          [
+            "placement_policy",
+            1,
+            0.8005
+          ]
+        ],
+        "first_gold_rank": 9
+      },
+      {
+        "id": "f03",
+        "question": "And for seniors?",
+        "type": "follow_up",
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_retrieved": [
+          [
+            "scholarships",
+            1,
+            0.8827
+          ],
+          [
+            "placement_policy",
+            1,
+            0.8176
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.8155
+          ]
+        ],
+        "first_gold_rank": null
+      },
+      {
+        "id": "f04",
+        "question": "How long do I have to apply for it?",
+        "type": "follow_up",
+        "gold": [
+          [
+            "exam_regulations",
+            2
+          ]
+        ],
+        "top_retrieved": [
+          [
+            "scholarships",
+            1,
+            0.8755
+          ],
+          [
+            "placement_policy",
+            1,
+            0.8375
+          ],
+          [
+            "fee_policy",
+            2,
+            0.8238
+          ]
+        ],
+        "first_gold_rank": 8
+      },
+      {
+        "id": "f08",
+        "question": "Is it refundable?",
+        "type": "follow_up",
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_retrieved": [
+          [
+            "scholarships",
+            1,
+            0.8765
+          ],
+          [
+            "placement_policy",
+            1,
+            0.8202
+          ],
+          [
+            "fee_policy",
+            2,
+            0.8155
+          ]
+        ],
+        "first_gold_rank": null
       }
     ],
     "latency_ms": {
-      "p50": 20.98630000000412,
-      "p95": 28.668485000162036
+      "p50": 61.46950000038487,
+      "p95": 74.39853499636229
     },
-    "build_seconds": 1.2211265999976604,
+    "build_seconds": 3.320294000004651,
     "retriever": {
       "retriever": "production",
       "embedding_backend": "clip",
@@ -540,10 +662,12 @@
       "num_chunks": 23,
       "production_relevance_floor": 0.7
     },
+    "followups": "raw",
     "per_question": [
       {
         "id": "q01",
         "question": "What is the late fee if I pay my tuition after the deadline?",
+        "searched": "What is the late fee if I pay my tuition after the deadline?",
         "type": "numeric",
         "answerable": true,
         "gold": [
@@ -605,7 +729,7 @@
             0.7667
           ]
         ],
-        "latency_ms": 21.15300000150455,
+        "latency_ms": 62.781200002064,
         "metrics": {
           "mrr": 0.16666666666666666,
           "hit@1": 0.0,
@@ -625,6 +749,7 @@
       {
         "id": "q02",
         "question": "Is there a cap on how much late fee I can be charged in one semester?",
+        "searched": "Is there a cap on how much late fee I can be charged in one semester?",
         "type": "numeric",
         "answerable": true,
         "gold": [
@@ -686,7 +811,7 @@
             0.7513
           ]
         ],
-        "latency_ms": 21.730299999035196,
+        "latency_ms": 67.87229999463307,
         "metrics": {
           "mrr": 0.16666666666666666,
           "hit@1": 0.0,
@@ -706,6 +831,7 @@
       {
         "id": "q03",
         "question": "By what day of the month must semester tuition be cleared?",
+        "searched": "By what day of the month must semester tuition be cleared?",
         "type": "deadline",
         "answerable": true,
         "gold": [
@@ -767,7 +893,7 @@
             0.762
           ]
         ],
-        "latency_ms": 20.827500000450527,
+        "latency_ms": 63.362699998833705,
         "metrics": {
           "mrr": 0.125,
           "hit@1": 0.0,
@@ -787,6 +913,7 @@
       {
         "id": "q04",
         "question": "Can I pay my fees from my phone instead of going to the office?",
+        "searched": "Can I pay my fees from my phone instead of going to the office?",
         "type": "procedure",
         "answerable": true,
         "gold": [
@@ -848,7 +975,7 @@
             0.7503
           ]
         ],
-        "latency_ms": 20.30910000030417,
+        "latency_ms": 66.12620000669267,
         "metrics": {
           "mrr": 0.125,
           "hit@1": 0.0,
@@ -868,6 +995,7 @@
       {
         "id": "q05",
         "question": "My family is struggling financially. Can I pay tuition in parts, and what form do I need?",
+        "searched": "My family is struggling financially. Can I pay tuition in parts, and what form do I need?",
         "type": "procedure",
         "answerable": true,
         "gold": [
@@ -929,7 +1057,7 @@
             0.7549
           ]
         ],
-        "latency_ms": 25.662000000011176,
+        "latency_ms": 73.20520000212127,
         "metrics": {
           "mrr": 0.3333333333333333,
           "hit@1": 0.0,
@@ -949,6 +1077,7 @@
       {
         "id": "q06",
         "question": "If I cancel my admission before classes begin, how much money comes back?",
+        "searched": "If I cancel my admission before classes begin, how much money comes back?",
         "type": "numeric",
         "answerable": true,
         "gold": [
@@ -1010,7 +1139,7 @@
             0.7626
           ]
         ],
-        "latency_ms": 25.04190000036033,
+        "latency_ms": 70.3018999993219,
         "metrics": {
           "mrr": 0.5,
           "hit@1": 0.0,
@@ -1030,6 +1159,7 @@
       {
         "id": "q07",
         "question": "What percentage of classes must I attend to be allowed in the final exam?",
+        "searched": "What percentage of classes must I attend to be allowed in the final exam?",
         "type": "eligibility",
         "answerable": true,
         "gold": [
@@ -1091,7 +1221,7 @@
             0.7718
           ]
         ],
-        "latency_ms": 28.474200000346173,
+        "latency_ms": 68.1269999986398,
         "metrics": {
           "mrr": 0.2,
           "hit@1": 0.0,
@@ -1111,6 +1241,7 @@
       {
         "id": "q08",
         "question": "I fell sick and missed too many classes. What papers do I need to submit?",
+        "searched": "I fell sick and missed too many classes. What papers do I need to submit?",
         "type": "procedure",
         "answerable": true,
         "gold": [
@@ -1172,7 +1303,7 @@
             0.763
           ]
         ],
-        "latency_ms": 35.01730000061798,
+        "latency_ms": 74.28329999675043,
         "metrics": {
           "mrr": 0.25,
           "hit@1": 0.0,
@@ -1192,6 +1323,7 @@
       {
         "id": "q09",
         "question": "How much do I have to pay to get my attendance shortage condoned?",
+        "searched": "How much do I have to pay to get my attendance shortage condoned?",
         "type": "numeric",
         "answerable": true,
         "gold": [
@@ -1253,7 +1385,7 @@
             0.7524
           ]
         ],
-        "latency_ms": 24.614899997686734,
+        "latency_ms": 65.75650000013411,
         "metrics": {
           "mrr": 0.2,
           "hit@1": 0.0,
@@ -1273,6 +1405,7 @@
       {
         "id": "q10",
         "question": "I only have 70 percent attendance in one course. Can I still write the exam and what will it cost me?",
+        "searched": "I only have 70 percent attendance in one course. Can I still write the exam and what will it cost me?",
         "type": "multi_doc",
         "answerable": true,
         "gold": [
@@ -1338,7 +1471,7 @@
             0.7866
           ]
         ],
-        "latency_ms": 28.375199999572942,
+        "latency_ms": 75.54879999952391,
         "metrics": {
           "mrr": 0.25,
           "hit@1": 0.0,
@@ -1358,6 +1491,7 @@
       {
         "id": "q11",
         "question": "I represent the college in a sports tournament. Will those days be counted as absent?",
+        "searched": "I represent the college in a sports tournament. Will those days be counted as absent?",
         "type": "fact",
         "answerable": true,
         "gold": [
@@ -1419,7 +1553,7 @@
             0.7505
           ]
         ],
-        "latency_ms": 20.177300000796095,
+        "latency_ms": 74.40459999634186,
         "metrics": {
           "mrr": 0.5,
           "hit@1": 0.0,
@@ -1439,6 +1573,7 @@
       {
         "id": "q12",
         "question": "When can I submit my hostel application?",
+        "searched": "When can I submit my hostel application?",
         "type": "deadline",
         "answerable": true,
         "gold": [
@@ -1500,7 +1635,7 @@
             0.7853
           ]
         ],
-        "latency_ms": 13.341900001250906,
+        "latency_ms": 54.38780000258703,
         "metrics": {
           "mrr": 0.16666666666666666,
           "hit@1": 0.0,
@@ -1520,6 +1655,7 @@
       {
         "id": "q13",
         "question": "What do I pay for hostel accommodation for the whole year?",
+        "searched": "What do I pay for hostel accommodation for the whole year?",
         "type": "numeric",
         "answerable": true,
         "gold": [
@@ -1581,7 +1717,7 @@
             0.764
           ]
         ],
-        "latency_ms": 19.09929999965243,
+        "latency_ms": 64.37770000047749,
         "metrics": {
           "mrr": 0.25,
           "hit@1": 0.0,
@@ -1601,6 +1737,7 @@
       {
         "id": "q14",
         "question": "How late can first year students come back to the hostel in the evening?",
+        "searched": "How late can first year students come back to the hostel in the evening?",
         "type": "fact",
         "answerable": true,
         "gold": [
@@ -1662,7 +1799,7 @@
             0.7915
           ]
         ],
-        "latency_ms": 20.348300000478048,
+        "latency_ms": 66.71189999906346,
         "metrics": {
           "mrr": 0.0,
           "hit@1": 0.0,
@@ -1682,6 +1819,7 @@
       {
         "id": "q15",
         "question": "How much is the hostel security deposit and how long until I get it back?",
+        "searched": "How much is the hostel security deposit and how long until I get it back?",
         "type": "numeric",
         "answerable": true,
         "gold": [
@@ -1743,7 +1881,7 @@
             0.7303
           ]
         ],
-        "latency_ms": 20.177099999273196,
+        "latency_ms": 70.4323999962071,
         "metrics": {
           "mrr": 0.1,
           "hit@1": 0.0,
@@ -1763,6 +1901,7 @@
       {
         "id": "q16",
         "question": "Can I keep an induction cooktop in my hostel room?",
+        "searched": "Can I keep an induction cooktop in my hostel room?",
         "type": "fact",
         "answerable": true,
         "gold": [
@@ -1824,7 +1963,7 @@
             0.6452
           ]
         ],
-        "latency_ms": 17.20979999663541,
+        "latency_ms": 61.09029999788618,
         "metrics": {
           "mrr": 0.1,
           "hit@1": 0.0,
@@ -1844,6 +1983,7 @@
       {
         "id": "q17",
         "question": "How many days after results do I have to ask for my paper to be rechecked?",
+        "searched": "How many days after results do I have to ask for my paper to be rechecked?",
         "type": "deadline",
         "answerable": true,
         "gold": [
@@ -1905,7 +2045,7 @@
             0.7608
           ]
         ],
-        "latency_ms": 21.145099999557715,
+        "latency_ms": 72.40879999881145,
         "metrics": {
           "mrr": 0.14285714285714285,
           "hit@1": 0.0,
@@ -1925,6 +2065,7 @@
       {
         "id": "q18",
         "question": "What does it cost to get one answer sheet re-evaluated?",
+        "searched": "What does it cost to get one answer sheet re-evaluated?",
         "type": "numeric",
         "answerable": true,
         "gold": [
@@ -1986,7 +2127,7 @@
             0.7848
           ]
         ],
-        "latency_ms": 21.795600001496496,
+        "latency_ms": 62.032199995883275,
         "metrics": {
           "mrr": 0.25,
           "hit@1": 0.0,
@@ -2006,6 +2147,7 @@
       {
         "id": "q19",
         "question": "From when can I download my hall ticket?",
+        "searched": "From when can I download my hall ticket?",
         "type": "fact",
         "answerable": true,
         "gold": [
@@ -2067,7 +2209,7 @@
             0.7331
           ]
         ],
-        "latency_ms": 18.013699998846278,
+        "latency_ms": 58.27770000178134,
         "metrics": {
           "mrr": 0.14285714285714285,
           "hit@1": 0.0,
@@ -2087,6 +2229,7 @@
       {
         "id": "q20",
         "question": "What grade average do I need to qualify for the merit scholarship?",
+        "searched": "What grade average do I need to qualify for the merit scholarship?",
         "type": "eligibility",
         "answerable": true,
         "gold": [
@@ -2148,7 +2291,7 @@
             0.7642
           ]
         ],
-        "latency_ms": 19.539100001566112,
+        "latency_ms": 59.19490000087535,
         "metrics": {
           "mrr": 1.0,
           "hit@1": 1.0,
@@ -2168,6 +2311,7 @@
       {
         "id": "q21",
         "question": "Up to what family income can a student apply for need-based scholarship?",
+        "searched": "Up to what family income can a student apply for need-based scholarship?",
         "type": "eligibility",
         "answerable": true,
         "gold": [
@@ -2229,7 +2373,7 @@
             0.7733
           ]
         ],
-        "latency_ms": 20.329200000560377,
+        "latency_ms": 67.44959999923594,
         "metrics": {
           "mrr": 0.5,
           "hit@1": 0.0,
@@ -2249,6 +2393,7 @@
       {
         "id": "q22",
         "question": "Until what date can I sign up for campus recruitment?",
+        "searched": "Until what date can I sign up for campus recruitment?",
         "type": "deadline",
         "answerable": true,
         "gold": [
@@ -2310,7 +2455,7 @@
             0.7336
           ]
         ],
-        "latency_ms": 19.746500001929235,
+        "latency_ms": 59.51719999575289,
         "metrics": {
           "mrr": 0.5,
           "hit@1": 0.0,
@@ -2330,6 +2475,7 @@
       {
         "id": "q23",
         "question": "I have a pending backlog. Am I allowed to appear for company drives?",
+        "searched": "I have a pending backlog. Am I allowed to appear for company drives?",
         "type": "eligibility",
         "answerable": true,
         "gold": [
@@ -2391,7 +2537,7 @@
             0.7162
           ]
         ],
-        "latency_ms": 21.210800001426833,
+        "latency_ms": 68.78580000193324,
         "metrics": {
           "mrr": 0.5,
           "hit@1": 0.0,
@@ -2411,6 +2557,7 @@
       {
         "id": "q24",
         "question": "Can I spread my exam fee over instalments, and what do I pay to get a paper re-evaluated?",
+        "searched": "Can I spread my exam fee over instalments, and what do I pay to get a paper re-evaluated?",
         "type": "multi_doc",
         "answerable": true,
         "gold": [
@@ -2476,7 +2623,7 @@
             0.787
           ]
         ],
-        "latency_ms": 29.02929999982007,
+        "latency_ms": 87.38000000448665,
         "metrics": {
           "mrr": 0.5,
           "hit@1": 0.0,
@@ -2496,6 +2643,7 @@
       {
         "id": "u01",
         "question": "How much does it cost to park my motorcycle on campus?",
+        "searched": "How much does it cost to park my motorcycle on campus?",
         "type": "absent_in_domain",
         "answerable": false,
         "gold": [],
@@ -2552,11 +2700,12 @@
             0.6723
           ]
         ],
-        "latency_ms": 21.276499999657972
+        "latency_ms": 63.17539999872679
       },
       {
         "id": "u02",
         "question": "How many weeks of summer vacation do students get?",
+        "searched": "How many weeks of summer vacation do students get?",
         "type": "absent_in_domain",
         "answerable": false,
         "gold": [],
@@ -2613,11 +2762,12 @@
             0.7309
           ]
         ],
-        "latency_ms": 20.254099999874597
+        "latency_ms": 61.56929999997374
       },
       {
         "id": "u03",
         "question": "How can I change my branch after the first year?",
+        "searched": "How can I change my branch after the first year?",
         "type": "absent_in_domain",
         "answerable": false,
         "gold": [],
@@ -2674,11 +2824,12 @@
             0.6546
           ]
         ],
-        "latency_ms": 22.085799999331357
+        "latency_ms": 58.74119999498362
       },
       {
         "id": "u04",
         "question": "What is the fine for a lost library book?",
+        "searched": "What is the fine for a lost library book?",
         "type": "absent_in_domain",
         "answerable": false,
         "gold": [],
@@ -2735,11 +2886,12 @@
             0.7236
           ]
         ],
-        "latency_ms": 22.99470000070869
+        "latency_ms": 58.02190000395058
       },
       {
         "id": "u05",
         "question": "What is the monthly gym membership fee?",
+        "searched": "What is the monthly gym membership fee?",
         "type": "absent_in_domain",
         "answerable": false,
         "gold": [],
@@ -2796,11 +2948,12 @@
             0.7307
           ]
         ],
-        "latency_ms": 21.549400000367314
+        "latency_ms": 52.9720000049565
       },
       {
         "id": "u06",
         "question": "Is there a dress code for attending lectures?",
+        "searched": "Is there a dress code for attending lectures?",
         "type": "absent_in_domain",
         "answerable": false,
         "gold": [],
@@ -2857,11 +3010,12 @@
             0.7247
           ]
         ],
-        "latency_ms": 24.113899999065325
+        "latency_ms": 59.399500001745764
       },
       {
         "id": "u07",
         "question": "What is the weather forecast for tomorrow?",
+        "searched": "What is the weather forecast for tomorrow?",
         "type": "out_of_scope",
         "answerable": false,
         "gold": [],
@@ -2918,11 +3072,12 @@
             0.6965
           ]
         ],
-        "latency_ms": 19.92210000025807
+        "latency_ms": 53.30089999915799
       },
       {
         "id": "u08",
         "question": "Who won the cricket match last night?",
+        "searched": "Who won the cricket match last night?",
         "type": "out_of_scope",
         "answerable": false,
         "gold": [],
@@ -2979,11 +3134,12 @@
             0.6949
           ]
         ],
-        "latency_ms": 16.537600000447128
+        "latency_ms": 52.62310000398429
       },
       {
         "id": "u09",
         "question": "Write a python function that sorts a list of numbers.",
+        "searched": "Write a python function that sorts a list of numbers.",
         "type": "out_of_scope",
         "answerable": false,
         "gold": [],
@@ -3040,11 +3196,12 @@
             0.6823
           ]
         ],
-        "latency_ms": 17.50990000073216
+        "latency_ms": 58.8692999954219
       },
       {
         "id": "u10",
         "question": "What is the capital of France?",
+        "searched": "What is the capital of France?",
         "type": "out_of_scope",
         "answerable": false,
         "gold": [],
@@ -3101,7 +3258,663 @@
             0.6788
           ]
         ],
-        "latency_ms": 15.073099999426631
+        "latency_ms": 51.24030000297353
+      },
+      {
+        "id": "f01",
+        "question": "And what is the maximum?",
+        "searched": "And what is the maximum?",
+        "type": "follow_up",
+        "answerable": true,
+        "gold": [
+          [
+            "fee_policy",
+            1
+          ]
+        ],
+        "top_score": 0.8399186134338379,
+        "ranked": [
+          [
+            "scholarships",
+            1,
+            0.8399
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.8073
+          ],
+          [
+            "placement_policy",
+            1,
+            0.8005
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.7929
+          ],
+          [
+            "fee_policy",
+            2,
+            0.7785
+          ],
+          [
+            "scholarships",
+            2,
+            0.7717
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7675
+          ],
+          [
+            "exam_regulations",
+            1,
+            0.7579
+          ],
+          [
+            "fee_policy",
+            1,
+            0.7491
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7174
+          ]
+        ],
+        "latency_ms": 53.71700000250712,
+        "metrics": {
+          "mrr": 0.1111111111111111,
+          "hit@1": 0.0,
+          "hit@3": 0.0,
+          "hit@5": 0.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.0,
+          "ndcg@5": 0.0,
+          "ndcg@10": 0.3010299956639812
+        }
+      },
+      {
+        "id": "f02",
+        "question": "What if I'm below that?",
+        "searched": "What if I'm below that?",
+        "type": "follow_up",
+        "answerable": true,
+        "gold": [
+          [
+            "attendance_rules",
+            2
+          ]
+        ],
+        "top_score": 0.8196781277656555,
+        "ranked": [
+          [
+            "scholarships",
+            1,
+            0.8197
+          ],
+          [
+            "placement_policy",
+            1,
+            0.7752
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.7664
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.7527
+          ],
+          [
+            "scholarships",
+            2,
+            0.748
+          ],
+          [
+            "fee_policy",
+            2,
+            0.7441
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7238
+          ],
+          [
+            "exam_regulations",
+            1,
+            0.717
+          ],
+          [
+            "fee_policy",
+            1,
+            0.6982
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.6826
+          ]
+        ],
+        "latency_ms": 54.642800001602154,
+        "metrics": {
+          "mrr": 0.3333333333333333,
+          "hit@1": 0.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.5,
+          "ndcg@5": 0.5,
+          "ndcg@10": 0.5
+        }
+      },
+      {
+        "id": "f03",
+        "question": "And for seniors?",
+        "searched": "And for seniors?",
+        "type": "follow_up",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_score": 0.8827075958251953,
+        "ranked": [
+          [
+            "scholarships",
+            1,
+            0.8827
+          ],
+          [
+            "placement_policy",
+            1,
+            0.8176
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.8155
+          ],
+          [
+            "fee_policy",
+            2,
+            0.807
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.8036
+          ],
+          [
+            "scholarships",
+            2,
+            0.7986
+          ],
+          [
+            "fee_policy",
+            1,
+            0.7722
+          ],
+          [
+            "exam_regulations",
+            1,
+            0.7647
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7642
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.7492
+          ]
+        ],
+        "latency_ms": 50.544000005174894,
+        "metrics": {
+          "mrr": 0.0,
+          "hit@1": 0.0,
+          "hit@3": 0.0,
+          "hit@5": 0.0,
+          "hit@10": 0.0,
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "recall@10": 0.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.0,
+          "ndcg@5": 0.0,
+          "ndcg@10": 0.0
+        }
+      },
+      {
+        "id": "f04",
+        "question": "How long do I have to apply for it?",
+        "searched": "How long do I have to apply for it?",
+        "type": "follow_up",
+        "answerable": true,
+        "gold": [
+          [
+            "exam_regulations",
+            2
+          ]
+        ],
+        "top_score": 0.8754875063896179,
+        "ranked": [
+          [
+            "scholarships",
+            1,
+            0.8755
+          ],
+          [
+            "placement_policy",
+            1,
+            0.8375
+          ],
+          [
+            "fee_policy",
+            2,
+            0.8238
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.8166
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.8143
+          ],
+          [
+            "scholarships",
+            2,
+            0.8018
+          ],
+          [
+            "exam_regulations",
+            1,
+            0.7771
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7769
+          ],
+          [
+            "fee_policy",
+            1,
+            0.7678
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.7363
+          ]
+        ],
+        "latency_ms": 57.926999994379,
+        "metrics": {
+          "mrr": 0.125,
+          "hit@1": 0.0,
+          "hit@3": 0.0,
+          "hit@5": 0.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.0,
+          "ndcg@5": 0.0,
+          "ndcg@10": 0.31546487678572877
+        }
+      },
+      {
+        "id": "f05",
+        "question": "How do I keep it?",
+        "searched": "How do I keep it?",
+        "type": "follow_up",
+        "answerable": true,
+        "gold": [
+          [
+            "scholarships",
+            1
+          ]
+        ],
+        "top_score": 0.8452833890914917,
+        "ranked": [
+          [
+            "scholarships",
+            1,
+            0.8453
+          ],
+          [
+            "placement_policy",
+            1,
+            0.7973
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.7886
+          ],
+          [
+            "fee_policy",
+            2,
+            0.7756
+          ],
+          [
+            "scholarships",
+            2,
+            0.7743
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.7726
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7512
+          ],
+          [
+            "exam_regulations",
+            1,
+            0.733
+          ],
+          [
+            "fee_policy",
+            1,
+            0.7291
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.7155
+          ]
+        ],
+        "latency_ms": 61.369700000796,
+        "metrics": {
+          "mrr": 1.0,
+          "hit@1": 1.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 1.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 1.0,
+          "ndcg@3": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0
+        }
+      },
+      {
+        "id": "f06",
+        "question": "When does it open?",
+        "searched": "When does it open?",
+        "type": "follow_up",
+        "answerable": true,
+        "gold": [
+          [
+            "placement_policy",
+            1
+          ]
+        ],
+        "top_score": 0.8259848356246948,
+        "ranked": [
+          [
+            "scholarships",
+            1,
+            0.826
+          ],
+          [
+            "placement_policy",
+            1,
+            0.7979
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.7805
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.7712
+          ],
+          [
+            "fee_policy",
+            2,
+            0.765
+          ],
+          [
+            "scholarships",
+            2,
+            0.7603
+          ],
+          [
+            "exam_regulations",
+            1,
+            0.7404
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7267
+          ],
+          [
+            "fee_policy",
+            1,
+            0.7202
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.698
+          ]
+        ],
+        "latency_ms": 53.84050000429852,
+        "metrics": {
+          "mrr": 0.5,
+          "hit@1": 0.0,
+          "hit@3": 1.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 1.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.6309297535714575,
+          "ndcg@5": 0.6309297535714575,
+          "ndcg@10": 0.6309297535714575
+        }
+      },
+      {
+        "id": "f07",
+        "question": "What form do I need for that?",
+        "searched": "What form do I need for that?",
+        "type": "follow_up",
+        "answerable": true,
+        "gold": [
+          [
+            "fee_policy",
+            2
+          ]
+        ],
+        "top_score": 0.8377938270568848,
+        "ranked": [
+          [
+            "scholarships",
+            1,
+            0.8378
+          ],
+          [
+            "placement_policy",
+            1,
+            0.7985
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.793
+          ],
+          [
+            "fee_policy",
+            2,
+            0.7902
+          ],
+          [
+            "scholarships",
+            2,
+            0.7723
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.772
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7681
+          ],
+          [
+            "fee_policy",
+            1,
+            0.7403
+          ],
+          [
+            "exam_regulations",
+            1,
+            0.7343
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.7181
+          ]
+        ],
+        "latency_ms": 58.00040000031004,
+        "metrics": {
+          "mrr": 0.25,
+          "hit@1": 0.0,
+          "hit@3": 0.0,
+          "hit@5": 1.0,
+          "hit@10": 1.0,
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.0,
+          "ndcg@5": 0.43067655807339306,
+          "ndcg@10": 0.43067655807339306
+        }
+      },
+      {
+        "id": "f08",
+        "question": "Is it refundable?",
+        "searched": "Is it refundable?",
+        "type": "follow_up",
+        "answerable": true,
+        "gold": [
+          [
+            "hostel_rules",
+            2
+          ]
+        ],
+        "top_score": 0.8764593005180359,
+        "ranked": [
+          [
+            "scholarships",
+            1,
+            0.8765
+          ],
+          [
+            "placement_policy",
+            1,
+            0.8202
+          ],
+          [
+            "fee_policy",
+            2,
+            0.8155
+          ],
+          [
+            "attendance_rules",
+            2,
+            0.8142
+          ],
+          [
+            "attendance_rules",
+            1,
+            0.8077
+          ],
+          [
+            "scholarships",
+            2,
+            0.8047
+          ],
+          [
+            "exam_regulations",
+            1,
+            0.7735
+          ],
+          [
+            "exam_regulations",
+            2,
+            0.7703
+          ],
+          [
+            "fee_policy",
+            1,
+            0.7583
+          ],
+          [
+            "hostel_rules",
+            1,
+            0.7357
+          ]
+        ],
+        "latency_ms": 52.193800001987256,
+        "metrics": {
+          "mrr": 0.0,
+          "hit@1": 0.0,
+          "hit@3": 0.0,
+          "hit@5": 0.0,
+          "hit@10": 0.0,
+          "recall@1": 0.0,
+          "recall@3": 0.0,
+          "recall@5": 0.0,
+          "recall@10": 0.0,
+          "ndcg@1": 0.0,
+          "ndcg@3": 0.0,
+          "ndcg@5": 0.0,
+          "ndcg@10": 0.0
+        }
       }
     ]
   }

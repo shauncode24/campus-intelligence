@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { apiFetch } from "../utils/api";
+import { buildHistory } from "../utils/chatHistory";
 
 const { VITE_API_BASE_URL, VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -10,6 +11,9 @@ export function useChat(chatId, userId) {
   const [loading, setLoading] = useState(false);
   const [isFirstMessage, setIsFirstMessage] = useState(true);
   const abortControllerRef = useRef(null);
+  // sendMessage is memoised, so it reads the chat through a ref to avoid a stale copy
+  const messagesRef = useRef([]);
+  messagesRef.current = messages;
 
   // Load messages when chatId changes
   useEffect(() => {
@@ -65,6 +69,10 @@ export function useChat(chatId, userId) {
   const sendMessage = useCallback(
     async (input) => {
       if (!input.trim() || !chatId || !userId) return;
+
+      // The turns BEFORE this question (taken before the question is added below),
+      // so the server can understand follow-ups like "and the deadline?"
+      const history = buildHistory(messagesRef.current);
 
       // Cancel previous request
       if (abortControllerRef.current) {
@@ -122,7 +130,7 @@ export function useChat(chatId, userId) {
         const response = await apiFetch(`${VITE_API_BASE_URL}/document/query`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: input }),
+          body: JSON.stringify({ question: input, history }),
           signal: controller.signal,
         });
 
@@ -237,6 +245,7 @@ export function useChat(chatId, userId) {
               text: error.userFacing
                 ? error.message
                 : "Sorry, I encountered an error. Please try again.",
+              isError: true,
               timestamp: errorTimestamp,
             },
           ]);

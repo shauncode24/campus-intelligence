@@ -4,16 +4,15 @@
 > easier than real student questions. These numbers show the harness works and give a rough comparison between
 > retrievers. They are **not** a measurement of the system on your real documents.
 
-> **Warning:** Only 24 answerable questions (recommended minimum 30). Differences between runs are likely to be noise; look at the confidence intervals.
-
 > **Warning:** Only 10 unanswerable questions (recommended minimum 15). Refusal/abstention figures are very rough.
 
 ## Setup
 
-- Dataset: 12 pages, 24 answerable + 10 unanswerable questions (fingerprint `f2f4cb840c86`)
+- Dataset: 12 pages, 32 answerable + 10 unanswerable questions (fingerprint `f7c6931f3826`)
 - Retriever: `production` using `openai/clip-vit-base-patch32` (512-d, max 77 tokens)
 - Chunking: 500 chars, 100 overlap, 23 chunks
-- Code version: `2404c00` | run: 2026-11-24 00:47
+- Follow-up questions are searched as: **typed (no follow-up handling)**
+- Code version: `541c36d` | run: 2026-11-24 09:28
 
 ## Retrieval quality (answerable questions only)
 
@@ -21,12 +20,12 @@ Mean [95% bootstrap confidence interval]. k counts chunks; production gives the 
 
 | k | hit rate | recall | nDCG |
 |---|---|---|---|
-| 1 | 0.042 [0.000, 0.125] | 0.042 [0.000, 0.125] | 0.042 [0.000, 0.125] |
-| 3 | 0.333 [0.167, 0.542] | 0.312 [0.146, 0.500] | 0.210 [0.095, 0.336] |
-| 5 | 0.583 [0.375, 0.792] | 0.562 [0.354, 0.750] | 0.317 [0.197, 0.439] |
-| 10 | 0.958 [0.875, 1.000] | 0.958 [0.875, 1.000] | 0.448 [0.372, 0.526] |
+| 1 | 0.062 [0.000, 0.156] | 0.062 [0.000, 0.156] | 0.062 [0.000, 0.156] |
+| 3 | 0.344 [0.188, 0.500] | 0.328 [0.172, 0.484] | 0.224 [0.118, 0.338] |
+| 5 | 0.562 [0.406, 0.750] | 0.547 [0.391, 0.719] | 0.318 [0.215, 0.427] |
+| 10 | 0.906 [0.781, 1.000] | 0.906 [0.781, 1.000] | 0.435 [0.357, 0.513] |
 
-**MRR:** 0.290 [0.210, 0.380]
+**MRR:** 0.290 [0.211, 0.378]
 
 Hit rate = share of questions with at least one gold page in the top k. Recall = share of the gold pages found. Gold is labelled per page, so results stay comparable when chunking changes.
 
@@ -37,15 +36,16 @@ Hit rate = share of questions with at least one gold page in the top k. Recall =
 | deadline | 4 | 0.250 | 0.250 | 0.234 |
 | eligibility | 4 | 1.000 | 1.000 | 0.550 |
 | fact | 4 | 0.250 | 0.250 | 0.186 |
+| follow_up | 8 | 0.500 | 0.500 | 0.290 |
 | multi_doc | 2 | 1.000 | 0.750 | 0.375 |
 | numeric | 7 | 0.571 | 0.571 | 0.233 |
 | procedure | 3 | 0.667 | 0.667 | 0.236 |
 
 ## Can the top retrieval score tell answerable from unanswerable questions?
 
-**AUC = 0.933** (0.5 means the score cannot separate them at all, 1.0 means it separates them perfectly).
+**AUC = 0.919** (0.5 means the score cannot separate them at all, 1.0 means it separates them perfectly).
 
-- top score, answerable questions: min 0.707, median 0.867, max 0.915
+- top score, answerable questions: min 0.707, median 0.865, max 0.915
 - top score, unanswerable questions: min 0.746, median 0.799, max 0.848
 
 | relevance floor | answerable kept | unanswerable refused |
@@ -59,10 +59,10 @@ Hit rate = share of questions with at least one gold page in the top k. Recall =
 | 0.60 | 100% | 0% |
 | 0.65 | 100% | 0% |
 | 0.70 | 100% | 0% |
-| 0.75 | 96% | 10% |
-| 0.80 | 96% | 50% |
-| 0.85 | 83% | 100% |
-| 0.90 | 12% | 100% |
+| 0.75 | 97% | 10% |
+| 0.80 | 97% | 50% |
+| 0.85 | 72% | 100% |
+| 0.90 | 9% | 100% |
 | 0.95 | 0% | 100% |
 
 Production floor (`MIN_RETRIEVAL_SCORE`) is currently 0.7.
@@ -99,8 +99,20 @@ Production floor (`MIN_RETRIEVAL_SCORE`) is currently 0.7.
 - **q19** (fact) From when can I download my hall ticket?
   - gold: exam_regulations p.1 | first gold at rank: 7
   - top 3 retrieved: scholarships p.1 (0.8397); attendance_rules p.2 (0.7973); fee_policy p.2 (0.7967)
+- **f01** (follow_up) And what is the maximum?
+  - gold: fee_policy p.1 | first gold at rank: 9
+  - top 3 retrieved: scholarships p.1 (0.8399); attendance_rules p.2 (0.8073); placement_policy p.1 (0.8005)
+- **f03** (follow_up) And for seniors?
+  - gold: hostel_rules p.2 | first gold at rank: not in top 10
+  - top 3 retrieved: scholarships p.1 (0.8827); placement_policy p.1 (0.8176); attendance_rules p.2 (0.8155)
+- **f04** (follow_up) How long do I have to apply for it?
+  - gold: exam_regulations p.2 | first gold at rank: 8
+  - top 3 retrieved: scholarships p.1 (0.8755); placement_policy p.1 (0.8375); fee_policy p.2 (0.8238)
+- **f08** (follow_up) Is it refundable?
+  - gold: hostel_rules p.2 | first gold at rank: not in top 10
+  - top 3 retrieved: scholarships p.1 (0.8765); placement_policy p.1 (0.8202); fee_policy p.2 (0.8155)
 
 ## Speed
 
-- query latency (question embedding + search): p50 21.0 ms, p95 28.7 ms
-- indexing the corpus: 1.2 s
+- query latency (question embedding + search): p50 61.5 ms, p95 74.4 ms
+- indexing the corpus: 3.3 s

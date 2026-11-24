@@ -123,6 +123,64 @@ class TestEvaluate(unittest.TestCase):
         self.assertLess(stat["ci95"][0], stat["ci95"][1])
 
 
+class TestFollowUpModes(unittest.TestCase):
+    """A follow-up is only findable if it is rewritten; the three modes measure by how much."""
+
+    FOLLOW_UP = {"id": "f", "question": "and the maximum?", "type": "follow_up", "answerable": True,
+                 "gold": [{"doc": "d", "page": 3}], "must_include": ["x"],
+                 "history": [{"role": "user", "text": "late fee?"}, {"role": "bot", "text": "Rs. 200 a day"}],
+                 "standalone": "what is the maximum late fee in a semester?"}
+    PLAIN = q("plain", [1])
+
+    def retriever(self):
+        # the vague text finds the wrong page; the standalone text finds the right one
+        return ScriptedRetriever({
+            "and the maximum?": [(5, .6), (4, .5), (3, .4)],
+            "what is the maximum late fee in a semester?": [(3, .9), (5, .5)],
+            "question plain": [(1, .9)],
+        })
+
+    def evaluate(self, mode, rewrite=None):
+        return ev.evaluate(PAGES, [self.FOLLOW_UP, self.PLAIN], self.retriever(), followups=mode, rewrite=rewrite)
+
+    def test_raw_searches_the_follow_up_exactly_as_typed(self):
+        res = self.evaluate("raw")
+        row = next(r for r in res["per_question"] if r["id"] == "f")
+        self.assertEqual(row["searched"], "and the maximum?")
+        self.assertEqual(res["by_type"]["follow_up"]["hit@5"], 1.0)       # found, but only at rank 3...
+        self.assertAlmostEqual(res["by_type"]["follow_up"]["mrr"], 1 / 3)  # ...so MRR shows the damage
+
+    def test_oracle_searches_the_ideal_rewrite(self):
+        res = self.evaluate("oracle")
+        row = next(r for r in res["per_question"] if r["id"] == "f")
+        self.assertEqual(row["searched"], "what is the maximum late fee in a semester?")
+        self.assertEqual(res["by_type"]["follow_up"]["mrr"], 1.0)
+
+    def test_rewrite_mode_uses_the_supplied_function_with_the_history(self):
+        seen = {}
+
+        def rewrite(question, history):
+            seen["args"] = (question, history)
+            return "what is the maximum late fee in a semester?"
+        res = self.evaluate("rewrite", rewrite)
+        self.assertEqual(seen["args"][0], "and the maximum?")
+        self.assertEqual(seen["args"][1][0]["text"], "late fee?")
+        self.assertEqual(res["by_type"]["follow_up"]["mrr"], 1.0)
+
+    def test_only_follow_ups_are_affected_by_the_mode(self):
+        raw, oracle = self.evaluate("raw"), self.evaluate("oracle")
+        plain = lambda res: next(r for r in res["per_question"] if r["id"] == "plain")["searched"]
+        self.assertEqual(plain(raw), plain(oracle))
+
+    def test_rewrite_mode_without_a_function_is_an_error_not_a_silent_fallback(self):
+        with self.assertRaises(ValueError):
+            self.evaluate("rewrite")
+
+    def test_an_unknown_mode_is_an_error(self):
+        with self.assertRaises(ValueError):
+            self.evaluate("telepathy")
+
+
 class TestRegressionGate(unittest.TestCase):
     @staticmethod
     def report(**values):

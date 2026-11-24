@@ -67,6 +67,7 @@ def render_markdown(report):
             f"- Dataset: {meta['n_pages']} pages, {r['counts']['answerable']} answerable + {r['counts']['unanswerable']} unanswerable questions (fingerprint `{meta['dataset_fingerprint']}`)",
             f"- Retriever: `{c['retriever']}`" + (f" using `{c['embedding_model']}` ({c['embedding_dimension']}-d, max {c['embedding_max_tokens']} tokens)" if "embedding_model" in c else ""),
             f"- Chunking: {c['chunk_size']} chars, {c['chunk_overlap']} overlap, {c['num_chunks']} chunks",
+            f"- Follow-up questions are searched as: **{ {'raw': 'typed (no follow-up handling)', 'oracle': 'the hand-written ideal rewrite', 'rewrite': 'the production rewriter'}[meta['followups']] }**",
             f"- Code version: `{meta['git_commit']}` | run: {meta['date']}", ""]
 
     out += ["## Retrieval quality (answerable questions only)", "",
@@ -118,6 +119,11 @@ def main():
     ap.add_argument("--questions", required=True)
     ap.add_argument("--retriever", default="production", choices=["production", "bm25"])
     ap.add_argument("--embedding-backend", default=None, help="bge-small | clip (production retriever only)")
+    ap.add_argument("--followups", default="raw", choices=ev.FOLLOWUP_MODES,
+                    help="raw: follow-ups searched as typed | oracle: hand-written ideal rewrite | "
+                         "rewrite: the production rewriter (CALLS GEMINI, needs --env-file and --yes)")
+    ap.add_argument("--env-file", default=None, help="secrets file with GOOGLE_API_KEY (only for --followups rewrite)")
+    ap.add_argument("--yes", action="store_true", help="confirm that --followups rewrite may spend Gemini calls")
     ap.add_argument("--name", default=None)
     ap.add_argument("--out", default=os.path.join(HERE, "results"))
     ap.add_argument("--compare", default=None, help="baseline report .json; exit 3 if quality dropped")
@@ -133,12 +139,27 @@ def main():
             print("  -", e)
         return 2
 
+    rewrite = None
+    if args.followups == "rewrite":
+        n_calls = sum(1 for q in questions if q["type"] == "follow_up")
+        if not (args.env_file and args.yes):
+            print(f"--followups rewrite makes up to {n_calls} real Gemini calls (one per follow-up question).\n"
+                  "Pass --env-file <your secrets file> --yes to allow it.")
+            return 2
+        os.environ["EVAL_ENV_FILE"] = args.env_file
+
     from retrievers import RETRIEVERS
     cls = RETRIEVERS[args.retriever]
     retriever = cls(args.embedding_backend) if args.retriever == "production" else cls()
 
-    results = ev.evaluate(pages, questions, retriever)
+    if args.followups == "rewrite":
+        from services.query_condenser import query_condenser
+        rewrite = lambda question, history: query_condenser.condense(question, history).standalone  # noqa: E731
+
+    results = ev.evaluate(pages, questions, retriever, followups=args.followups, rewrite=rewrite)
     name = args.name or (f"{args.retriever}-{args.embedding_backend}" if args.embedding_backend else args.retriever)
+    if args.followups != "raw" and not args.name:
+        name += f"-followups-{args.followups}"
     comments = header_comments(args.pages) + header_comments(args.questions)
     report = {
         "meta": {
@@ -148,6 +169,7 @@ def main():
             "dataset_fingerprint": dataset.file_fingerprint(args.pages, args.questions),
             "n_pages": len(pages),
             "synthetic": any("SYNTHETIC" in c.upper() for c in comments),
+            "followups": args.followups,
             "warnings": dataset.size_warnings(questions),
         },
         "results": results,

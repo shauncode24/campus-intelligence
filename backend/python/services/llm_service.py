@@ -225,29 +225,38 @@ class LLMService:
 
         return HumanMessage(content=content)
 
+    def invoke_with_system(self, system_prompt, message):
+        """
+        Call the model with a system prompt and one user message; returns text.
+        Older langchain-google-genai versions reject SystemMessage, in which case
+        the rules are put at the start of the user message instead.
+        """
+        try:
+            response = self.llm.invoke([SystemMessage(content=system_prompt), message])
+        except ValueError as e:
+            if "system" not in str(e).lower():
+                raise
+            content = message.content
+            if isinstance(content, str):
+                content = [{"type": "text", "text": content}]
+            merged = HumanMessage(
+                content=[{"type": "text", "text": system_prompt + "\n\n"}] + list(content)
+            )
+            response = self.llm.invoke([merged])
+        return _answer_text(response.content)
+
     def generate_answer(self, message):
         """
         Generate answer using Gemini
-        
+
         Args:
             message: HumanMessage - Multimodal message
-            
+
         Returns:
             str: Generated answer
         """
         print("🤖 Generating answer with Gemini Vision...")
-        try:
-            response = self.llm.invoke([SystemMessage(content=SYSTEM_PROMPT), message])
-        except ValueError as e:
-            # Older langchain-google-genai versions reject SystemMessage:
-            # fall back to putting the rules at the start of the user message.
-            if "system" not in str(e).lower():
-                raise
-            merged = HumanMessage(
-                content=[{"type": "text", "text": SYSTEM_PROMPT + "\n\n"}] + list(message.content)
-            )
-            response = self.llm.invoke([merged])
-        return _answer_text(response.content)
+        return self.invoke_with_system(SYSTEM_PROMPT, message)
 
 # Singleton instance
 llm_service = LLMService()

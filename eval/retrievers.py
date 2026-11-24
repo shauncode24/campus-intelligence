@@ -34,9 +34,10 @@ def load_backend(embedding_backend=None):
     so the real backend/.env (with production secrets) is never loaded into this
     process; the evaluation needs no credentials.
     """
+    # Only the opt-in "rewrite" mode (which calls Gemini) needs real credentials.
     empty = os.path.join(tempfile.gettempdir(), "campus_intel_empty.env")
     open(empty, "w").close()
-    os.environ["ENV_FILE"] = empty
+    os.environ["ENV_FILE"] = os.environ.get("EVAL_ENV_FILE") or empty
     if embedding_backend:
         os.environ["EMBEDDING_BACKEND"] = embedding_backend
     if BACKEND_PY not in sys.path:

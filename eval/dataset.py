@@ -17,6 +17,14 @@ Questions ("questions.jsonl"), one JSON object per question:
     "reference_answer": "...",                    # optional
     "notes": ""                                   # optional
   }
+
+Follow-up questions (type "follow_up", the question leans on earlier chat turns)
+also need:
+    "history": [{"role": "user", "text": "..."}, {"role": "bot", "text": "..."}],
+    "standalone": "the same question written so it needs no history"
+`standalone` is the IDEAL rewrite (hand-written): evaluating with it shows the best
+a follow-up rewriter could achieve, and evaluating the raw question shows what
+happens without one.
 Lines starting with # are comments.
 
 validate() checks the labels MECHANICALLY: every gold page must exist in the
@@ -27,7 +35,7 @@ import hashlib
 import json
 import re
 
-ANSWERABLE_TYPES = {"fact", "numeric", "deadline", "procedure", "eligibility", "multi_doc"}
+ANSWERABLE_TYPES = {"fact", "numeric", "deadline", "procedure", "eligibility", "multi_doc", "follow_up"}
 # "absent_in_domain": a campus question the documents do not cover (the hard,
 # realistic case). "out_of_scope": unrelated to campus documents.
 UNANSWERABLE_TYPES = {"absent_in_domain", "out_of_scope"}
@@ -128,6 +136,24 @@ def validate(pages, questions):
             errors.append(f"{where}: type {qtype!r} must have answerable=false")
         if not answerable and qtype in ANSWERABLE_TYPES:
             errors.append(f"{where}: type {qtype!r} must have answerable=true")
+
+        if qtype == "follow_up":
+            history = q.get("history")
+            if not isinstance(history, list) or not history:
+                errors.append(f"{where}: follow_up questions need a non-empty 'history'")
+            else:
+                for t in history:
+                    if not (isinstance(t, dict) and t.get("role") in ("user", "bot")
+                            and isinstance(t.get("text"), str) and t["text"].strip()):
+                        errors.append(f"{where}: every history turn needs role 'user'|'bot' and non-empty text")
+                        break
+            standalone = q.get("standalone")
+            if not isinstance(standalone, str) or not standalone.strip():
+                errors.append(f"{where}: follow_up questions need a 'standalone' rewrite")
+            elif normalize(standalone) == normalize(text):
+                errors.append(f"{where}: 'standalone' must differ from the question")
+        elif "history" in q or "standalone" in q:
+            errors.append(f"{where}: 'history' and 'standalone' are only for type 'follow_up'")
 
         gold = q.get("gold", [])
         must = q.get("must_include", [])

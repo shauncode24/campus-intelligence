@@ -551,3 +551,11 @@
     padding: 6px;
   }
 }
+
+/* Shows how a follow-up question was understood (e.g. "and the deadline?") */
+.standalone-note {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #5f6368;
+  font-style: italic;
+}

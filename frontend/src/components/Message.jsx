@@ -195,6 +195,12 @@ export default function Message({ message, isStreaming }) {
               {isStreaming && <span className="streaming-cursor">▊</span>}
             </div>
 
+            {!isStreaming && m.standaloneQuestion && (
+              <div className="standalone-note">
+                Understood as: “{m.standaloneQuestion}”
+              </div>
+            )}
+
             {!isStreaming && m.role === "bot" && m.deadline && (
               <div className="message-calendar-container">
                 <CalendarButton
