@@ -10,6 +10,8 @@ export function useChat(chatId, userId) {
   const [streamingMetadata, setStreamingMetadata] = useState(null);
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef(null);
+  // What has streamed in so far, readable from "stop" (state is stale inside callbacks)
+  const partialRef = useRef({ text: "", metadata: null });
 
   // Load messages when chatId changes
   useEffect(() => {
@@ -36,6 +38,7 @@ export function useChat(chatId, userId) {
             role: msg.role,
             text: msg.content,
             timestamp: msg.createdAt, // ✅ Add timestamp from Firebase
+            messageId: msg.id, // what feedback is attached to (older messages carry no copy in metadata)
             ...(msg.metadata || {}),
           }));
           setMessages(formatted);
@@ -59,8 +62,10 @@ export function useChat(chatId, userId) {
     };
   }, [chatId]);
 
+  // options.regenerate: answer this question afresh (never from a stored answer)
+  // options.retry: the last attempt failed; ask again without repeating the question in the chat
   const sendMessage = useCallback(
-    async (input) => {
+    async (input, options = {}) => {
       if (!input.trim() || !chatId || !userId) return;
 
       // Cancel previous request
@@ -74,13 +79,17 @@ export function useChat(chatId, userId) {
       // ✅ Create timestamp for user message
       const userTimestamp = new Date().toISOString();
 
-      const userMessage = {
-        role: "user",
-        text: input,
-        timestamp: userTimestamp,
-      };
+      const userMessage = options.regenerate
+        ? { role: "user", regenerated: true, text: input, timestamp: userTimestamp }
+        : { role: "user", text: input, timestamp: userTimestamp };
 
-      setMessages((prev) => [...prev, userMessage]);
+      if (options.retry) {
+        // drop the failure message the retry replaces
+        setMessages((prev) => (prev.length && prev[prev.length - 1].isError ? prev.slice(0, -1) : prev));
+      } else {
+        setMessages((prev) => [...prev, userMessage]);
+      }
+      partialRef.current = { text: "", metadata: null };
       setLoading(true);
       setStreamingMessage("");
       setStreamingMetadata(null);
@@ -91,7 +100,11 @@ export function useChat(chatId, userId) {
           headers: { "Content-Type": "application/json" },
           // The server saves the question and answer into this chat and reads the earlier
           // turns itself (follow-ups); the browser writes nothing.
-          body: JSON.stringify({ question: input, chatId }),
+          body: JSON.stringify({
+            question: input,
+            chatId,
+            ...(options.regenerate ? { regenerate: true } : {}),
+          }),
           signal: controller.signal,
         });
 
@@ -112,6 +125,7 @@ export function useChat(chatId, userId) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let accumulatedText = "";
+        let buffered = ""; // a line can arrive split across two reads
         // Set when the server sends an error event. It must be handled after
         // the loop: throwing inside the per-line try/catch below would only be
         // logged and the user would see nothing.
@@ -126,8 +140,9 @@ export function useChat(chatId, userId) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
+          buffered += decoder.decode(value, { stream: true });
+          const lines = buffered.split("\n");
+          buffered = lines.pop(); // the last piece may be incomplete: keep it for the next read
 
           for (const line of lines) {
             if (line.startsWith("data: ")) {
@@ -136,9 +151,11 @@ export function useChat(chatId, userId) {
 
                 if (data.type === "text") {
                   accumulatedText += data.data;
+                  partialRef.current.text = accumulatedText;
                   setStreamingMessage(accumulatedText);
                 } else if (data.type === "metadata") {
                   metadata = data.data;
+                  partialRef.current.metadata = metadata;
                   setStreamingMetadata(metadata);
                 } else if (data.type === "done") {
                   // metadata (from the server) already carries historyId, so Save
@@ -203,6 +220,44 @@ export function useChat(chatId, userId) {
     [chatId, userId]
   );
 
+  // Stop waiting for the answer. The server has already saved the exchange by the time the answer
+  // starts to appear, so what is shown is kept, marked as stopped; reopening the chat shows it all.
+  const stopGenerating = useCallback(() => {
+    const controller = abortControllerRef.current;
+    if (!controller) return;
+    const { text, metadata } = partialRef.current;
+    controller.abort();
+    if (text) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "bot", text, timestamp: new Date().toISOString(), ...(metadata || {}), stopped: true },
+      ]);
+    }
+    setStreamingMessage("");
+    setStreamingMetadata(null);
+    setLoading(false);
+  }, []);
+
+  const lastQuestion = useCallback(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === "user" && !m.regenerated && m.text) return m.text;
+    }
+    return null;
+  }, [messages]);
+
+  /** "Try again": a fresh answer to the last question. */
+  const regenerate = useCallback(() => {
+    const question = lastQuestion();
+    if (question && !loading) sendMessage(question, { regenerate: true });
+  }, [lastQuestion, loading, sendMessage]);
+
+  /** After an error message: ask the same question again. */
+  const retry = useCallback(() => {
+    const question = lastQuestion();
+    if (question && !loading) sendMessage(question, { retry: true });
+  }, [lastQuestion, loading, sendMessage]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -218,6 +273,9 @@ export function useChat(chatId, userId) {
     streamingMetadata,
     loading,
     sendMessage,
+    stopGenerating,
+    regenerate,
+    retry,
     hasMessages: messages.length > 0,
   };
 }

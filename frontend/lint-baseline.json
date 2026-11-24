@@ -1,5 +1,5 @@
 {
-  "no-unused-vars": 19,
+  "no-unused-vars": 18,
   "react-hooks/immutability": 5,
   "react-hooks/preserve-manual-memoization": 2,
   "react-hooks/set-state-in-effect": 4,

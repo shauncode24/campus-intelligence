@@ -1,23 +1,24 @@
 import { useState } from "react";
 import CalendarButton from "./CalendarButton";
 import SourcesList from "./SourcesList";
+import AnswerText from "./AnswerText";
+import FeedbackPanel from "./FeedbackPanel";
 import "../styles/Message.css";
-import { parseTimestamp, validateSources } from "../utils/validation";
+import { parseTimestamp } from "../utils/validation";
+import { ageLabel } from "../utils/citations";
 import toast from "react-hot-toast";
 import { apiFetch } from "../utils/api";
 
 const { VITE_API_BASE_URL, VITE_PYTHON_RAG_URL } = import.meta.env;
 
-export default function Message({ message, isStreaming }) {
+export default function Message({ message, isStreaming, isLast, onRegenerate, onRetry }) {
   const m = message;
   const [copied, setCopied] = useState(false);
-  const [thumbsUp, setThumbsUp] = useState(false);
-  const [thumbsDown, setThumbsDown] = useState(false);
+  // "up" | "down" | null: what this user rated the answer (kept on the message, so it survives a reload)
+  const [rating, setRating] = useState(m.feedback || null);
+  const [showReasons, setShowReasons] = useState(false);
   const [saved, setSaved] = useState(!!m.favorite);
-
-  useState(() => {
-    console.log("Messages, ", m);
-  }, []);
+  const isRefusal = m.role === "bot" && m.answered === false;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(m.text);
@@ -25,16 +26,49 @@ export default function Message({ message, isStreaming }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleThumbsUp = () => {
-    setThumbsUp(!thumbsUp);
-    if (thumbsDown) setThumbsDown(false);
-    console.log("Thumbs up feedback:", !thumbsUp);
+  // Store the rating on the server together with what the answer was built from.
+  // (reason/comment are only sent for a thumbs-down.)
+  const sendRating = async (next, { reason, comment } = {}) => {
+    if (!m.messageId) {
+      toast.error("This answer cannot be rated (it was not stored).");
+      return false;
+    }
+    try {
+      const response = await apiFetch(
+        `${VITE_PYTHON_RAG_URL}/messages/${m.messageId}/feedback`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rating: next, reason, comment }),
+        }
+      );
+      if (!response.ok) throw new Error(`status ${response.status}`);
+      return true;
+    } catch (error) {
+      console.error("Feedback failed:", error);
+      toast.error("Could not save your feedback. Please try again.");
+      return false;
+    }
   };
 
-  const handleThumbsDown = () => {
-    setThumbsDown(!thumbsDown);
-    if (thumbsUp) setThumbsUp(false);
-    console.log("Thumbs down feedback:", !thumbsDown);
+  const handleRate = async (value) => {
+    const next = rating === value ? null : value; // pressing the same button again takes it back
+    const previous = rating;
+    setRating(next);
+    setShowReasons(next === "down");
+    if (!(await sendRating(next))) {
+      setRating(previous);
+      setShowReasons(false);
+    } else if (next === "up") {
+      toast.success("Thanks for the feedback");
+    }
+  };
+
+  const handleReason = async ({ reason, comment }) => {
+    setShowReasons(false);
+    if (await sendRating("down", { reason, comment })) {
+      toast.success("Thanks, that helps us fix it");
+    }
   };
 
   const formatTimestamp = (timestamp) => {
@@ -129,6 +163,10 @@ export default function Message({ message, isStreaming }) {
 
   const timestampDisplay = formatTimestamp(m.timestamp);
 
+  if (m.role === "user" && m.regenerated) {
+    return <div className="regenerated-note">↻ Asked again for a fresh answer</div>;
+  }
+
   if (m.role === "user") {
     return (
       <div className="user-message-wrapper">
@@ -192,11 +230,37 @@ export default function Message({ message, isStreaming }) {
         )}
 
         <div className="message-content">
-          <div className="message-bubble bubble-ai">
+          <div className={`message-bubble bubble-ai ${isRefusal ? "bubble-no-answer" : ""}`}>
             <div className="message-text-content">
-              {m.text}
+              {m.isError ? m.text : <AnswerText text={m.text} sources={m.sources} />}
               {isStreaming && <span className="streaming-cursor">▊</span>}
             </div>
+
+            {!isStreaming && isRefusal && (
+              <div className="no-answer-hint">
+                Not found in the uploaded documents. Try rephrasing, or ask the relevant office.
+              </div>
+            )}
+
+            {!isStreaming && m.cached && (
+              <div className="reused-note">
+                Reused answer
+                {ageLabel(m.cachedAtMs) ? `, first generated ${ageLabel(m.cachedAtMs)}` : ""}.
+                {onRegenerate && isLast ? " Use ↻ for a fresh one." : ""}
+              </div>
+            )}
+
+            {!isStreaming && m.stopped && (
+              <div className="stopped-note">
+                Stopped. The complete answer is saved in this chat.
+              </div>
+            )}
+
+            {!isStreaming && m.isError && onRetry && (
+              <button type="button" className="error-retry-btn" onClick={onRetry}>
+                Try again
+              </button>
+            )}
 
             {!isStreaming && m.standaloneQuestion && (
               <div className="standalone-note">
@@ -258,9 +322,10 @@ export default function Message({ message, isStreaming }) {
             </button>
 
             <button
-              className={`icon-btn-msg ${thumbsUp ? "active" : ""}`}
-              onClick={handleThumbsUp}
+              className={`icon-btn-msg ${rating === "up" ? "active" : ""}`}
+              onClick={() => handleRate("up")}
               title="Good response"
+              aria-pressed={rating === "up"}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -277,9 +342,10 @@ export default function Message({ message, isStreaming }) {
             </button>
 
             <button
-              className={`icon-btn-msg ${thumbsDown ? "active" : ""}`}
-              onClick={handleThumbsDown}
+              className={`icon-btn-msg ${rating === "down" ? "active" : ""}`}
+              onClick={() => handleRate("down")}
               title="Bad response"
+              aria-pressed={rating === "down"}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -295,6 +361,18 @@ export default function Message({ message, isStreaming }) {
               </svg>
             </button>
 
+            {onRegenerate && isLast && !m.isError && (
+              <button
+                className="icon-btn-msg"
+                onClick={onRegenerate}
+                title="Try again (a fresh answer)"
+                aria-label="Try again"
+              >
+                ↻
+              </button>
+            )}
+
+            {!isRefusal && !m.isError && (
             <button
               className={`icon-btn-msg ${saved ? "active" : ""}`}
               onClick={handleSave}
@@ -328,7 +406,12 @@ export default function Message({ message, isStreaming }) {
                 </svg>
               )}
             </button>
+            )}
           </div>
+        )}
+
+        {!isStreaming && showReasons && (
+          <FeedbackPanel onSubmit={handleReason} onClose={() => setShowReasons(false)} />
         )}
       </div>
     </div>

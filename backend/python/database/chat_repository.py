@@ -232,7 +232,7 @@ class ChatRepository:
 
     @staticmethod
     async def record_exchange(user_id: str, chat_id: str, question: str, answer: str,
-                              metadata: Dict, history_extra: Dict) -> Dict:
+                              metadata: Dict, history_extra: Dict, regenerated: bool = False) -> Dict:
         """
         Save one question and its answer: the ONLY place chat messages are written.
 
@@ -266,6 +266,7 @@ class ChatRepository:
 
         bot_metadata = dict(metadata or {})
         bot_metadata['historyId'] = history_ref.id
+        bot_metadata['messageId'] = bot_msg_ref.id     # what feedback is attached to
         bot_metadata['timestamp'] = now_iso
         bot_metadata['favorite'] = False
 
@@ -273,7 +274,9 @@ class ChatRepository:
         # created in this order; the bot message sorts after the question
         batch.set(user_msg_ref, {
             'chatId': chat_id, 'userId': user_id, 'role': 'user', 'content': question,
-            'metadata': {'timestamp': asked_at.isoformat()}, 'createdAt': asked_at,
+            # `regenerated`: this "question" is the user pressing "try again", not a new question
+            'metadata': {'timestamp': asked_at.isoformat(), **({'regenerated': True} if regenerated else {})},
+            'createdAt': asked_at,
         })
         batch.set(bot_msg_ref, {
             'chatId': chat_id, 'userId': user_id, 'role': 'bot', 'content': answer,

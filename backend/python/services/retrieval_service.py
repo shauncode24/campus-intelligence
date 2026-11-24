@@ -129,6 +129,7 @@ class RetrievalService:
                     'similarity': float(similarity),
                     'xref': chunk_data.get('metadata', {}).get('xref'),  # For re-extraction if needed
                     'caption': is_caption,
+                    'chunkId': chunk_doc.id,   # lets feedback name the exact passages behind an answer
                 }
             )
             (image_scored if is_image else text_scored).append((doc, similarity))
@@ -229,6 +230,7 @@ class RetrievalService:
                 "displayPage": raw_page + 1 if isinstance(raw_page, int) else None,
                 "type": doc.metadata.get('type'),
                 "documentId": doc_id,
+                "chunkId": doc.metadata.get('chunkId'),
                 "documentName": doc_name,
                 "fileUrl": file_url,
                 "version": version,

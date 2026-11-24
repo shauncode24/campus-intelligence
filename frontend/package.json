@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "lint:ci": "node scripts/check-lint-baseline.mjs",
-    "test": "node --test \"src/utils/*.test.mjs\" \"scripts/*.test.mjs\"",
+    "test": "node --test \"src/utils/*.test.mjs\" \"src/components/*.test.mjs\" \"scripts/*.test.mjs\"",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -19,7 +19,9 @@
     "react-dom": "^19.2.0",
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.5.0",
-    "react-router-dom": "^7.11.0"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.11.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

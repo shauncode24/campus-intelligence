@@ -3,7 +3,6 @@
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
-  cursor: pointer;
   margin-top: 20px;
 }
 
@@ -17,6 +16,11 @@
   font-weight: 500;
   transition: all 0.3s ease;
   align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .sources-toggle:hover {
@@ -40,6 +44,7 @@
 .sources-container.open {
   opacity: 1;
   gap: 15px;
+  pointer-events: auto; /* the links inside must be clickable (they were not) */
 }
 
 .sources-container.closed {
@@ -117,7 +122,18 @@
 }
 
 .download-link:hover {
-  background-color: #000000;
+  background-color: #eef2ff;
+}
+
+.sources-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sources-item + .sources-item {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
 }
 
 .sources-bottom {

@@ -57,7 +57,7 @@ app.post(
   try {
     // Identity comes from the verified token only (req.uid); a userId in the
     // body is ignored.
-    const { question, history, chatId, department, documentType } = req.body;
+    const { question, history, chatId, department, documentType, regenerate } = req.body;
 
     if (typeof question !== "string" || !question.trim()) {
       return res.status(400).json({ error: "Question required" });
@@ -98,6 +98,8 @@ app.post(
       question: question,
       history: cleanHistory,
       ...(chatId ? { chatId } : {}),
+      // "try again": answer afresh instead of reusing a stored answer
+      ...(regenerate === true ? { regenerate: true } : {}),
       // optional: search only documents of this department / type
       ...(typeof department === "string" && department.trim() && department.length <= 100
         ? { department: department.trim() } : {}),

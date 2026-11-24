@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import "../styles/ChatInput.css";
 import { useApp } from "../contexts/AppContext";
 
-export default function ChatInput({ onSendMessage, loading, sidebarOpen }) {
+export default function ChatInput({ onSendMessage, onStop, loading, sidebarOpen }) {
   const [input, setInput] = useState("");
   const textareaRef = useRef(null);
 
@@ -73,7 +73,7 @@ export default function ChatInput({ onSendMessage, loading, sidebarOpen }) {
               width="16"
               height="16"
               fill="currentColor"
-              class="bi bi-x-lg"
+              className="bi bi-x-lg"
               viewBox="0 0 16 16"
               stroke="currentColor"
               strokeWidth="1"
@@ -83,15 +83,27 @@ export default function ChatInput({ onSendMessage, loading, sidebarOpen }) {
           </button>
         )}
 
-        <button
-          onClick={handleSubmit}
-          disabled={!input.trim() || loading}
-          className={`chat-submit-button ${
-            input.trim() && !loading ? "active" : ""
-          }`}
-        >
-          {loading ? "..." : "Ask"}
-        </button>
+        {loading && onStop ? (
+          <button
+            onClick={onStop}
+            type="button"
+            className="chat-submit-button active"
+            aria-label="Stop generating"
+            title="Stop generating"
+          >
+            ■ Stop
+          </button>
+        ) : (
+          <button
+            onClick={handleSubmit}
+            disabled={!input.trim() || loading}
+            className={`chat-submit-button ${
+              input.trim() && !loading ? "active" : ""
+            }`}
+          >
+            {loading ? "..." : "Ask"}
+          </button>
+        )}
       </div>
     </div>
   );

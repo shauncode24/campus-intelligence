@@ -9,8 +9,15 @@ export default function MessageList({
   streamingMetadata,
   loading,
   userId,
+  onRegenerate,
+  onRetry,
 }) {
   const messagesEndRef = useRef(null);
+  // "Try again" is offered on the most recent answer only
+  let lastAnswerIndex = -1;
+  messages.forEach((m, i) => {
+    if (m.role === "bot") lastAnswerIndex = i;
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -19,7 +26,17 @@ export default function MessageList({
   return (
     <div className="message-list-container">
       {messages.map((m, i) => (
-        <Message key={i} message={m} userId={userId} isStreaming={false} />
+        <Message
+          // a stable key (not the position) so a message keeps its own state (rating, saved)
+          // when others are added around it
+          key={m.messageId || m.timestamp || i}
+          message={m}
+          userId={userId}
+          isStreaming={false}
+          isLast={i === lastAnswerIndex}
+          onRegenerate={loading ? undefined : onRegenerate}
+          onRetry={loading ? undefined : onRetry}
+        />
       ))}
 
       {streamingMessage && (

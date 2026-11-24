@@ -29,6 +29,8 @@ class QueryRequest(BaseModel):
     # and saves the question and answer into it.
     chatId: Optional[str] = Field(default=None, max_length=128)
     # Optional metadata filters: only search documents of this department / type
+    # "Try again": answer this question afresh, ignoring any stored answer for it
+    regenerate: bool = False
     department: Optional[str] = Field(default=None, max_length=100)
     documentType: Optional[str] = Field(default=None, max_length=100)
 
@@ -66,6 +68,8 @@ class QueryResponse(BaseModel):
     similarity: Optional[float] = None
     deadline: Optional[Dict[str, Any]] = None
     confidence: Optional[ConfidenceInfo] = None
+    # When a stored answer was reused: when it was originally made (ms since the epoch)
+    cachedAtMs: Optional[int] = None
     # Ids of what was stored for this exchange (null when nothing could be saved)
     historyId: Optional[str] = None
     messageId: Optional[str] = None

@@ -37,4 +37,13 @@ check("saved:false is passed to the browser", ev.find((e) => e.type === "metadat
 mode = "404"; ev = await events(await post({ question: "q", chatId: "c1" }));
 const err = ev.find((e) => e.type === "error");
 check("a missing chat becomes a user-facing error", err?.userFacing === true && /no longer exists/.test(err.data));
+mode = "ok";
+await (await post({ question: "q", chatId: "c1", regenerate: true })).text();
+check("regenerate: true is forwarded", bodies.at(-1).regenerate === true);
+await (await post({ question: "q", chatId: "c1" })).text();
+check("no regenerate flag -> none forwarded", !("regenerate" in bodies.at(-1)));
+for (const odd of ["true", 1, "yes", {}]) {
+  await (await post({ question: "q", chatId: "c1", regenerate: odd })).text();
+  check(`only a real boolean true is forwarded (not ${JSON.stringify(odd)})`, !("regenerate" in bodies.at(-1)));
+}
 console.log(fails ? `\nFAILED: ${fails}` : "\nALL PASSED"); process.exit(fails ? 1 : 0);

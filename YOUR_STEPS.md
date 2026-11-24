@@ -4,7 +4,7 @@ Living checklist. Claude updates it after every roadmap item. It assumes **nothi
 Do the sections **in order**: later ones depend on earlier ones. Commands are for **Windows PowerShell**
 unless marked otherwise. `<angle brackets>` are values you fill in.
 
-**Last updated:** after P1-11.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10, P1-11.
+**Last updated:** after P1-12.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10, P1-11, P1-12.
 
 Legend: ☐ = to do. ⚠️ = skipping it breaks something. 💸 = costs Gemini quota. 🔒 = security.
 
@@ -20,8 +20,21 @@ git status --short
 git log --oneline -8
 ```
 
-The last commit you should see is the P1-10 one ("Make the Python build reproducible…"). P1-11's
-changes are uncommitted. Message for it:
+The last commit you should see is the P1-11 one ("Add CI…"). P1-12's changes are uncommitted.
+Message for it:
+
+```
+Make the chat honest and useful: markdown, linked sources, stop/try again, feedback (P1-12)
+
+Answers render as safe markdown with citations linked to the cited PDF page; all sources are
+listed with working page links; refusals, reused answers and errors are shown as such; Stop and
+Try again (fresh answer); thumbs up/down saved with the question, answer and exact passages.
+Adds react-markdown, a feedback API and export script, fixes unclickable source links.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
+Message for P1-11 (if you have not committed it yet):
 
 ```
 Add CI: tests, lint gate, Docker build, secret and dependency scans (P1-11)
@@ -399,6 +412,15 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
     already uploaded" appears after a short pause (not on every keystroke). Select a `.docx` or a 60 MB file → a message says why it was refused.
 23. **Retry (P1-9):** stop the Python service, upload a PDF (it fails), start Python, click "Retry the 1 failed" → it
     completes and the Documents page shows ONE record for it.
+25. **Formatting and sources (P1-12):** ask a question whose answer has a list or bold text → it shows as real formatting,
+    not `**`. Under the answer, **Sources (N)** lists every source; click "Open page N" → the PDF opens at that page. Click a
+    citation like `[Fee Policy, p. 2]` inside the answer (when it is underlined) → same.
+26. **Not found / reused (P1-12):** ask something the documents do not cover → a yellow "not found" bubble, no Save button.
+    Ask the exact same question again from another chat → it says "Reused answer, first generated …".
+27. **Try again and Stop (P1-12):** click ↻ on the latest answer → a fresh answer appears (the chat shows "Asked again for a
+    fresh answer"); click **Stop** while one is arriving → it stops, with a "Stopped" note; reload the chat → the full answer is there.
+28. **Feedback (P1-12):** click 👎 on an answer, pick a reason, Send. Reload → the 👎 is still marked. In the Firebase console →
+    Firestore → `feedback`: one row with the question, answer, `chunkIds`, `documentIds`, your rating and reason.
 24. **Container (P1-10, optional):** after step 2.4, `docker ps` shows the container as `(healthy)` and
     `curl http://localhost:8000/healthz` answers. With real credentials, step 1 (a question with sources) also works against it.
 18. **Expiry:** edit a document's `expiryDate` in the Firebase console (Firestore → documents → that doc) to yesterday's
@@ -427,6 +449,10 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 - ☐ **Fill in versions and dates on your real documents** (P1-7): version, effective date and expiry date only do
   something once they are entered. Documents without dates stay live forever. For each policy that has a newer edition,
   re-upload the new one with "Replaces an older document" (or delete the old one).
+- ☐ **Install the new frontend packages** (P1-12): `cd frontend; npm ci` (adds `react-markdown` and `remark-gfm`).
+- ☐ **Read the feedback** (P1-12): it accumulates in Firestore → `feedback`. Export it (no user ids) with
+  `cd backend\python; ..\venv\Scripts\python.exe scripts\export_feedback.py --out bad.jsonl --only-down`, and read the thumbs-downs:
+  "in the documents but not found" ones are retrieval failures; turn them into golden-set questions (`eval\README.md`).
 - ☐ **Turn on CI (P1-11): push, then make it required.**
   1. `git push` (the workflow files are in `.github/workflows/`). GitHub → your repo → **Actions** tab: the **CI** run starts.
      Expect it to need one or two small fixes the first time (it has never run on GitHub's machines; I validated the files
@@ -486,6 +512,7 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 ## Change log of this file
 
 - **After P1-5:** file created; covers P0-1 … P1-5.
+- **After P1-12:** commit message for P1-12; `npm ci` in frontend (new packages); smoke-test steps 25-28 (formatting, sources, not-found/reused, try again/stop, feedback); read/export the feedback.
 - **After P1-11:** commit message for P1-11; push and turn on CI + required checks + Dependabot; new test commands (`npm --prefix firestore-tests run test:api`, `npm test`/`npm run lint:ci` in frontend); frontend lockfile updated (run `npm ci` in `frontend`).
 - **After P1-10:** commit message for P1-10; new pinned Python environment (2.3), optional Docker build (2.4), delete the old venv; step 24.
 - **After P1-9:** commit message for P1-9; smoke-test steps 21-23 (admin list, duplicates, retry); old documents have no content fingerprint until re-processed.

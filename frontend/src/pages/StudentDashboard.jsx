@@ -35,6 +35,9 @@ export default function StudentDashboard() {
     streamingMetadata,
     loading,
     sendMessage,
+    stopGenerating,
+    regenerate,
+    retry,
   } = useChat(currentChatId, userId);
 
   // ✅ FIX 1: Initialize user and fetch chats ONCE
@@ -174,12 +177,15 @@ export default function StudentDashboard() {
               streamingMetadata={streamingMetadata}
               loading={loading}
               userId={userId}
+              onRegenerate={regenerate}
+              onRetry={retry}
             />
           )}
         </div>
 
         <ChatInput
           onSendMessage={sendMessage}
+          onStop={stopGenerating}
           loading={loading}
           sidebarOpen={sidebarOpen}
         />

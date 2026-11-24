@@ -151,6 +151,8 @@ for (const path of [
   "user_calendar_tokens/alice",
   "calendar_oauth_states/x",
   "faqs/f1",
+  "feedback/m1",
+  "meta/corpus",
   "never_heard_of_it/x",
 ]) {
   test(`server-only collection denied to everyone, incl. owner/admin: ${path}`, async () => {

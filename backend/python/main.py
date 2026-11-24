@@ -70,6 +70,7 @@ from models import (
 
 # Import chat routes
 from routes.chatRoutes import router as chat_router
+from routes.feedbackRoutes import router as feedback_router
 
 class UpdateNoteRequest(BaseModel):
     note: str = Field(max_length=5000)
@@ -128,10 +129,11 @@ app.add_middleware(
 
 # Include chat routes WITHOUT /api prefix - mount at root level
 app.include_router(chat_router, tags=["chats"])
+app.include_router(feedback_router, tags=["feedback"])
 
 
 async def _save_exchange(user_id: str, chat_id, typed_question: str, response: QueryResponse,
-                         question_id: str, intent: str, confidence) -> QueryResponse:
+                         question_id: str, intent: str, confidence, regenerated: bool = False) -> QueryResponse:
     """
     Store the question and its answer and fill in what the browser needs to show
     them. The single place an exchange is saved: with a chat it goes into the chat and
@@ -150,10 +152,12 @@ async def _save_exchange(user_id: str, chat_id, typed_question: str, response: Q
     try:
         if chat_id:
             saved = await chat_repository.record_exchange(
-                user_id, chat_id, typed_question, response.answer, metadata, history_extra
+                user_id, chat_id, typed_question, response.answer, metadata, history_extra,
+                regenerated=regenerated
             )
             response.historyId, response.messageId = saved["historyId"], saved["messageId"]
             metadata["historyId"] = saved["historyId"]
+            metadata["messageId"] = saved["messageId"]
         else:
             response.historyId = await cache_repository.store_user_question(
                 user_id, question_id, typed_question, answer=response.answer, intent=intent,
@@ -171,7 +175,7 @@ async def _save_exchange(user_id: str, chat_id, typed_question: str, response: Q
 
 
 async def _decline(user_id: str, question: str, intent: str, reason: str,
-                   standalone: str = None, chat_id: str = None) -> QueryResponse:
+                   standalone: str = None, chat_id: str = None, regenerated: bool = False) -> QueryResponse:
     """
     The documents do not contain an answer. Say so plainly, show no sources,
     record it in the user's history, and do NOT cache it (a refusal must never
@@ -186,7 +190,8 @@ async def _decline(user_id: str, question: str, intent: str, reason: str,
         answered=False,
         standaloneQuestion=standalone,
     )
-    return await _save_exchange(user_id, chat_id, question, response, "no_answer", intent, None)
+    return await _save_exchange(user_id, chat_id, question, response, "no_answer", intent, None,
+                                regenerated=regenerated)
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -256,7 +261,9 @@ async def query_documents(
         # The document set this answer is produced from. Read BEFORE searching and stored with
         # the answer: if documents change meanwhile, the stored answer is simply not reused.
         corpus_epoch = await run_blocking(get_epoch, firebase_client.db) if cacheable else 0
-        if cacheable:
+        # "Try again" must produce a fresh answer, so it never reads the stored one (it still
+        # replaces it below)
+        if cacheable and not request.regenerate:
             cached_question = await cache_repository.find_similar_question(
                 question,
                 query_embedding,
@@ -292,6 +299,7 @@ async def query_documents(
                 sources=cached_question.get('sources', []),
                 hasVisualContent=any(s.get('type') == 'image' for s in cached_question.get('sources', [])),
                 cached=True,
+                cachedAtMs=cached_question.get('cachedAtMs'),
                 standaloneQuestion=standalone_note,
                 similarity=cached_question.get('similarity'),
                 deadline=deadline,
@@ -299,7 +307,8 @@ async def query_documents(
             )
             return await _save_exchange(
                 user_id, chat_id, request.question, response, cached_question['id'],
-                cached_question.get('intent'), cached_question.get('confidence')
+                cached_question.get('intent'), cached_question.get('confidence'),
+                regenerated=request.regenerate
             )
         
         # No cache hit - generate new answer
@@ -323,7 +332,8 @@ async def query_documents(
                   f"{len(relevant_docs)}/{len(context_docs)} chunks kept")
 
         if not relevant_docs:
-            return await _decline(user_id, request.question, intent, "no relevant chunks", standalone_note, chat_id)
+            return await _decline(user_id, request.question, intent, "no relevant chunks", standalone_note, chat_id,
+                                  regenerated=request.regenerate)
 
         print(f"📚 Using {len(relevant_docs)} relevant chunks")
 
@@ -351,7 +361,7 @@ async def query_documents(
         if is_not_found(answer):
             return await _decline(
                 user_id, request.question, intent, "model found no support in context",
-                standalone_note, chat_id
+                standalone_note, chat_id, regenerated=request.regenerate
             )
 
         has_visual = any(doc.metadata.get('type') == 'image' for doc in relevant_docs)
@@ -391,7 +401,8 @@ async def query_documents(
         )
         # The user's own entry keeps the question as THEY typed it
         return await _save_exchange(
-            user_id, chat_id, request.question, response, question_id or "uncached", intent, confidence
+            user_id, chat_id, request.question, response, question_id or "uncached", intent, confidence,
+            regenerated=request.regenerate
         )
         
     except HTTPException:

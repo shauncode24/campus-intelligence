@@ -14,6 +14,7 @@ def _percent(similarity) -> int:
 def build_message_metadata(response) -> dict:
     return {
         "cached": bool(response.cached),
+        "cachedAtMs": response.cachedAtMs,
         "answered": response.answered is not False,
         # set when a follow-up was rewritten into a standalone question
         "standaloneQuestion": response.standaloneQuestion,
@@ -21,6 +22,7 @@ def build_message_metadata(response) -> dict:
         "sources": [
             {
                 "documentId": s.get("documentId"),
+                "chunkId": s.get("chunkId"),
                 "documentName": s.get("documentName") or "Document",
                 "pageNumber": s.get("page"),               # 0-based, legacy
                 "displayPage": s.get("displayPage"),       # 1-based, what users should see
