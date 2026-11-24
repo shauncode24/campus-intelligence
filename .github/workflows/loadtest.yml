@@ -1,0 +1,48 @@
+# Nightly load tests (AUDIT P2-6). Not part of every pull request: the run takes several minutes and
+# uses ~1.5 GB of memory. It checks loadtests/budgets.json (generous limits that catch order-of-
+# magnitude regressions: Firestore reads back, event loop blocked, errors under load) and uploads the
+# full report as an artifact. It uses a fake Firestore and a fake Gemini: no secrets, no cost.
+name: Load tests
+
+on:
+  schedule:
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: backend/python/requirements.txt
+
+      - name: Cache the embedding models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-${{ hashFiles('backend/python/config.py') }}
+
+      - name: Install the pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/python/requirements.txt
+
+      - name: Run the load tests and check the budgets
+        run: python loadtests/run.py --check-budgets
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loadtest-report
+          path: loadtests/results/
+          retention-days: 90

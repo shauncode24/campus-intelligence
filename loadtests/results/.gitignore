@@ -1,0 +1,3 @@
+# per-run reports are local; only history.jsonl (one summary line per full run) is tracked
+*.json
+!budgets.json

@@ -4,7 +4,7 @@ Living checklist. Claude updates it after every roadmap item. It assumes **nothi
 Do the sections **in order**: later ones depend on earlier ones. Commands are for **Windows PowerShell**
 unless marked otherwise. `<angle brackets>` are values you fill in.
 
-**Last updated:** after P2-5.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10, P1-11, P1-12, P2-1, P2-2, P2-3, P2-4, P2-5.
+**Last updated:** after P2-6.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P1-10, P1-11, P1-12, P2-1, P2-2, P2-3, P2-4, P2-5, P2-6.
 
 Legend: ☐ = to do. ⚠️ = skipping it breaks something. 💸 = costs Gemini quota. 🔒 = security.
 
@@ -21,6 +21,19 @@ git log --oneline -8
 ```
 
 The last commit you should see is the P1-12 one ("Make the chat honest and useful…"). P2-2 is uncommitted (P2-1 should already be committed).
+Message for P2-6:
+
+```
+Add load tests with performance budgets and a nightly run (P2-6)
+
+loadtests/run.py drives the real app, models, index and ingestion with a fake Firestore and a
+fake Gemini: latency vs corpus size, concurrent users, questions during a PDF upload, ingestion
+throughput and memory, cold start. budgets.json fails the nightly workflow on order-of-magnitude
+regressions. Findings recorded in AUDIT.md.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
 Message for P2-5:
 
 ```
@@ -574,6 +587,7 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 ## Change log of this file
 
 - **After P1-5:** file created; covers P0-1 … P1-5.
+- **After P2-6:** commit message for P2-6; nothing to install. Optional: run it yourself with `backend\venv\Scripts\python.exe loadtests\run.py --check-budgets` (about 4 minutes, uses ~1.5 GB RAM; do not run other heavy things at the same time, the numbers will be 3-5x worse); commit `loadtests\results\history.jsonl` if you want a history. After pushing to GitHub, run the "Load tests" workflow once by hand (Actions tab) and tell me if a budget fails on the CI machine. **Real load testing is still yours to do:** against the deployed service with real Gemini, using a dedicated test account and a spend-capped key (see `loadtests/README.md`, "Next step").
 - **After P2-5:** commit message for P2-5; nothing to install. **Do these:** (1) set the real Gemini prices in your env file (`GEMINI_PRICE_IN_PER_MTOK`, `GEMINI_PRICE_OUT_PER_MTOK`, US dollars per million tokens, from Google's current price page) so the cost figures mean something. (2) After asking a few real questions, open `GET <RAG url>/admin/metrics` with an admin token (browser tools or `curl -H "Authorization: Bearer <admin ID token>"`) and look at `cost.questionsWithoutUsageReport`: it must be 0; if not, tell me. (3) Send the service's stdout somewhere searchable (your host's log viewer is enough to start): each line that starts with `{` is JSON; search `"event":"query_done"`. (4) Suggested alerts once you have a log tool: no `query_done` for 10 minutes during the day; more than 5% of `query_done` with `"outcome":"error"` over 15 minutes; `totalMs` p95 above 15000; estimated daily cost above your budget; any `ingest_failed`. (5) Optional: create a Sentry project and tell me, to wire error tracking (a new account and secret; not done).
 - **After P2-4:** commit message for P2-4; run `npm --prefix backend ci --ignore-scripts` again (the dependency list shrank, the lockfile changed); delete the leftover folder `backend	emp` by hand (stale images, git-ignored); if anything of yours still calls `/api/documents/...` or Node `/history`, switch it to `/documents/...` and the RAG service's `/history`; read `API.md` once.
 - **After P2-3:** commit message for P2-3; nothing to install; add to smoke test: ask a long question and watch words appear while Gemini is still writing (step 27 again: Stop now cancels the model and the chat shows what you saw); if you put a reverse proxy in front (nginx etc.), make sure it does not buffer responses.
