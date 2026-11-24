@@ -1,11 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "../app/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { documentState } from "../utils/documentState";
 import { supabase } from "../app/supabase";
 import { apiFetch } from "../utils/api";
 import toast from "react-hot-toast";
-import { handleError } from "../utils/errors";
+import {
+  fileKey,
+  validateSelection,
+  sha256Hex,
+  debounce,
+  MAX_FILES,
+} from "../utils/uploadFiles";
 
 // Import sub-components
 import DragDropZone from "./Upload/DragDropZone";
@@ -24,9 +30,17 @@ export default function UploadDocument() {
   const [processing, setProcessing] = useState(false);
   const [processingStates, setProcessingStates] = useState({});
   const [uploadResults, setUploadResults] = useState(null);
+  // key -> { exact: [...], similar: [...] }; every per-file map is keyed by fileKey(file), never by name
   const [duplicateWarnings, setDuplicateWarnings] = useState({});
+  // Always the newest values, for asynchronous work that must not read a stale render
+  const metadataRef = useRef({});
+  const hashesRef = useRef({}); // key -> sha256 of the file's bytes
+  const checkersRef = useRef({}); // key -> debounced duplicate check
+  // What has already been done for a file (so a retry does not upload or register it twice)
+  const resumeRef = useRef({}); // key -> { fileUrl, documentId }
   // Current documents an upload can replace (admin-only page, so reading all is allowed)
   const [replaceableDocuments, setReplaceableDocuments] = useState([]);
+  metadataRef.current = fileMetadata;
 
   useEffect(() => {
     let cancelled = false;
@@ -52,48 +66,66 @@ export default function UploadDocument() {
   }, []);
 
   const handleFilesSelected = (selectedFiles) => {
-    const newFiles = selectedFiles.filter(
-      (file) => !files.some((f) => f.name === file.name)
-    );
-
-    if (newFiles.length === 0) {
-      toast.error("Files already selected");
-      return;
-    }
-
-    setFiles([...files, ...newFiles]);
-
-    // Initialize metadata for new files
-    const newMetadata = {};
-    newFiles.forEach((file) => {
-      newMetadata[file.name] = {
-        name: "",
-        department: "",
-        documentType: "",
-        academicYear: "",
-        programs: [],
-        years: [],
-        tags: "",
-        effectiveDate: "",
-        expiryDate: "",
-        version: "",
-        owner: "",
-        accessLevel: "Public",
-        supersedes: "",
-      };
+    const { accepted, rejected } = validateSelection(files, selectedFiles, {
+      maxFiles: uploadMode === "bulk" ? MAX_FILES : 1,
     });
 
-    setFileMetadata({ ...fileMetadata, ...newMetadata });
+    if (rejected.length > 0) {
+      // say what was left out and why (at most a few lines)
+      const lines = rejected.slice(0, 4).map((r) => `${r.name}: ${r.reason}`);
+      if (rejected.length > 4) lines.push(`...and ${rejected.length - 4} more`);
+      toast.error(lines.join("\n"), { duration: 6000 });
+    }
+    if (accepted.length === 0) return;
 
-    // Check for duplicates
-    newFiles.forEach((file) => {
-      checkDuplicate(file.name);
+    accepted.forEach((file) => {
+      file.key = fileKey(file);
+    });
+
+    setFiles((prev) => [...prev, ...accepted]);
+
+    // Initialize metadata for new files
+    setFileMetadata((prev) => {
+      const next = { ...prev };
+      accepted.forEach((file) => {
+        next[file.key] = {
+          name: "",
+          department: "",
+          documentType: "",
+          academicYear: "",
+          programs: [],
+          years: [],
+          tags: "",
+          effectiveDate: "",
+          expiryDate: "",
+          version: "",
+          owner: "",
+          accessLevel: "Public",
+          supersedes: "",
+        };
+      });
+      metadataRef.current = next;
+      return next;
+    });
+
+    // Fingerprint each file, then look for the same file already stored
+    accepted.forEach(async (file) => {
+      try {
+        hashesRef.current[file.key] = await sha256Hex(file);
+      } catch (error) {
+        console.error("Could not fingerprint the file:", error);
+      }
+      scheduleDuplicateCheck(file.key);
     });
   };
 
-  const checkDuplicate = async (fileName) => {
-    const metadata = fileMetadata[fileName];
-    if (!metadata || !metadata.name || !metadata.department) return;
+  // Ask the server whether this file (same bytes) or a similarly named document exists.
+  // Reads the newest metadata through the ref, so it is never one keystroke behind.
+  const checkDuplicate = async (key) => {
+    const metadata = metadataRef.current[key] || {};
+    const sha256 = hashesRef.current[key];
+    const hasNameAndDept = metadata.name && metadata.department;
+    if (!sha256 && !hasNameAndDept) return;
 
     try {
       const response = await apiFetch(
@@ -102,56 +134,83 @@ export default function UploadDocument() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: metadata.name,
-            department: metadata.department,
+            ...(hasNameAndDept
+              ? { name: metadata.name, department: metadata.department }
+              : {}),
+            ...(sha256 ? { sha256 } : {}),
           }),
         }
       );
-
+      if (!response.ok) return;
       const result = await response.json();
 
-      if (result.hasDuplicates) {
-        setDuplicateWarnings({
-          ...duplicateWarnings,
-          [fileName]: result.similarDocuments,
-        });
-      } else {
-        const newWarnings = { ...duplicateWarnings };
-        delete newWarnings[fileName];
-        setDuplicateWarnings(newWarnings);
-      }
+      // The file may have been removed while the request was in flight
+      if (!(key in metadataRef.current)) return;
+
+      setDuplicateWarnings((prev) => {
+        const next = { ...prev };
+        if (result.hasDuplicates) {
+          next[key] = {
+            exact: result.exactDuplicates || [],
+            similar: result.similarDocuments || [],
+          };
+        } else {
+          delete next[key];
+        }
+        return next;
+      });
     } catch (error) {
       console.error("Error checking duplicate:", error);
     }
   };
 
-  const handleMetadataChange = (fileName, metadata) => {
-    setFileMetadata({
-      ...fileMetadata,
-      [fileName]: metadata,
-    });
+  // One debounced checker per file: typing a name sends one request after a pause,
+  // not one per keystroke.
+  const scheduleDuplicateCheck = (key) => {
+    if (!checkersRef.current[key]) {
+      checkersRef.current[key] = debounce(() => checkDuplicate(key), 600);
+    }
+    checkersRef.current[key]();
+  };
 
-    // Recheck duplicates when name or department changes
-    if (metadata.name && metadata.department) {
-      checkDuplicate(fileName);
+  const handleMetadataChange = (key, metadata) => {
+    const previous = metadataRef.current[key] || {};
+    const next = { ...metadataRef.current, [key]: metadata };
+    metadataRef.current = next;
+    setFileMetadata(next);
+
+    // Recheck only when what the check depends on changed
+    if (previous.name !== metadata.name || previous.department !== metadata.department) {
+      scheduleDuplicateCheck(key);
     }
   };
 
-  const handleRemoveFile = (fileName) => {
-    setFiles(files.filter((f) => f.name !== fileName));
-
-    const newMetadata = { ...fileMetadata };
-    delete newMetadata[fileName];
-    setFileMetadata(newMetadata);
-
-    const newWarnings = { ...duplicateWarnings };
-    delete newWarnings[fileName];
-    setDuplicateWarnings(newWarnings);
+  const forgetFile = (key) => {
+    if (checkersRef.current[key]) checkersRef.current[key].cancel();
+    delete checkersRef.current[key];
+    delete hashesRef.current[key];
+    delete resumeRef.current[key];
   };
 
-  const validateFile = (fileName) => {
-    const metadata = fileMetadata[fileName];
-    return metadata.name && metadata.department && metadata.documentType;
+  const handleRemoveFile = (key) => {
+    forgetFile(key);
+    setFiles((prev) => prev.filter((f) => f.key !== key));
+    setFileMetadata((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      metadataRef.current = next;
+      return next;
+    });
+    setDuplicateWarnings((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const validateFile = (key) => {
+    const metadata = fileMetadata[key];
+    return metadata && metadata.name && metadata.department && metadata.documentType;
   };
 
   const validateAllFiles = () => {
@@ -160,7 +219,7 @@ export default function UploadDocument() {
       return false;
     }
 
-    const invalidFiles = files.filter((f) => !validateFile(f.name));
+    const invalidFiles = files.filter((f) => !validateFile(f.key));
     if (invalidFiles.length > 0) {
       toast.error(
         `Please fill required fields for: ${invalidFiles
@@ -195,13 +254,14 @@ export default function UploadDocument() {
   };
 
   const uploadToSupabase = async (file) => {
-    const fileName = file.name;
+    const fileName = file.key;
     updateProcessingState(fileName, {
       stage: "uploading",
       log: "Uploading file to storage...",
     });
 
-    const filePath = `${Date.now()}_${file.name}`;
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]+/g, "_");
+    const filePath = `${Date.now()}_${safeName}`;
     const { error } = await supabase.storage
       .from("documents")
       .upload(filePath, file);
@@ -214,7 +274,7 @@ export default function UploadDocument() {
   };
 
   const createFirestoreDocument = async (file, fileUrl) => {
-    const { supersedes, ...metadata } = fileMetadata[file.name];
+    const { supersedes, ...metadata } = fileMetadata[file.key];
 
     // The admin API creates the record; `uploadedBy` and the timestamp are set
     // server-side from the verified admin token.
@@ -258,7 +318,7 @@ export default function UploadDocument() {
    * Poll the document until the server says it is Processed (resolves with the
    * status) or Error/Cancelled (throws). Occasional network failures are retried.
    */
-  const waitForProcessing = async (documentId, fileName) => {
+  const waitForProcessing = async (documentId, key) => {
     const startedAt = Date.now();
     let failures = 0;
     let lastMessage = "";
@@ -307,48 +367,59 @@ export default function UploadDocument() {
           update.log = p.message;
           lastMessage = p.message;
         }
-        updateProcessingState(fileName, update);
+        updateProcessingState(key, update);
       }
     }
   };
 
   const processDocument = async (file) => {
-    const fileName = file.name;
+    const key = file.key;
+    // Steps already completed by an earlier attempt are not repeated
+    const done = (resumeRef.current[key] = resumeRef.current[key] || {});
 
     try {
-      // Upload to Supabase
-      const fileUrl = await uploadToSupabase(file);
+      if (!done.fileUrl) {
+        done.fileUrl = await uploadToSupabase(file);
+      }
 
-      updateProcessingState(fileName, {
+      if (!done.documentId) {
+        updateProcessingState(key, {
+          stage: "preparing",
+          log: "Creating database record...",
+        });
+        done.documentId = await createFirestoreDocument(file, done.fileUrl);
+      }
+      const documentId = done.documentId;
+
+      updateProcessingState(key, {
         stage: "preparing",
-        log: "Creating database record...",
-      });
-
-      // Create Firestore document
-      const documentId = await createFirestoreDocument(file, fileUrl);
-
-      updateProcessingState(fileName, {
-        stage: "preparing",
+        percent: 0,
         log: "Starting processing...",
       });
 
-      // The server starts the job and answers at once (202); it does not wait for it
-      const response = await apiFetch(`${VITE_API_BASE_URL}/documents/process`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // Only the id: the server reads the file URL from the stored record
-        body: JSON.stringify({ documentId }),
-      });
+      // The server starts the job and answers at once (202); it does not wait for it.
+      // (/reprocess is the same job for a record that exists already, which is what a
+      // retry needs.)
+      const response = await apiFetch(
+        `${VITE_API_BASE_URL}/documents/${done.started ? "reprocess" : "process"}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // Only the id: the server reads the file URL from the stored record
+          body: JSON.stringify({ documentId }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || "Processing failed to start");
       }
+      done.started = true;
 
       // Real progress, written by the processing job onto the document
-      const finished = await waitForProcessing(documentId, fileName);
+      const finished = await waitForProcessing(documentId, key);
 
-      updateProcessingState(fileName, {
+      updateProcessingState(key, {
         stage: "complete",
         percent: 100,
         log: "Processing complete!",
@@ -356,6 +427,7 @@ export default function UploadDocument() {
 
       return {
         status: "success",
+        key,
         fileName: file.name,
         documentId,
         chunksCreated: finished.chunksCount || 0,
@@ -363,7 +435,7 @@ export default function UploadDocument() {
         visualChunks: finished.visualChunks || 0,
       };
     } catch (error) {
-      updateProcessingState(fileName, {
+      updateProcessingState(key, {
         stage: "failed",
         error: error.message,
         log: `Error: ${error.message}`,
@@ -371,6 +443,7 @@ export default function UploadDocument() {
 
       return {
         status: "failed",
+        key,
         fileName: file.name,
         error: error.message,
       };
@@ -384,15 +457,16 @@ export default function UploadDocument() {
     setProcessing(true);
     setUploadResults(null);
     setProcessingStates({});
+    const startedWith = files;
 
-    toast.loading(`Processing ${files.length} document(s)...`, {
+    toast.loading(`Processing ${startedWith.length} document(s)...`, {
       id: "upload-toast",
     });
 
     const results = [];
 
     // Process files sequentially to avoid overwhelming the server
-    for (const file of files) {
+    for (const file of startedWith) {
       const result = await processDocument(file);
       results.push(result);
     }
@@ -402,9 +476,9 @@ export default function UploadDocument() {
 
     toast.dismiss("upload-toast");
 
-    if (successful === files.length) {
+    if (successful === startedWith.length) {
       toast.success(`All ${successful} documents processed successfully!`);
-    } else if (failed === files.length) {
+    } else if (failed === startedWith.length) {
       toast.error(`All ${failed} documents failed to process`);
     } else {
       toast.success(`${successful} successful, ${failed} failed`, {
@@ -418,6 +492,10 @@ export default function UploadDocument() {
   };
 
   const handleReset = () => {
+    Object.keys(checkersRef.current).forEach((k) => checkersRef.current[k].cancel());
+    checkersRef.current = {};
+    hashesRef.current = {};
+    resumeRef.current = {};
     setFiles([]);
     setFileMetadata({});
     setProcessingStates({});
@@ -427,10 +505,21 @@ export default function UploadDocument() {
     setProcessing(false);
   };
 
+  // Go back to the form with only the files that failed. Their metadata, and whatever was
+  // already uploaded or registered, is kept, so retrying does not duplicate anything.
+  const handleRetryFailed = () => {
+    const failedKeys = new Set(
+      (uploadResults || []).filter((r) => r.status === "failed").map((r) => r.key)
+    );
+    setFiles((prev) => prev.filter((f) => failedKeys.has(f.key)));
+    setProcessingStates({});
+    setUploadResults(null);
+  };
+
   const canUpload = () => {
     return (
       files.length > 0 &&
-      files.every((f) => validateFile(f.name)) &&
+      files.every((f) => validateFile(f.key)) &&
       !uploading &&
       !processing
     );
@@ -438,7 +527,13 @@ export default function UploadDocument() {
 
   // Show success summary
   if (uploadResults) {
-    return <SuccessSummary results={uploadResults} onClose={handleReset} />;
+    return (
+      <SuccessSummary
+        results={uploadResults}
+        onClose={handleReset}
+        onRetryFailed={handleRetryFailed}
+      />
+    );
   }
 
   // Show processing view
@@ -490,7 +585,7 @@ export default function UploadDocument() {
             <path d="M13 2v7h7" />
             <path d="M8 13h8M8 17h8" />
           </svg>
-          Bulk Upload (10-20 files)
+          Bulk Upload (up to 20 files)
         </button>
       </div>
 
@@ -515,19 +610,22 @@ export default function UploadDocument() {
 
           <div className="files-list">
             {files.map((file) => (
-              <div key={file.name}>
+              <div key={file.key}>
                 <FileCard
                   file={file}
-                  metadata={fileMetadata[file.name] || {}}
+                  metadata={fileMetadata[file.key] || {}}
                   onMetadataChange={(metadata) =>
-                    handleMetadataChange(file.name, metadata)
+                    handleMetadataChange(file.key, metadata)
                   }
-                  onRemove={() => handleRemoveFile(file.name)}
+                  onRemove={() => handleRemoveFile(file.key)}
                   disabled={uploading || processing}
                   replaceableDocuments={replaceableDocuments}
                 />
-                {duplicateWarnings[file.name] && (
-                  <DuplicateWarning duplicates={duplicateWarnings[file.name]} />
+                {duplicateWarnings[file.key] && (
+                  <DuplicateWarning
+                    exact={duplicateWarnings[file.key].exact}
+                    duplicates={duplicateWarnings[file.key].similar}
+                  />
                 )}
               </div>
             ))}

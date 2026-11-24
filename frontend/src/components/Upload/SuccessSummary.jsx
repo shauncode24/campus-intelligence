@@ -1,6 +1,6 @@
 import "../../styles/Upload/SuccessSummary.css";
 
-export default function SuccessSummary({ results, onClose }) {
+export default function SuccessSummary({ results, onClose, onRetryFailed }) {
   const totalFiles = results.length;
   const successful = results.filter((r) => r.status === "success").length;
   const failed = results.filter((r) => r.status === "failed").length;
@@ -72,6 +72,11 @@ export default function SuccessSummary({ results, onClose }) {
       </div>
 
       <div className="summary-actions">
+        {failed > 0 && onRetryFailed && (
+          <button className="summary-close-btn" onClick={onRetryFailed}>
+            Retry the {failed} failed
+          </button>
+        )}
         <button className="summary-close-btn" onClick={onClose}>
           <svg
             width="20"

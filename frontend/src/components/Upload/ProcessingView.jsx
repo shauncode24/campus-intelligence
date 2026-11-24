@@ -16,8 +16,8 @@ export default function ProcessingView({
 
   const ProcessingCard = ({ file }) => {
     const [showLogs, setShowLogs] = useState(false);
-    const state = processingStates[file.name] || {};
-    const metadata = fileMetadata[file.name] || {};
+    const state = processingStates[file.key] || {};
+    const metadata = fileMetadata[file.key] || {};
 
     const currentStageIndex = stages.findIndex((s) => s.id === state.stage);
     const isComplete = state.stage === "complete";
@@ -166,11 +166,11 @@ export default function ProcessingView({
   };
 
   const completedCount = files.filter(
-    (f) => processingStates[f.name]?.stage === "complete"
+    (f) => processingStates[f.key]?.stage === "complete"
   ).length;
 
   const failedCount = files.filter(
-    (f) => processingStates[f.name]?.stage === "failed"
+    (f) => processingStates[f.key]?.stage === "failed"
   ).length;
 
   return (
@@ -218,7 +218,7 @@ export default function ProcessingView({
 
       <div className="processing-list">
         {files.map((file) => (
-          <ProcessingCard key={file.name} file={file} />
+          <ProcessingCard key={file.key} file={file} />
         ))}
       </div>
     </div>

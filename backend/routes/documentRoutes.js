@@ -338,23 +338,29 @@ router.get("/rag-status", async (req, res) => {
  */
 router.post("/check-duplicate", async (req, res) => {
   try {
-    const { name, department } = req.body;
+    const { name, department, sha256 } = req.body || {};
 
-    if (!name || !department) {
-      return res.status(400).json({
-        error: "name and department are required",
-      });
+    const hasHash = typeof sha256 === "string" && /^[0-9a-fA-F]{64}$/.test(sha256);
+    const hasNameAndDept =
+      typeof name === "string" && name.trim() && typeof department === "string" && department.trim();
+    if (sha256 !== undefined && sha256 !== "" && !hasHash) {
+      return res.status(400).json({ error: "sha256 must be 64 hex characters" });
+    }
+    if (!hasHash && !hasNameAndDept) {
+      return res.status(400).json({ error: "Give a sha256, or a name and a department" });
     }
 
-    const response = await fetch(
-      `${PYTHON_RAG_URL}/check-duplicate?name=${encodeURIComponent(
-        name
-      )}&department=${encodeURIComponent(department)}`,
-      {
-        method: "POST",
-        headers: pythonHeaders(req),
-      }
-    );
+    const params = new URLSearchParams();
+    if (hasNameAndDept) {
+      params.set("name", name.trim().slice(0, 300));
+      params.set("department", department.trim().slice(0, 100));
+    }
+    if (hasHash) params.set("sha256", sha256.toLowerCase());
+
+    const response = await fetch(`${PYTHON_RAG_URL}/check-duplicate?${params}`, {
+      method: "POST",
+      headers: pythonHeaders(req),
+    });
 
     if (!response.ok) {
       throw new Error("Duplicate check failed");

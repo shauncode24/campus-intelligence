@@ -1,5 +1,7 @@
-export default function DuplicateWarning({ duplicates }) {
-  if (!duplicates || duplicates.length === 0) return null;
+export default function DuplicateWarning({ duplicates, exact }) {
+  const hasExact = exact && exact.length > 0;
+  const hasSimilar = duplicates && duplicates.length > 0;
+  if (!hasExact && !hasSimilar) return null;
 
   return (
     <div className="duplicate-warning">
@@ -8,16 +10,41 @@ export default function DuplicateWarning({ duplicates }) {
           <path d="M12 2L1 21h22L12 2zm0 3.83L19.53 19H4.47L12 5.83zM11 16h2v2h-2v-2zm0-6h2v4h-2v-4z" />
         </svg>
         <span className="duplicate-warning-title">
-          Potential duplicate detected
+          {hasExact ? "This exact file is already uploaded" : "Potential duplicate detected"}
         </span>
       </div>
 
-      <p className="duplicate-warning-text">
-        Similar documents already exist in the system:
-      </p>
+      {hasExact && (
+        <>
+          <p className="duplicate-warning-text">
+            A file with identical content exists (it may have a different name):
+          </p>
+          <div className="duplicate-list">
+            {exact.map((doc) => (
+              <div key={doc.id} className="duplicate-item">
+                <div className="duplicate-info">
+                  <span className="duplicate-name">{doc.name}</span>
+                  {doc.version && (
+                    <span className="duplicate-version">{doc.version}</span>
+                  )}
+                  {doc.status && doc.status !== "Processed" && (
+                    <span className="duplicate-version">{doc.status}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {hasSimilar && (
+        <p className="duplicate-warning-text">
+          Similar documents already exist in the system:
+        </p>
+      )}
 
       <div className="duplicate-list">
-        {duplicates.map((doc, idx) => (
+        {(duplicates || []).map((doc, idx) => (
           <div key={idx} className="duplicate-item">
             <div className="duplicate-info">
               <span className="duplicate-name">{doc.name}</span>
@@ -35,8 +62,8 @@ export default function DuplicateWarning({ duplicates }) {
       </div>
 
       <p className="duplicate-warning-footer">
-        You can still upload this document. Consider updating the version number
-        to differentiate it.
+        You can still upload it. If this is a newer edition, choose the old one
+        under "Replaces an older document" instead of keeping both.
       </p>
 
       <style>{`

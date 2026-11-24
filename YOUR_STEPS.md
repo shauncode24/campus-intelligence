@@ -4,7 +4,7 @@ Living checklist. Claude updates it after every roadmap item. It assumes **nothi
 Do the sections **in order**: later ones depend on earlier ones. Commands are for **Windows PowerShell**
 unless marked otherwise. `<angle brackets>` are values you fill in.
 
-**Last updated:** after P1-8.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8.
+**Last updated:** after P1-9.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9.
 
 Legend: ☐ = to do. ⚠️ = skipping it breaks something. 💸 = costs Gemini quota. 🔒 = security.
 
@@ -20,8 +20,21 @@ git status --short
 git log --oneline -8
 ```
 
-The last commit you should see is the P1-7 one ("Make document versions…"). P1-8's changes are
+The last commit you should see is the P1-8 one ("Rework the answer cache…"). P1-9's changes are
 uncommitted. Message for it:
+
+```
+Fix the admin pages and make upload duplicate detection work (P1-9)
+
+Document Management: no more crashes, a colour per status, search/filter/paging, cancel,
+auto-refresh while processing, confirmation dialogs. Upload: files keyed by name+size+date,
+debounced duplicate check on fresh data, exact-duplicate detection by SHA-256, PDF/size/count
+validation with reasons, retry that does not duplicate.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
+Message for P1-8 (if you have not committed it yet):
 
 ```
 Rework the answer cache: exact-match reuse, invalidated by document changes (P1-8)
@@ -288,6 +301,8 @@ backend\venv\Scripts\python.exe -m unittest discover -s eval\tests
 # Firestore rules tests (needs Java 17+ and the firestore-tests dependencies)
 cd firestore-tests; npm install; cd ..
 npm --prefix firestore-tests test
+# Frontend helper tests (upload form logic; no install needed)
+node --test "frontend/src/utils/*.test.mjs"
 # Frontend production build
 cd frontend; npm run build
 ```
@@ -326,6 +341,12 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 19. **Cache (P1-8):** ask a question, then the same question again with different capitals/punctuation → the second is
     instant and the Gemini call count does not rise. Ask a reworded version → a fresh answer (expected: paraphrases are no longer reused).
 20. **Invalidation:** after step 19, upload or delete any document, then repeat the question → a fresh answer (not the cached one).
+21. **Admin list (P1-9):** open the Documents page → colours differ per status; search and the status filter work; an
+    Error row shows its message; start a reprocess → the row shows a percentage and updates by itself; the ✕ cancels it.
+22. **Duplicates (P1-9):** upload a PDF; then select the same PDF again and fill any name → a warning "This exact file is
+    already uploaded" appears after a short pause (not on every keystroke). Select a `.docx` or a 60 MB file → a message says why it was refused.
+23. **Retry (P1-9):** stop the Python service, upload a PDF (it fails), start Python, click "Retry the 1 failed" → it
+    completes and the Documents page shows ONE record for it.
 18. **Expiry:** edit a document's `expiryDate` in the Firebase console (Firestore → documents → that doc) to yesterday's
     date (format `2025-01-31`) → questions it alone covered now answer "couldn't find"; set it to a future date → works again.
     (The upload form's own expiry date field does the same; this just avoids waiting.)
@@ -352,6 +373,9 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 - ☐ **Fill in versions and dates on your real documents** (P1-7): version, effective date and expiry date only do
   something once they are entered. Documents without dates stay live forever. For each policy that has a newer edition,
   re-upload the new one with "Replaces an older document" (or delete the old one).
+- ☐ **Old documents have no content fingerprint** (P1-9): exact-duplicate detection only knows files processed from now on.
+  To fingerprint existing ones, run `reindex_all.py` (it re-processes everything, which re-captions images: see step 8 and the
+  cost note) or reprocess just the documents you care about from the Documents page.
 - ☐ **Delete the old cache entries once** (P1-8): from `backend\python`,
   `..\venv\Scripts\python.exe scripts\purge_cache.py --dry-run` then `..\venv\Scripts\python.exe scripts\purge_cache.py`.
   Old entries are never served anyway; this just frees the space. `reindex_all.py` also resets the cache validity.
@@ -390,6 +414,7 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 ## Change log of this file
 
 - **After P1-5:** file created; covers P0-1 … P1-5.
+- **After P1-9:** commit message for P1-9; smoke-test steps 21-23 (admin list, duplicates, retry); old documents have no content fingerprint until re-processed.
 - **After P1-8:** commit message for P1-8; smoke-test steps 19-20 (exact reuse, invalidation); purge old cache entries; the cache is exact-match only (semantic mode needs your own calibration).
 - **After P1-7:** commit message for P1-7; smoke-test steps 16-18 (versions, undo, expiry); chores: enter versions/dates on real documents, replace old editions.
 - **After P1-6:** commit message for P1-6; new optional `MAX_CONCURRENT_INGESTS`; smoke-test steps 11-15 (background upload, queue, failure, restart, reprocess); single-instance requirement.

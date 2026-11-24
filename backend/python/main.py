@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+import re
 import time
 import warnings
 from contextlib import asynccontextmanager
@@ -615,45 +616,67 @@ async def update_personal_note(
 
 @app.post("/check-duplicate", dependencies=[Depends(admin_limit)])
 def check_duplicate_document(
-    name: str,
-    department: str,
+    name: str = "",
+    department: str = "",
+    sha256: str = Query(default="", max_length=64),
     admin_id: str = Depends(require_admin),
 ):
     """
-    Check if a document with similar name exists (admin only)
+    Check an upload against what is already stored (admin only). Two independent checks:
+
+    * `exactDuplicates`: a stored document whose file has the SAME BYTES (sha256), whatever it
+      is called. Reliable: re-uploading the same PDF under another name is caught.
+    * `similarDocuments`: a processed document in the same department whose NAME contains,
+      or is contained in, this one's. Only a hint (names are free text).
     """
     try:
         db = firebase_client.db
         if not db:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
-        
-        # Query for documents with similar name and same department
-        docs_ref = db.collection('documents') \
-            .where('department', '==', department) \
-            .where('status', '==', 'Processed') \
-            .stream()
-        
-        similar_docs = []
-        name_lower = name.lower()
-        
-        for doc in docs_ref:
-            doc_data = doc.to_dict()
-            doc_name_lower = doc_data.get('name', '').lower()
-            
-            # Simple similarity check
-            if name_lower in doc_name_lower or doc_name_lower in name_lower:
-                similar_docs.append({
-                    'id': doc.id,
-                    'name': doc_data.get('name'),
-                    'uploadedAt': doc_data.get('uploadedAt'),
-                    'version': doc_data.get('version')
-                })
-        
+
+        digest = sha256.strip().lower()
+        if digest and not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise HTTPException(status_code=400, detail="sha256 must be 64 hex characters")
+        if not digest and not (name.strip() and department.strip()):
+            raise HTTPException(status_code=400, detail="Give a sha256, or a name and a department")
+
+        def brief(doc, data):
+            return {
+                'id': doc.id,
+                'name': data.get('name'),
+                'uploadedAt': data.get('uploadedAt'),
+                'version': data.get('version'),
+                'status': data.get('status'),
+            }
+
+        exact = []
+        if digest:
+            for doc in db.collection('documents').where('contentSha256', '==', digest).stream():
+                data = doc.to_dict() or {}
+                if data.get('status') not in ('Deleting', 'Cancelled'):
+                    exact.append(brief(doc, data))
+
+        similar = []
+        if name.strip() and department.strip():
+            name_lower = name.strip().lower()
+            for doc in db.collection('documents') \
+                    .where('department', '==', department) \
+                    .where('status', '==', 'Processed').stream():
+                data = doc.to_dict() or {}
+                other = (data.get('name') or '').lower()
+                if other and (name_lower in other or other in name_lower):
+                    similar.append(brief(doc, data))
+
+        exact_ids = {d['id'] for d in exact}
+        similar = [d for d in similar if d['id'] not in exact_ids]
         return {
-            "hasDuplicates": len(similar_docs) > 0,
-            "similarDocuments": similar_docs
+            "hasDuplicates": bool(exact or similar),
+            "exactDuplicates": exact,
+            "similarDocuments": similar,
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Error checking duplicates: {e}")
         raise internal_error(e)

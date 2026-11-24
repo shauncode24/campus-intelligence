@@ -18,6 +18,7 @@ failed with a clear message, because the job that was working on them died with 
 previous process.
 """
 import asyncio
+import hashlib
 import time
 import uuid
 
@@ -126,6 +127,7 @@ class IngestionManager:
                 await run_blocking(progress.stage, "downloading", 3, "Downloading the file")
                 record = await run_blocking(lambda: ref.get().to_dict() or {})
                 pdf_bytes = await download_pdf(record.get("fileUrl"))
+                content_sha256 = hashlib.sha256(pdf_bytes).hexdigest()   # lets the upload form spot the same file twice
 
                 await run_blocking(progress.stage, "reading", 8, "Reading pages")
                 all_docs, all_embeddings = await run_blocking(
@@ -149,6 +151,7 @@ class IngestionManager:
                         "updatedAtMs": int(time.time() * 1000),
                     },
                     "imageStats": image_stats,
+                    "contentSha256": content_sha256,
                     "errorMessage": firestore.DELETE_FIELD,
                 })
                 await run_blocking(self._supersede_old_version, doc_id, record)
