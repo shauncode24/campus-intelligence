@@ -75,6 +75,8 @@ class QueryResponse(BaseModel):
     messageId: Optional[str] = None
     # False if the answer could not be stored; the answer is still returned
     saved: bool = True
+    # True when the user stopped the answer part-way: `answer` is only what had been generated
+    stopped: bool = False
     # Exactly what the chat shows beside the answer (and what is stored with it), so the
     # live view and a reload cannot differ
     metadata: Optional[Dict[str, Any]] = None

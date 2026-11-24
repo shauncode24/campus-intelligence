@@ -10,7 +10,7 @@ http.createServer((req, res) => {
   req.on("end", () => {
     pyBodies.push({ url: req.url, body: raw ? JSON.parse(raw) : {} });
     res.setHeader("Content-Type", "application/json");
-    if (req.url === "/query") return res.end(JSON.stringify({ answer: "ok", sources: [], saved: true, metadata: {} }));
+    if (req.url === "/query/stream") return res.end(JSON.stringify({ answer: "ok", sources: [], saved: true, metadata: {} }));
     res.statusCode = 202; res.end(JSON.stringify({ accepted: true }));
   });
 }).listen(5086);
@@ -62,9 +62,9 @@ check("it does not touch an old document that something else replaced", (await d
 
 // filters reach Python
 await (await call("POST", "/document/query", { question: "late fee?", department: " Library ", documentType: "Policy" })).text();
-let q = pyBodies.filter((p) => p.url === "/query").at(-1).body;
+let q = pyBodies.filter((p) => p.url === "/query/stream").at(-1).body;
 check("department and documentType are forwarded (trimmed)", q.department === "Library" && q.documentType === "Policy");
 await (await call("POST", "/document/query", { question: "late fee?", department: { $ne: 1 }, documentType: "x".repeat(300) })).text();
-q = pyBodies.filter((p) => p.url === "/query").at(-1).body;
+q = pyBodies.filter((p) => p.url === "/query/stream").at(-1).body;
 check("non-string or oversized filters are dropped", !("department" in q) && !("documentType" in q));
 console.log(fails ? `\nFAILED: ${fails}` : "\nALL PASSED"); process.exit(fails ? 1 : 0);

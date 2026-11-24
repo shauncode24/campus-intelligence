@@ -32,6 +32,16 @@ def is_not_found(answer) -> bool:
     return answer.strip().strip("`*\"' .").upper().startswith(NOT_FOUND_TOKEN)
 
 
+def could_still_be_not_found(text) -> bool:
+    """
+    While an answer streams in, True as long as what has arrived so far could still turn out to be
+    the refusal token. Such text is held back, so a refusal is never shown to the user as it
+    arrives (it is replaced by the standard "not found" message once complete).
+    """
+    s = str(text).lstrip().lstrip("`*\"' ").upper()
+    return s == "" or NOT_FOUND_TOKEN.startswith(s) or s.startswith(NOT_FOUND_TOKEN)
+
+
 def _answer_text(content) -> str:
     """Normalise a model response (plain string or a list of content blocks) to text."""
     if isinstance(content, str):
@@ -243,6 +253,32 @@ class LLMService:
             )
             response = self.llm.invoke([merged])
         return _answer_text(response.content)
+
+    async def stream_answer(self, message):
+        """
+        The answer as it is generated: an async generator of text pieces, in order. Cancelling the
+        task that iterates it closes the connection to the model, so generation stops being paid for.
+        Falls back to the rules-in-the-user-message form if the model rejects a system message
+        (only possible before the first piece arrives).
+        """
+        started = False
+        try:
+            async for chunk in self.llm.astream([SystemMessage(content=SYSTEM_PROMPT), message]):
+                piece = _answer_text(chunk.content)
+                if piece:
+                    started = True
+                    yield piece
+        except ValueError as e:
+            if started or "system" not in str(e).lower():
+                raise
+            content = message.content
+            if isinstance(content, str):
+                content = [{"type": "text", "text": content}]
+            merged = HumanMessage(content=[{"type": "text", "text": SYSTEM_PROMPT + "\n\n"}] + list(content))
+            async for chunk in self.llm.astream([merged]):
+                piece = _answer_text(chunk.content)
+                if piece:
+                    yield piece
 
     def generate_answer(self, message):
         """

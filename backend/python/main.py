@@ -3,8 +3,10 @@ Main FastAPI application for the RAG service
 """
 from fastapi import FastAPI, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+import asyncio
+import json
 import re
 import time
 import warnings
@@ -38,7 +40,7 @@ from database.storage_service import storage_service
 from services.embedding_service import embedding_service
 from services.pdf_processor import pdf_processor
 from services.retrieval_service import retrieval_service
-from services.llm_service import llm_service, is_not_found
+from services.llm_service import llm_service, is_not_found, could_still_be_not_found
 from services.query_condenser import query_condenser, needs_condensing, CondenseResult
 from services.ingestion import ingestion_manager, fail_interrupted_jobs
 from services.document_validity import describe
@@ -194,6 +196,112 @@ async def _decline(user_id: str, question: str, intent: str, reason: str,
                                 regenerated=regenerated)
 
 
+async def _generate_streaming(message, on_token, shown: list) -> str:
+    """
+    Run the model, sending each piece to `on_token` as it arrives; returns the complete answer.
+    The first few characters are held back while they could still turn out to be the refusal token
+    (NOT_FOUND), so a refusal is never flashed at the user. `shown` collects what was sent, so a
+    stop can save exactly that.
+    """
+    full, held = [], ""
+    holding = True
+    async for piece in llm_service.stream_answer(message):
+        full.append(piece)
+        if holding:
+            held += piece
+            if could_still_be_not_found(held):
+                continue
+            holding = False
+            piece = held
+        shown.append(piece)
+        await on_token(piece)
+    answer = "".join(full)
+    if holding and held and not is_not_found(answer):      # a very short answer, still held
+        shown.append(held)
+        await on_token(held)
+    return answer
+
+
+async def _save_stopped(user_id, chat_id, request, partial, sources, relevant_docs, standalone_note, intent):
+    """The user stopped the answer: keep the question and what they saw, flagged as stopped.
+    Never cached (an incomplete answer must not be served to anyone else)."""
+    response = QueryResponse(
+        answer=partial, sources=sources,
+        hasVisualContent=any(d.metadata.get('type') == 'image' for d in relevant_docs),
+        cached=False, standaloneQuestion=standalone_note, stopped=True,
+    )
+    try:
+        await _save_exchange(user_id, chat_id, request.question, response, "stopped", intent, None,
+                             regenerated=request.regenerate)
+        print("⏹️ Answer stopped by the user; the part they saw was saved")
+    except Exception as e:      # nothing more can be done for a client that has gone
+        print(f"⚠️ Could not save a stopped answer: {e}")
+
+
+def _event(kind: str, **fields) -> bytes:
+    return (json.dumps({"type": kind, **fields}, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+@app.post("/query/stream")
+async def query_documents_stream(
+    request: QueryRequest,
+    user_id: str = Depends(get_current_user_id),
+    _rate_limited: None = Depends(query_limit),
+):
+    """
+    Same as /query, but the answer arrives as it is generated: one JSON object per line
+    ({"type": "text", "data": "..."} pieces, then {"type": "metadata", ...}, then {"type": "done"}).
+    Problems found before the answer starts (unknown chat, over budget...) are ordinary HTTP errors.
+    If the client disconnects, generation is cancelled and what was already sent is saved as a
+    stopped answer.
+    """
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def on_token(piece: str):
+        await queue.put(("text", piece))
+
+    task = asyncio.create_task(_answer_question(request, user_id, on_token))
+    task.add_done_callback(lambda _t: queue.put_nowait(("done", None)))
+
+    first = await queue.get()
+    if first[0] == "done":
+        task.result()                                # an HTTPException here becomes a proper status code
+    queue.put_nowait(first)                          # replay it for the body below
+
+    async def body():
+        sent_text = False
+        try:
+            while True:
+                kind, data = await queue.get()
+                if kind == "text":
+                    sent_text = True
+                    yield _event("text", data=data)
+                    continue
+                break
+            try:
+                response = task.result()
+            except asyncio.CancelledError:
+                return
+            except HTTPException as e:
+                yield _event("error", data=str(e.detail), userFacing=e.status_code < 500)
+                return
+            except Exception as e:
+                ref = getattr(e, "ref", None)
+                print(f"❌ stream failed: {type(e).__name__}: {e}")
+                yield _event("error", data="Something went wrong. Please try again." + (f" (ref {ref})" if ref else ""))
+                return
+            if not sent_text:                         # reused, refused or non-streamed: send it whole
+                yield _event("text", data=response.answer)
+            yield _event("metadata", data={**(response.metadata or {}), "saved": response.saved is not False})
+            yield _event("done")
+        finally:
+            if not task.done():
+                task.cancel()                         # the client went away: stop paying for the model
+
+    return StreamingResponse(body(), media_type="application/x-ndjson",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @app.post("/query", response_model=QueryResponse)
 async def query_documents(
     request: QueryRequest,
@@ -203,6 +311,15 @@ async def query_documents(
     """
     Query the RAG system with caching and user history
     Re-extracts images on-demand for multimodal responses
+    """
+    return await _answer_question(request, user_id)
+
+
+async def _answer_question(request: QueryRequest, user_id: str, on_token=None) -> QueryResponse:
+    """
+    The whole question-answering pipeline. With `on_token` (an async function), the answer is
+    streamed to it piece by piece as the model generates it; without, it is generated in one call.
+    Either way the exchange is saved once, at the end (a stopped answer is saved as far as it got).
     """
     try:
         if not firebase_client.is_connected:
@@ -356,7 +473,18 @@ async def query_documents(
         )
 
         # Generate answer (grounded: the model must reply NOT_FOUND if unsupported)
-        answer = await run_blocking(llm_service.generate_answer, message)
+        if on_token is None:
+            answer = await run_blocking(llm_service.generate_answer, message)
+        else:
+            shown = []          # what the user has actually been sent so far
+            try:
+                answer = await _generate_streaming(message, on_token, shown)
+            except asyncio.CancelledError:
+                # The user pressed Stop (or left). Generation is already cancelled; keep what they saw.
+                if shown:
+                    await _save_stopped(user_id, chat_id, request, "".join(shown), sources, relevant_docs,
+                                        standalone_note, intent)
+                raise
 
         if is_not_found(answer):
             return await _decline(

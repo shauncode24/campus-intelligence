@@ -107,15 +107,21 @@ app.post(
         ? { documentType: documentType.trim() } : {}),
     };
 
-    // Call Python RAG service, forwarding the caller's token so Python
-    // verifies identity itself.
-    const pythonResponse = await fetch(`${pythonRagUrl}/query`, {
+    // Call the Python RAG service's streaming endpoint, forwarding the caller's token so Python
+    // verifies identity itself. If the browser goes away (Stop, closed tab) the upstream request
+    // is aborted, which makes Python cancel the model call.
+    const upstream = new AbortController();
+    res.on("close", () => {
+      if (!res.writableEnded) upstream.abort();
+    });
+    const pythonResponse = await fetch(`${pythonRagUrl}/query/stream`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${req.authToken}`,
       },
       body: JSON.stringify(requestBody),
+      signal: upstream.signal,
     });
 
     console.log(`📡 Python response status: ${pythonResponse.status}`);
@@ -140,66 +146,44 @@ app.post(
           type: "error",
           userFacing: true,
           data: "This chat no longer exists. Please start a new chat.",
-        })}
-
-`
+        })}\n\n`
       );
       return res.end();
     }
 
-    if (!pythonResponse.ok) {
+    if (!pythonResponse.ok || !pythonResponse.body) {
       const errorText = await pythonResponse.text();
       console.error(`❌ Python RAG error (${pythonResponse.status}): ${errorText}`);
       throw new Error(`Python RAG error: ${pythonResponse.statusText}`);
     }
 
-    const result = await pythonResponse.json();
-    console.log(`✅ Got result from Python RAG:`, {
-      answerLength: result.answer?.length,
-      sourcesCount: result.sources?.length,
-      hasVisualContent: result.hasVisualContent,
-      cached: result.cached,
-    });
-
-    // Send intent
-    res.write(
-      `data: ${JSON.stringify({
-        type: "intent",
-        data: "general",
-      })}\n\n`
-    );
-
-    // Stream the answer word by word for smooth effect
-    const words = result.answer.split(" ");
-    for (const word of words) {
-      res.write(
-        `data: ${JSON.stringify({
-          type: "text",
-          data: word + " ",
-        })}\n\n`
-      );
-      await new Promise((resolve) => setTimeout(resolve, 30));
+    // The answer is relayed as it is generated: one event per line from Python, passed on as it
+    // arrives (a line can be split across network reads, so partial lines are buffered).
+    res.write(`data: ${JSON.stringify({ type: "intent", data: "general" })}\n\n`);
+    const forward = (line) => {
+      if (!line.trim()) return;
+      let event;
+      try {
+        event = JSON.parse(line);
+      } catch {
+        return; // not one of ours; never pass unparsed text on
+      }
+      if (!["text", "metadata", "done", "error"].includes(event.type)) return;
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    };
+    const decoder = new TextDecoder();
+    let buffered = "";
+    for await (const chunk of pythonResponse.body) {
+      buffered += decoder.decode(chunk, { stream: true });
+      const lines = buffered.split("\n");
+      buffered = lines.pop();
+      lines.forEach(forward);
     }
-
-    // Send metadata
-    res.write(
-      `data: ${JSON.stringify({
-        type: "metadata",
-        // Built by the RAG service and stored with the answer, so the live view and a
-        // reopened chat show the same thing. `saved` is false if it could not be stored.
-        data: { ...result.metadata, saved: result.saved !== false },
-      })}\n\n`
-    );
-
-    // Send done
-    res.write(
-      `data: ${JSON.stringify({
-        type: "done",
-      })}\n\n`
-    );
+    forward(buffered + decoder.decode());
 
     res.end();
   } catch (error) {
+    if (error?.name === "AbortError" || res.destroyed) return; // the browser stopped or left
     const ref = logError(error, "document query");
     res.write(
       `data: ${JSON.stringify({

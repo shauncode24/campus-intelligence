@@ -252,7 +252,7 @@ export default function Message({ message, isStreaming, isLast, onRegenerate, on
 
             {!isStreaming && m.stopped && (
               <div className="stopped-note">
-                Stopped. The complete answer is saved in this chat.
+                Stopped. What you saw is saved in this chat.
               </div>
             )}
 

@@ -17,10 +17,10 @@ http.createServer((req, res) => {
     const body = raw ? JSON.parse(raw) : {};
     pythonCalls.push({ url: req.url, body });
     res.setHeader("Content-Type", "application/json");
-    if (req.url === "/query") {
+    if (req.url === "/query/stream") {
       if (String(body.question).includes("BUDGET")) { res.statusCode = 429; return res.end(JSON.stringify({ detail: "You've reached today's question limit. Please try again tomorrow." })); }
       if (String(body.question).includes("BOOM")) { res.statusCode = 500; return res.end(SECRET); }
-      return res.end(JSON.stringify({ answer: "Fees are due 5 May.", sources: [], cached: false, answered: true }));
+      return res.end(JSON.stringify({ type: "text", data: "Fees are due 5 May." }) + "\n" + JSON.stringify({ type: "done" }) + "\n");
     }
     if (req.url === "/process-document" && body.documentId === "docX") { res.statusCode = 500; return res.end(SECRET); }
     res.end(JSON.stringify({ success: true, totalChunks: 1 }));
@@ -72,7 +72,7 @@ check("429 has a Retry-After header", Number(r.headers.get("retry-after")) >= 1)
 const bobRes = await q("user:bob", "hello");
 await bobRes.text(); // wait for the stream to finish so the Python call has happened
 check("another user is unaffected", bobRes.status === 200);
-check("the blocked requests never reached Python", pythonCalls.filter((c) => c.url === "/query").length === 3 + 1);
+check("the blocked requests never reached Python", pythonCalls.filter((c) => c.url === "/query/stream").length === 3 + 1);
 
 // ---- Python's daily-budget 429 is passed on as a user-facing message ----
 r = await q("user:carol", "BUDGET please");
