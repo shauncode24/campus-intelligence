@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: backend/python/requirements.txt
 
       - name: Cache the embedding models (about 600 MB, downloaded by the tests)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/huggingface
           key: hf-models-${{ hashFiles('backend/python/config.py') }}
