@@ -3,9 +3,11 @@ Chat repository for managing chat sessions
 """
 from firebase_admin import firestore
 from database.firebase_client import firebase_client
+from utils.threads import offload_async_methods
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 
+@offload_async_methods
 class ChatRepository:
     @staticmethod
     async def user_owns_chat(user_id: str, chat_id: str) -> bool:

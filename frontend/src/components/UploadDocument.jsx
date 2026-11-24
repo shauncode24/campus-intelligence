@@ -208,6 +208,75 @@ export default function UploadDocument() {
     return documentId;
   };
 
+  // The server's stage names -> the stages shown in the UI
+  const UI_STAGE = {
+    queued: "preparing",
+    downloading: "preparing",
+    reading: "reading",
+    storing: "storing",
+    done: "storing",
+  };
+  const POLL_INTERVAL_MS = 2000;
+  const MAX_WAIT_MS = 30 * 60 * 1000;
+
+  /**
+   * Poll the document until the server says it is Processed (resolves with the
+   * status) or Error/Cancelled (throws). Occasional network failures are retried.
+   */
+  const waitForProcessing = async (documentId, fileName) => {
+    const startedAt = Date.now();
+    let failures = 0;
+    let lastMessage = "";
+
+    for (;;) {
+      if (Date.now() - startedAt > MAX_WAIT_MS) {
+        throw new Error(
+          "Processing is taking longer than expected. Check the Documents page later."
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+
+      let status;
+      try {
+        const res = await apiFetch(
+          `${VITE_API_BASE_URL}/documents/processing-status/${documentId}`
+        );
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        status = await res.json();
+        failures = 0;
+      } catch {
+        failures += 1;
+        if (failures >= 5) {
+          throw new Error("Lost contact with the server while processing.");
+        }
+        continue;
+      }
+
+      if (status.status === "Processed") return status;
+      if (status.status === "Error" || status.status === "Cancelled") {
+        throw new Error(
+          status.errorMessage ||
+            (status.status === "Cancelled"
+              ? "Processing was cancelled"
+              : "Processing failed")
+        );
+      }
+
+      const p = status.processing;
+      if (p) {
+        const update = {
+          stage: UI_STAGE[p.stage] || "preparing",
+          percent: p.percent,
+        };
+        if (p.message && p.message !== lastMessage) {
+          update.log = p.message;
+          lastMessage = p.message;
+        }
+        updateProcessingState(fileName, update);
+      }
+    }
+  };
+
   const processDocument = async (file) => {
     const fileName = file.name;
 
@@ -216,7 +285,7 @@ export default function UploadDocument() {
       const fileUrl = await uploadToSupabase(file);
 
       updateProcessingState(fileName, {
-        stage: "extracting",
+        stage: "preparing",
         log: "Creating database record...",
       });
 
@@ -224,11 +293,11 @@ export default function UploadDocument() {
       const documentId = await createFirestoreDocument(file, fileUrl);
 
       updateProcessingState(fileName, {
-        stage: "extracting",
-        log: "Extracting text and images...",
+        stage: "preparing",
+        log: "Starting processing...",
       });
 
-      // Call Python RAG service
+      // The server starts the job and answers at once (202); it does not wait for it
       const response = await apiFetch(`${VITE_API_BASE_URL}/documents/process`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -237,34 +306,16 @@ export default function UploadDocument() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Processing failed");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Processing failed to start");
       }
 
-      updateProcessingState(fileName, {
-        stage: "embedding",
-        log: "Generating embeddings...",
-      });
-
-      // Poll for completion or wait for response
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      updateProcessingState(fileName, {
-        stage: "storing",
-        log: "Storing in database...",
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      updateProcessingState(fileName, {
-        stage: "indexing",
-        log: "Creating search index...",
-      });
-
-      const processResult = await response.json();
+      // Real progress, written by the processing job onto the document
+      const finished = await waitForProcessing(documentId, fileName);
 
       updateProcessingState(fileName, {
         stage: "complete",
+        percent: 100,
         log: "Processing complete!",
       });
 
@@ -272,9 +323,9 @@ export default function UploadDocument() {
         status: "success",
         fileName: file.name,
         documentId,
-        chunksCreated: processResult.totalChunks || 0,
-        textChunks: processResult.textChunks || 0,
-        visualChunks: processResult.visualChunks || 0,
+        chunksCreated: finished.chunksCount || 0,
+        textChunks: finished.textChunks || 0,
+        visualChunks: finished.visualChunks || 0,
       };
     } catch (error) {
       updateProcessingState(fileName, {

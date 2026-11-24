@@ -146,149 +146,129 @@ router.delete("/:documentId", async (req, res) => {
 });
 
 /**
- * POST /documents/process
- * Process a newly uploaded document via Python RAG service
+ * Ask the Python service to start processing a document. It answers 202 at once and
+ * does the work in the background; progress and the outcome are written to the
+ * document record (`status`, `processing`, `errorMessage`).
+ *
+ * Returns {accepted: true} or {accepted: false, status, message} for a refusal that
+ * is the caller's business (409: already being processed, 404, 400: unsafe address).
+ * Anything else throws.
  */
-router.post("/process", async (req, res) => {
-  try {
-    // Only the id is accepted. The file URL is read from the stored record by
-    // the Python service, never taken from the request (SSRF).
-    const { documentId } = req.body;
-
-    if (typeof documentId !== "string" || !documentId) {
-      return res.status(400).json({
-        error: "Missing required fields",
-        message: "documentId is required",
-      });
-    }
-
-    const docRef = db.collection("documents").doc(documentId);
-    if (!(await docRef.get()).exists) {
-      return res.status(404).json({ error: "Document not found" });
-    }
-
-    console.log(`📄 Starting processing for document: ${documentId}`);
-
-    // Update status to processing
-    await docRef.update({
-      status: "Processing",
-      processingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    // Call Python RAG service
-    const response = await fetch(`${PYTHON_RAG_URL}/process-document`, {
-      method: "POST",
-      headers: pythonHeaders(req),
-      body: JSON.stringify({ documentId }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Python RAG service error: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-
-    console.log(`✅ Processing complete:`, result);
-
-    res.json({
-      success: true,
-      message: "Document processed successfully",
-      ...result,
-    });
-  } catch (error) {
-    console.error("❌ Error processing document:", error);
-
-    // Update document status to error
-    if (req.body.documentId) {
-      try {
-        await db.collection("documents").doc(req.body.documentId).update({
-          status: "Error",
-          errorMessage: error.message,
-          errorAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch (updateError) {
-        console.error("Failed to update error status:", updateError);
-      }
-    }
-
-    failInternal(res, error, "Failed to process document");
+async function startProcessing(req, documentId) {
+  const response = await fetch(`${PYTHON_RAG_URL}/process-document`, {
+    method: "POST",
+    headers: pythonHeaders(req),
+    body: JSON.stringify({ documentId }),
+  });
+  if (response.status === 202 || response.ok) {
+    return { accepted: true };
   }
-});
+  if ([400, 404, 409].includes(response.status)) {
+    const body = await response.json().catch(() => ({}));
+    return {
+      accepted: false,
+      status: response.status,
+      message: typeof body.detail === "string" ? body.detail : "The document could not be processed",
+    };
+  }
+  throw new Error(`Python RAG service error: ${response.status}`);
+}
+
+/** Mark a document as failed so it never stays stuck in "Processing". */
+async function recordFailure(documentId, error) {
+  try {
+    await db.collection("documents").doc(documentId).update({
+      status: "Error",
+      errorMessage: "Could not start processing. Please try again.",
+      errorDetail: String(error.message || error).slice(0, 500), // admin-only record
+      errorAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (updateError) {
+    console.error("Failed to update error status:", updateError);
+  }
+}
 
 /**
- * POST /documents/reprocess
- * Reprocess an existing document
+ * POST /documents/process   and   POST /documents/reprocess
+ *
+ * Start (re)processing a document. Returns 202 immediately; poll
+ * GET /documents/processing-status/:documentId for real progress.
+ * Only the id is accepted: the file URL is read from the stored record by the
+ * Python service, never taken from the request (SSRF).
  */
-router.post("/reprocess", async (req, res) => {
-  try {
-    const { documentId } = req.body;
-
-    if (!documentId) {
-      return res.status(400).json({ error: "documentId is required" });
-    }
-
-    // Get document details
-    const docSnapshot = await db.collection("documents").doc(documentId).get();
-
-    if (!docSnapshot.exists) {
-      return res.status(404).json({ error: "Document not found" });
-    }
-
-    const docData = docSnapshot.data();
-
-    console.log(`🔄 Reprocessing document: ${documentId}`);
-
-    // Update status to processing
-    await db.collection("documents").doc(documentId).update({
-      status: "Processing",
-      reprocessingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    // Call Python RAG service
-    const response = await fetch(`${PYTHON_RAG_URL}/process-document`, {
-      method: "POST",
-      headers: pythonHeaders(req),
-      body: JSON.stringify({ documentId }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Python RAG service error: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-
-    // The re-indexed content may differ, so cached answers citing this
-    // document are no longer trustworthy.
-    const cacheEntriesRemoved = await invalidateCachedAnswers(db, documentId);
-
-    console.log(`✅ Reprocessing complete:`, result);
-
-    res.json({
-      success: true,
-      message: "Document reprocessed successfully",
-      ...result,
-      cacheEntriesRemoved,
-    });
-  } catch (error) {
-    console.error("❌ Error reprocessing document:", error);
-
-    // Never leave the document stuck in "Processing" (it would stay hidden
-    // from answers forever): record the failure like /process does.
-    if (req.body && typeof req.body.documentId === "string") {
-      try {
-        await db.collection("documents").doc(req.body.documentId).update({
-          status: "Error",
-          errorMessage: error.message,
-          errorAt: admin.firestore.FieldValue.serverTimestamp(),
+function processHandler({ reprocess }) {
+  return async (req, res) => {
+    const documentId = req.body && req.body.documentId;
+    try {
+      if (typeof documentId !== "string" || !documentId) {
+        return res.status(400).json({
+          error: "Missing required fields",
+          message: "documentId is required",
         });
-      } catch (updateError) {
-        console.error("Failed to update error status:", updateError);
       }
-    }
 
-    failInternal(res, error, "Failed to reprocess document");
-  }
-});
+      const docRef = db.collection("documents").doc(documentId);
+      const snap = await docRef.get();
+      if (!snap.exists) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      const previous = snap.data();
+      if (previous.status === "Deleting") {
+        return res.status(409).json({ error: "Document is being deleted" });
+      }
+
+      console.log(`${reprocess ? "🔄 Reprocessing" : "📄 Starting processing for"} document: ${documentId}`);
+
+      // Python sets "Processing" itself once it accepts; setting it here too keeps the
+      // UI right if Python is slow to answer.
+      await docRef.update({
+        status: "Processing",
+        [reprocess ? "reprocessingStartedAt" : "processingStartedAt"]:
+          admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      let started;
+      try {
+        started = await startProcessing(req, documentId);
+      } catch (error) {
+        await recordFailure(documentId, error);
+        throw error;
+      }
+
+      if (!started.accepted) {
+        // Not started: put the document back the way it was (a 409 means a job is
+        // already running, which still shows "Processing").
+        if (started.status !== 409) {
+          await docRef.update({ status: previous.status || "Error" });
+        }
+        return res.status(started.status).json({ error: started.message, message: started.message });
+      }
+
+      // The re-indexed content may differ, so cached answers citing this document are
+      // no longer trustworthy. The document is hidden from answers until it finishes,
+      // so nothing new can be cached from it in the meantime.
+      let cacheEntriesRemoved;
+      if (reprocess) {
+        cacheEntriesRemoved = await invalidateCachedAnswers(db, documentId);
+      }
+
+      res.status(202).json({
+        success: true,
+        accepted: true,
+        documentId,
+        status: "Processing",
+        message: "Processing started",
+        ...(reprocess ? { cacheEntriesRemoved } : {}),
+      });
+    } catch (error) {
+      console.error(`❌ Error starting ${reprocess ? "reprocessing" : "processing"}:`, error);
+      failInternal(res, error, reprocess ? "Failed to reprocess document" : "Failed to process document");
+    }
+  };
+}
+
+router.post("/process", processHandler({ reprocess: false }));
+router.post("/reprocess", processHandler({ reprocess: true }));
 
 /**
  * GET /documents/rag-status
@@ -309,79 +289,6 @@ router.get("/rag-status", async (req, res) => {
       status: "unhealthy",
       error: "RAG service unavailable",
     });
-  }
-});
-
-router.post("/process-bulk", async (req, res) => {
-  try {
-    const { documents } = req.body;
-
-    if (!documents || !Array.isArray(documents) || documents.length === 0) {
-      return res.status(400).json({
-        error: "Invalid request",
-        message: "documents array is required",
-      });
-    }
-
-    console.log(
-      `📦 Starting bulk processing for ${documents.length} documents`
-    );
-
-    // Update all documents to processing status
-    const batch = db.batch();
-    documents.forEach((doc) => {
-      const docRef = db.collection("documents").doc(doc.documentId);
-      batch.update(docRef, {
-        status: "Processing",
-        processingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    });
-    await batch.commit();
-
-    // Call Python RAG service for bulk processing
-    const response = await fetch(`${PYTHON_RAG_URL}/process-document-bulk`, {
-      method: "POST",
-      headers: pythonHeaders(req),
-      body: JSON.stringify({
-        documents: documents.map((d) => ({ documentId: d.documentId })),
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Python RAG service error: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-
-    console.log(`✅ Bulk processing complete:`, result);
-
-    res.json({
-      success: true,
-      message: "Bulk processing completed",
-      ...result,
-    });
-  } catch (error) {
-    console.error("❌ Error in bulk processing:", error);
-
-    // Update documents to error status
-    if (req.body.documents) {
-      try {
-        const batch = db.batch();
-        req.body.documents.forEach((doc) => {
-          const docRef = db.collection("documents").doc(doc.documentId);
-          batch.update(docRef, {
-            status: "Error",
-            errorMessage: error.message,
-            errorAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        });
-        await batch.commit();
-      } catch (updateError) {
-        console.error("Failed to update error status:", updateError);
-      }
-    }
-
-    failInternal(res, error, "Failed to process documents in bulk");
   }
 });
 
@@ -440,9 +347,12 @@ router.get("/processing-status/:documentId", async (req, res) => {
     res.json({
       documentId,
       status: docData.status,
+      // real progress written by the processing job: {stage, percent, message, ...}
+      processing: docData.processing || null,
       chunksCount: docData.chunksCount,
       textChunks: docData.textChunks,
       visualChunks: docData.visualChunks,
+      imageStats: docData.imageStats || null,
       processedAt: docData.processedAt,
       errorMessage: docData.errorMessage,
     });

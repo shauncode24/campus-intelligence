@@ -29,7 +29,7 @@ class PDFProcessor:
         self.captioner = ImageCaptioner()
         self.last_image_stats = {}
     
-    def process_pdf(self, pdf_bytes: bytes, doc_id: str):
+    def process_pdf(self, pdf_bytes: bytes, doc_id: str, progress=None):
         """
         Process PDF and extract text chunks and images with embeddings
         Images are NOT stored - only their embeddings
@@ -37,6 +37,9 @@ class PDFProcessor:
         Args:
             pdf_bytes: PDF file as bytes
             doc_id: Document identifier
+            progress: optional callable(pages_done, total_pages), called before the first
+                page (0, n) and after each page. Whatever it raises (for example a
+                cancellation) propagates and stops the processing.
             
         Returns:
             tuple: (documents, embeddings) with one vector per document. Each document's
@@ -62,7 +65,10 @@ class PDFProcessor:
                 raise InvalidPdf(
                     f"PDF has {page_count} pages; the limit is {Config.MAX_PDF_PAGES}"
                 )
-            print(f"📄 Processing {len(doc)} pages...")
+            total_pages = len(doc)
+            print(f"📄 Processing {total_pages} pages...")
+            if progress:
+                progress(0, total_pages)
             
             for page_num, page in enumerate(doc):
                 print(f"   Page {page_num + 1}/{len(doc)}...")
@@ -82,6 +88,8 @@ class PDFProcessor:
                 )
                 all_docs.extend(image_docs)
                 all_embeddings.extend(image_embeddings)
+                if progress:
+                    progress(page_num + 1, total_pages)
             
             doc.close()
             self.last_image_stats = self._image_state["stats"]

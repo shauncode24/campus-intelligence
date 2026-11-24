@@ -6,8 +6,10 @@ import numpy as np
 from typing import List, Dict
 from firebase_admin import firestore
 from database.firebase_client import firebase_client
+from utils.threads import offload_async_methods
 from langchain_core.documents import Document
 
+@offload_async_methods
 class StorageService:
     @staticmethod
     def delete_stale_chunks(doc_id: str, keep_ids: set) -> int:
@@ -145,7 +147,10 @@ class StorageService:
             })
             print(f"✅ Updated document status: {doc_id}")
         except Exception as e:
-            print(f"⚠️ Error updating document status: {e}")
+            # Not swallowed: a document that finished indexing but could not be marked
+            # "Processed" would stay hidden from answers forever without anyone knowing.
+            print(f"❌ Error updating document status: {e}")
+            raise
 
     @staticmethod
     async def update_document_status_enhanced(doc_id: str, all_docs: List[Document], metadata: dict):

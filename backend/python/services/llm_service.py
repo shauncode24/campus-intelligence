@@ -10,6 +10,7 @@ import fitz
 import base64
 import re
 from utils.file_security import download_pdf
+from utils.threads import run_blocking
 
 NOT_FOUND_TOKEN = "NOT_FOUND"
 
@@ -103,34 +104,32 @@ class LLMService:
             # Download PDF (allow-listed host, no redirects, size/time capped)
             pdf_bytes = await download_pdf(file_url)
             
-            # Extract image
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-                tmp_file.write(pdf_bytes)
-                tmp_path = tmp_file.name
-            
-            try:
-                doc = fitz.open(tmp_path)
-                page = doc[page_num]
-                images = page.get_images(full=True)
-                
-                if img_index < len(images):
-                    xref = images[img_index][0]
-                    base_image = doc.extract_image(xref)
-                    image_bytes = base_image["image"]
-                    img_base64 = base64.b64encode(image_bytes).decode()
-                    doc.close()
-                    return img_base64
-                else:
-                    doc.close()
-                    return None
-                    
-            finally:
-                os.unlink(tmp_path)
-                
+            # Extract the image (PyMuPDF is synchronous: keep it off the event loop)
+            return await run_blocking(self._extract_image_base64, pdf_bytes, page_num, img_index)
+
         except Exception as e:
             print(f"❌ Error re-extracting image: {e}")
             return None
     
+    @staticmethod
+    def _extract_image_base64(pdf_bytes: bytes, page_num: int, img_index: int):
+        """Synchronous part of re-extraction: returns the base64 image, or None."""
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+            tmp_file.write(pdf_bytes)
+            tmp_path = tmp_file.name
+        try:
+            doc = fitz.open(tmp_path)
+            try:
+                images = doc[page_num].get_images(full=True)
+                if img_index >= len(images):
+                    return None
+                base_image = doc.extract_image(images[img_index][0])
+                return base64.b64encode(base_image["image"]).decode()
+            finally:
+                doc.close()
+        finally:
+            os.unlink(tmp_path)
+
     async def create_multimodal_message(self, query, retrieved_docs, doc_names=None):
         """
         Create the multimodal user message: labelled context excerpts (and

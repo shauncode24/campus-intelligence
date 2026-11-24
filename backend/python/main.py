@@ -5,7 +5,9 @@ from fastapi import FastAPI, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+import time
 import warnings
+from contextlib import asynccontextmanager
 
 warnings.filterwarnings('ignore')
 
@@ -36,6 +38,8 @@ from services.pdf_processor import pdf_processor
 from services.retrieval_service import retrieval_service
 from services.llm_service import llm_service, is_not_found
 from services.query_condenser import query_condenser, needs_condensing, CondenseResult
+from services.ingestion import ingestion_manager, fail_interrupted_jobs
+from utils.threads import run_blocking
 
 # Utilities
 from utils.intent_detector import detect_intent
@@ -43,6 +47,7 @@ from utils.client_metadata import build_message_metadata
 from utils.deadline_extractor import extract_deadline_info
 from utils.confidence_calculator import calculate_confidence
 from utils.file_security import (
+    validate_file_url,
     download_pdf,
     UnsafeFileUrl,
     FileTooLarge,
@@ -84,7 +89,17 @@ class ProcessingStatus(BaseModel):
 Config.validate()
 
 # Initialize FastAPI app
-app = FastAPI(title="Campus Intel RAG Service", version="1.0.0")
+@asynccontextmanager
+async def lifespan(_app):
+    # Jobs live in this process: any document still "Processing" lost its job.
+    try:
+        await run_blocking(fail_interrupted_jobs)
+    except Exception as e:
+        print(f"⚠️ Could not check for interrupted ingestion jobs: {e}")
+    yield
+
+
+app = FastAPI(title="Campus Intel RAG Service", version="1.0.0", lifespan=lifespan)
 
 async def _ip_rate_limit(request: Request, call_next):
     """Coarse per-IP limit on every request (protects even unauthenticated endpoints)."""
@@ -204,7 +219,7 @@ async def query_documents(
             history = [turn.model_dump() for turn in request.history]
         if Config.QUERY_CONDENSING and needs_condensing(request.question, history):
             consume_llm_budget(user_id)   # a model call: charged like any other
-            condensed = query_condenser.condense(request.question, history)
+            condensed = await run_blocking(query_condenser.condense, request.question, history)
         else:
             condensed = CondenseResult(request.question, attempted=False, resolved=True)
         question = condensed.standalone          # what we search for and answer
@@ -221,10 +236,10 @@ async def query_documents(
         print(f"🎯 Detected intent: {intent}")
         
         # Embed the query
-        query_embedding = embedding_service.embed_query(question)
+        query_embedding = await run_blocking(embedding_service.embed_query, question)
         # CLIP vector of the question, used only to look for relevant images
         image_query_embedding = (
-            embedding_service.embed_image_query(question)
+            await run_blocking(embedding_service.embed_image_query, question)
             if embedding_service.supports_images else None
         )
         print("✅ Query embedded")
@@ -269,7 +284,8 @@ async def query_documents(
         print("🤖 Generating new answer")
         
         # Retrieve relevant chunks
-        context_docs = retrieval_service.retrieve_multimodal(
+        context_docs = await run_blocking(
+            retrieval_service.retrieve_multimodal,
             query_embedding,
             request.documentIds,
             image_query_embedding=image_query_embedding
@@ -292,7 +308,7 @@ async def query_documents(
         consume_llm_budget(user_id)
 
         # Sources first: they carry the document titles used to label the context
-        sources = retrieval_service.prepare_sources(relevant_docs)
+        sources = await run_blocking(retrieval_service.prepare_sources, relevant_docs)
         doc_names = {s_['documentId']: s_['documentName'] for s_ in sources}
 
         # Create multimodal message with labelled excerpts (async: re-extracts images)
@@ -301,7 +317,7 @@ async def query_documents(
         )
 
         # Generate answer (grounded: the model must reply NOT_FOUND if unsupported)
-        answer = llm_service.generate_answer(message)
+        answer = await run_blocking(llm_service.generate_answer, message)
 
         if is_not_found(answer):
             return await _decline(
@@ -353,77 +369,56 @@ async def query_documents(
     except Exception as e:
         raise internal_error(e, "query")
 
-@app.post("/process-document", dependencies=[Depends(admin_limit)])
+@app.post("/process-document", status_code=202, dependencies=[Depends(admin_limit)])
 async def process_document(
     request: ProcessDocumentRequest,
     admin_id: str = Depends(require_admin),
 ):
-    """Process a document and store in Firebase (admin only)"""
+    """
+    Start processing a document in the background (admin only). Returns 202 at once;
+    progress and the outcome are written to the document record
+    (`status`, `processing`, `errorMessage`) for the admin UI to poll.
+    """
     try:
-        print(f"📄 Processing document: {request.documentId}")
-
         if not firebase_client.is_connected:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
 
         # The file URL comes from the stored record, never from the request
-        doc_snapshot = firebase_client.db.collection('documents').document(request.documentId).get()
+        ref = firebase_client.db.collection('documents').document(request.documentId)
+        doc_snapshot = await run_blocking(ref.get)
         if not doc_snapshot.exists:
             raise HTTPException(status_code=404, detail="Document not found")
-        file_url = doc_snapshot.to_dict().get('fileUrl')
+        record = doc_snapshot.to_dict() or {}
 
-        # Download PDF (allow-listed host, no redirects, size/time capped)
+        # Refuse an unsafe address now, so the admin sees it immediately
         try:
-            pdf_bytes = await download_pdf(file_url)
+            validate_file_url(record.get('fileUrl'))
         except UnsafeFileUrl as e:
             raise HTTPException(status_code=400, detail=str(e))
-        except FileTooLarge as e:
-            raise HTTPException(status_code=413, detail=str(e))
-        except InvalidPdf as e:
-            raise HTTPException(status_code=415, detail=str(e))
-        except DownloadFailed as e:
-            raise HTTPException(status_code=502, detail=str(e))
 
-        print(f"✅ Downloaded PDF: {len(pdf_bytes)} bytes")
+        if record.get('status') in ('Deleting', 'Cancelled'):
+            raise HTTPException(status_code=409, detail=f"Document is {record.get('status')}")
+        if ingestion_manager.is_active(request.documentId):
+            raise HTTPException(status_code=409, detail="This document is already being processed")
 
-        # Process PDF - returns (docs, embeddings) only
-        try:
-            all_docs, all_embeddings = pdf_processor.process_pdf(
-                pdf_bytes,
-                request.documentId
-            )
-        except InvalidPdf as e:
-            raise HTTPException(status_code=422, detail=str(e))
+        await run_blocking(ref.update, {
+            "status": "Processing",
+            "processing": {"stage": "queued", "percent": 0, "message": "Queued",
+                           "updatedAtMs": int(time.time() * 1000)},
+        })
+        ingestion_manager.start(request.documentId)
+        print(f"📄 Queued processing for document: {request.documentId}")
 
-        # Store in Firebase - no image data
-        await storage_service.store_chunks(
-            request.documentId,
-            all_docs,
-            all_embeddings,
-            embedding_model=embedding_service.model_id
-        )
-        
-        # Update document status
-        await storage_service.update_document_status(request.documentId, all_docs)
-        
-        return {
-            "success": True,
-            "documentId": request.documentId,
-            "totalChunks": len(all_docs),
-            "textChunks": len([d for d in all_docs if d.metadata.get("type") == "text"]),
-            "visualChunks": len([d for d in all_docs if d.metadata.get("type") == "image"]),
-            "imageStats": pdf_processor.last_image_stats,
-            "note": "Images are described and indexed as text (or CLIP vectors); pixels are not stored"
-        }
-        
+        return {"accepted": True, "documentId": request.documentId, "status": "Processing"}
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Error processing document: {e}")
-        import traceback
-        traceback.print_exc()
         raise internal_error(e)
+
+
 @app.get("/health", response_model=HealthResponse)
-async def health_check():
+def health_check():
     """Health check endpoint"""
     chunk_count = 0
     
@@ -444,7 +439,7 @@ async def health_check():
 
 
 @app.get("/faq")
-async def get_faq(limit: int = Query(default=50, ge=1, le=100)):
+def get_faq(limit: int = Query(default=50, ge=1, le=100)):
     """
     Public FAQ: only entries an administrator wrote and published. It is never
     built from users' questions (see database/faq_repository.py).
@@ -533,7 +528,7 @@ async def delete_user_question(historyId: str, user_id: str = Depends(get_curren
 
 
 @app.get("/documents/{documentId}/exists")
-async def check_document_exists(documentId: str):
+def check_document_exists(documentId: str):
     """Check if a document exists in Firebase"""
     try:
         if not firebase_client.is_connected:
@@ -590,7 +585,7 @@ async def update_personal_note(
         raise internal_error(e)
 
 @app.post("/check-duplicate", dependencies=[Depends(admin_limit)])
-async def check_duplicate_document(
+def check_duplicate_document(
     name: str,
     department: str,
     admin_id: str = Depends(require_admin),

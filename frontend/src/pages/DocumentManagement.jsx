@@ -89,15 +89,14 @@ export default function DocumentManagement() {
       const result = await response.json();
 
       if (response.ok) {
-        alert(
-          `✅ Document reprocessed successfully!\n\n` +
-            `📊 Chunks created: ${result.totalChunks}\n` +
-            `📝 Text: ${result.textChunks} · 🖼️ Images: ${result.visualChunks}`
+        // 202: the work continues on the server. The document is hidden from
+        // answers until it finishes; refresh the list to see the result.
+        toast.success(
+          "Reprocessing started. It runs in the background; refresh in a moment to see the result."
         );
-        // Refresh documents list
         fetchDocuments();
       } else {
-        alert(`Error: ${result.message}`);
+        toast.error(result.message || "Could not start reprocessing");
         fetchDocuments();
       }
     } catch (err) {

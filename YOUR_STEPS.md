@@ -4,7 +4,7 @@ Living checklist. Claude updates it after every roadmap item. It assumes **nothi
 Do the sections **in order**: later ones depend on earlier ones. Commands are for **Windows PowerShell**
 unless marked otherwise. `<angle brackets>` are values you fill in.
 
-**Last updated:** after P1-5.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5.
+**Last updated:** after P1-6.  **Covers:** P0-1 … P0-9, P1-1 (partly), P1-2, P1-3, P1-4, P1-5, P1-6.
 
 Legend: ☐ = to do. ⚠️ = skipping it breaks something. 💸 = costs Gemini quota. 🔒 = security.
 
@@ -20,8 +20,20 @@ git status --short
 git log --oneline -8
 ```
 
-The last commit you should see is the P1-4 one ("Make follow-up questions work…"). P1-5's changes
-are uncommitted. Message for it:
+The last commit you should see is the P1-5 one ("Save chats on the server…"). P1-6's changes are
+uncommitted. Message for it:
+
+```
+Process documents in the background; keep the service responsive (P1-6)
+
+Upload/reprocess return 202 and a job reports real progress on the document;
+cancel/delete stop it; interrupted jobs are failed at start-up. Blocking Firestore,
+model and PDF work moved off the event loop. Removes the dead bulk route.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+```
+
+(For reference, the P1-5 message was:)
 
 ```
 Save chats on the server in one atomic write; fix Save and long chats (P1-5)
@@ -132,7 +144,7 @@ private key, client email, …), `GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI` (calenda
 | `ALLOWED_FILE_HOSTS` | your Supabase host, if it is not `qqdonjhgvuyjfusplexf.supabase.co` | PDF download allow-list (P0-3) |
 
 Everything else is optional with sensible defaults (rate limits, LLM budgets, `EMBEDDING_BACKEND`,
-`IMAGE_CAPTIONING`, `QUERY_CONDENSING`, …). They are documented in `backend\.env.example`.
+`IMAGE_CAPTIONING`, `QUERY_CONDENSING`, `MAX_CONCURRENT_INGESTS`, …). They are documented in `backend\.env.example`.
 
 💸 To avoid Gemini calls while testing uploads, put `IMAGE_CAPTIONING=false` in the env file for now.
 
@@ -272,6 +284,14 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 8. **Delete a document** (admin): then confirm the PDF file disappears from the Supabase bucket (needs the service key from 3.2) and the document no longer answers. (P0-6)
 9. **FAQ:** the public FAQ page is **empty** until an admin adds entries at `/admin/faq` and publishes them. (P0-8)
 10. **Rate limit:** send 11 questions within a minute → a friendly "too quickly" message. (P0-7)
+11. **Background upload (P1-6):** upload a multi-page PDF as admin → the progress bar moves with real percentages
+    and messages ("Reading page 3 of 12"), not in fixed jumps; the page does not freeze. While it runs, ask a
+    question in another tab: it must still answer promptly.
+12. **Queue:** upload two PDFs at once → the second shows "Waiting for other documents to finish" until the first ends.
+13. **Failure:** upload a file that is not a real PDF (rename a .txt) → it ends as Error with a readable message, not stuck.
+14. **Restart safety:** start an upload, stop the Python service mid-way, start it again → the document shows `Error`
+    ("interrupted because the service restarted"); Reprocess fixes it.
+15. **Reprocess (Documents page):** shows "Reprocessing started"; refresh after a moment → Processed again.
 
 ---
 
@@ -289,6 +309,9 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
   only the `documents` bucket allows public *read* and who may *write*; paste the policies to Claude if unsure.
 - ☐ **Tune the limit numbers** (rate limits, daily Gemini budget) after you see real traffic (P0-7).
 - ☐ **Counters are per process** (rate limits reset on restart; multiple instances do not share them).
+- ☐ **Run exactly one Python instance** (P1-6): the processing queue and the start-up cleanup of interrupted jobs live
+  in the process. If you deploy several instances, tell Claude: it needs a durable queue.
+- ☐ **Anyone who was mid-upload during a restart** must hit Reprocess (the document is marked Error on start-up).
 
 ## 12. Real-data work (needs you; this is what makes the numbers real)
 
@@ -323,3 +346,4 @@ Do these once, in order. Anything that fails: tell Claude exactly what you saw.
 ## Change log of this file
 
 - **After P1-5:** file created; covers P0-1 … P1-5.
+- **After P1-6:** commit message for P1-6; new optional `MAX_CONCURRENT_INGESTS`; smoke-test steps 11-15 (background upload, queue, failure, restart, reprocess); single-instance requirement.

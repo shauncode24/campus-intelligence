@@ -143,6 +143,9 @@ class Config:
     # when the question looks like it depends on earlier turns).
     QUERY_CONDENSING = os.getenv("QUERY_CONDENSING", "true").lower() in ("1", "true", "yes")
     MAX_HISTORY_MESSAGES = _int_env("MAX_HISTORY_MESSAGES", 6)
+    # Documents processed at the same time. Parsing/embedding is CPU-heavy; one at a time
+    # keeps question answering responsive. Further uploads wait in a queue.
+    MAX_CONCURRENT_INGESTS = _int_env("MAX_CONCURRENT_INGESTS", 1)
     
     @classmethod
     def get_firebase_credentials(cls):

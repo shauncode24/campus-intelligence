@@ -7,12 +7,11 @@ export default function ProcessingView({
   fileMetadata,
 }) {
   const stages = [
+    // These are the server's real stages (the job reports them), not timers
     { id: "uploading", label: "Uploading", icon: "📤" },
-    { id: "extracting", label: "Extracting", icon: "📄" },
-    { id: "images", label: "Images", icon: "🖼️" },
-    { id: "embedding", label: "Embedding", icon: "🧠" },
-    { id: "storing", label: "Storing", icon: "💾" },
-    { id: "indexing", label: "Indexing", icon: "🔍" },
+    { id: "preparing", label: "Preparing", icon: "📥" },
+    { id: "reading", label: "Reading pages", icon: "📄" },
+    { id: "storing", label: "Saving", icon: "💾" },
   ];
 
   const ProcessingCard = ({ file }) => {
@@ -35,10 +34,8 @@ export default function ProcessingView({
             <span className="processing-filename">
               {metadata.name || file.name}
             </span>
-            {state.progress && (
-              <span className="processing-progress">
-                {state.progress.current}/{state.progress.total}
-              </span>
+            {typeof state.percent === "number" && !isComplete && !isFailed && (
+              <span className="processing-progress">{state.percent}%</span>
             )}
           </div>
 

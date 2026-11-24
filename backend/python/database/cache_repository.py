@@ -6,10 +6,12 @@ import hashlib
 import numpy as np
 from firebase_admin import firestore
 from database.firebase_client import firebase_client
+from utils.threads import offload_async_methods
 from services.embedding_service import embedding_service
 from utils.entity_extractor import extract_entities, entities_match
 from config import Config
 
+@offload_async_methods
 class CacheRepository:
     @staticmethod
     def normalize_question(question: str) -> str:

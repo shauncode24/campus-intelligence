@@ -60,6 +60,9 @@ class FakeDocRef:
             *parents, leaf = key.split(".")          # 'metadata.favorite' updates inside the map
             for part in parents:
                 target = target.setdefault(part, {})
+            if value is _fs.DELETE_FIELD:
+                target.pop(leaf, None)
+                continue
             if isinstance(value, _Inc):
                 value = (target.get(leaf) or 0) + value.by
             target[leaf] = value
