@@ -1,0 +1,23 @@
+# Nothing here goes into the Node API image.
+
+# Secrets and local configuration: pass these at run time instead
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+
+# The RAG service has its own image and context
+python/
+venv/
+
+# Dependencies are installed inside the image
+node_modules/
+
+# Tests, scratch files, caches
+tests/
+temp/
+**/__pycache__/
+*.log
+.git

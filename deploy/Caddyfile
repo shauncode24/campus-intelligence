@@ -1,0 +1,39 @@
+# One domain for everything (P1-8). Caddy gets and renews the HTTPS certificate by itself.
+#
+#   https://campus.example.edu/          -> the web app (static files built from frontend/)
+#   https://campus.example.edu/api/...   -> Node API   (the "/api" prefix is removed)
+#   https://campus.example.edu/rag/...   -> RAG service (the "/rag" prefix is removed)
+#
+# Build the frontend with  VITE_API_BASE_URL=https://campus.example.edu/api
+#                          VITE_PYTHON_RAG_URL=https://campus.example.edu/rag
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	# Answers stream as they are written: do not buffer them
+	handle_path /api/* {
+		reverse_proxy node-api:5000 {
+			flush_interval -1
+		}
+	}
+	handle_path /rag/* {
+		reverse_proxy rag:8000 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		root * /srv/www
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Caddy replaces any X-Forwarded-For a visitor sends with the real address, which is what
+	# the services' per-IP limits rely on (TRUST_PROXY=1 below).
+}

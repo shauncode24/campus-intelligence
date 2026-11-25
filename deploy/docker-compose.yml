@@ -1,0 +1,72 @@
+# One machine, three containers (P1-8):  caddy (HTTPS + web app)  ->  node-api  ->  rag
+#
+#   cp deploy/.env.example deploy/.env      (and fill it in)
+#   docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+#
+# Run exactly ONE rag container: the document queue, rate limits and daily budget live in its
+# memory (scaling out needs a shared store first).
+name: campus-intelligence
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in deploy/.env, e.g. campus.example.edu}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../frontend/dist:/srv/www:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - node-api
+      - rag
+    networks:
+      campus:
+        ipv4_address: 172.28.0.2
+
+  node-api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: ${SECRETS_ENV_FILE:?set SECRETS_ENV_FILE in deploy/.env}
+    environment:
+      PORT: "5000"
+      PYTHON_RAG_URL: http://rag:8000
+      TRUST_PROXY: "1"                       # Caddy sets X-Forwarded-For
+      FRONTEND_URL: https://${SITE_ADDRESS}
+      CORS_ORIGINS: https://${SITE_ADDRESS}
+    networks:
+      campus:
+        ipv4_address: 172.28.0.10
+
+  rag:
+    build:
+      context: ../backend/python
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: ${SECRETS_ENV_FILE}
+    environment:
+      PORT: "8000"
+      TRUST_PROXY: "1"                       # browsers reach it through Caddy
+      TRUSTED_PROXY_IPS: 172.28.0.10         # the Node API forwards each student's real IP (X-Client-IP)
+      CORS_ORIGINS: https://${SITE_ADDRESS}
+    networks:
+      campus:
+        ipv4_address: 172.28.0.11
+    # models need RAM: see DEPLOY.md for sizing
+    mem_limit: ${RAG_MEMORY_LIMIT:-6g}
+
+networks:
+  campus:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  caddy_data:
+  caddy_config:
