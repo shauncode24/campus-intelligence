@@ -80,6 +80,9 @@ class VersionCase(IngestCase):
         super().setUp()
         from services.retrieval_service import retrieval_service as rs
         rs.retrieve_multimodal = self._saved[3]          # use the REAL retrieval, not the follow-up fake
+        # these tests edit document records directly (no epoch bump), so read the live set fresh
+        self.addCleanup(setattr, type(rs), "LIVE_SET_TTL_SECONDS", type(rs).LIVE_SET_TTL_SECONDS)
+        type(rs).LIVE_SET_TTL_SECONDS = 0
         self.v1 = self.seed_document("Fee Policy", V1_TEXT, version="v1", effectiveDate="2024-01-01")
 
     def seed_document(self, name, text, **extra):

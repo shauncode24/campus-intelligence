@@ -9,6 +9,9 @@ class ProcessDocumentRequest(BaseModel):
     # Only the id is accepted. The file URL is always read from the stored
     # document record, never from the request (SSRF).
     documentId: str
+    # Re-processing a document that is live: keep it answering from its current version until the
+    # new one is ready (ignored for a document that is not live)
+    reprocess: bool = False
 
 class HistoryTurn(BaseModel):
     """One earlier message in the chat. Used only to understand follow-up questions."""
@@ -58,6 +61,9 @@ class QueryResponse(BaseModel):
     messageId: Optional[str] = None
     # False if the answer could not be stored; the answer is still returned
     saved: bool = True
+    # Set when citations the model invented were removed AFTER the text had been streamed: the
+    # browser replaces what it showed with this
+    answerCorrected: Optional[str] = None
     # True when the user stopped the answer part-way: `answer` is only what had been generated
     stopped: bool = False
     # Exactly what the chat shows beside the answer (and what is stored with it), so the

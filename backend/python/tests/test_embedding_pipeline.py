@@ -27,6 +27,7 @@ from database.storage_service import storage_service
 from fake_firestore import FakeDB
 from services.embedding_service import embedding_service as es
 from services.pdf_processor import pdf_processor
+from services.vector_index import vector_index  # noqa: E402
 from services.retrieval_service import retrieval_service
 
 BGE = Config.BGE_MODEL_NAME
@@ -253,6 +254,8 @@ class TestRetrievalRouting(DbCase):
             if c["type"] == "text":
                 c["embeddingModel"] = "someone/else"
         bump_epoch(self.db)           # chunks changed behind this process: the epoch is how it finds out
+        self.retrieve(image_query_embedding=None)        # may still use the previous index while the new one is built
+        vector_index.wait_for_background()
         docs, log = self.retrieve(image_query_embedding=None)
         self.assertEqual(docs, [])
         self.assertIn("different embedding model", log)

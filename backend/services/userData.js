@@ -20,6 +20,7 @@ export const USER_COLLECTIONS = [
   { name: "feedback", field: "userId" },          // 👍/👎 with question and answer text
   { name: "calendar_events", field: "userId" },
   { name: "calendar_oauth_states", field: "uid" },
+  { name: "llm_usage", field: "uid" },             // how many model calls the person made today
 ];
 
 /** Collections with one document per user, the document id being the uid. */

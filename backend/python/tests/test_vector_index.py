@@ -36,6 +36,7 @@ class IndexCase(unittest.TestCase):
         firebase_client._db = self.db
         Config.VECTOR_INDEX_ENABLED, Config.VECTOR_INDEX_MAX_CHUNKS = True, 0
         vector_index.invalidate()
+        retrieval_service._live_cache = None
         retrieval_service._warned_cap = False
         self.rng = np.random.default_rng(7)
         self.chunk_reads = 0
@@ -120,6 +121,10 @@ class TestReadsAndInvalidation(IndexCase):
         self.add_doc("b", 20)
         self.ask()
         reads = self.chunk_reads
+        # (the live-document set is normally kept until the corpus epoch changes; here it is read fresh)
+        cls = type(retrieval_service)
+        self.addCleanup(setattr, cls, "LIVE_SET_TTL_SECONDS", cls.LIVE_SET_TTL_SECONDS)
+        cls.LIVE_SET_TTL_SECONDS = 0
         self.db.collection("documents").document("a").update({"status": "Deleting"})
         docs, _ = self.ask()
         self.assertTrue(docs and all(d.metadata["documentId"] == "b" for d in docs))

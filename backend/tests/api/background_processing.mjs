@@ -45,7 +45,8 @@ r = await call("POST", "/documents/reprocess", { documentId: "d2" });
 const body = await r.json();
 check("reprocess returns 202 and removes stale cached answers", r.status === 202 && body.cacheEntriesRemoved === 1);
 check("unrelated cache entries are kept", (await db.collection("questions").doc("q2").get()).exists);
-check("reprocess marks the document Processing", (await status("d2")) === "Processing");
+check("reprocess of a LIVE document keeps it Processed (still answering from its current version)", (await status("d2")) === "Processed");
+check("Python is told it is a re-process of a live document", calls.at(-1).body.reprocess === true && calls.at(-1).body.documentId === "d2");
 
 mode = "busy";
 await seed("d3", { status: "Processing" });

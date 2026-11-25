@@ -32,7 +32,8 @@ from services.pdf_processor import pdf_processor
 from utils.file_security import (
     DownloadFailed, FileTooLarge, InvalidPdf, UnsafeFileUrl, download_pdf,
 )
-from database.corpus_epoch import bump_epoch
+from database.corpus_epoch import bump_epoch, get_epoch
+from services.vector_index import vector_index
 from utils.observability import log_event
 from utils.threads import run_blocking
 
@@ -82,7 +83,9 @@ class _Progress:
     def check(self):
         """Raise JobCancelled unless the document is still being processed."""
         snap = self.ref.get()
-        if not snap.exists or (snap.to_dict() or {}).get("status") != "Processing":
+        record = (snap.to_dict() or {}) if snap.exists else {}
+        # a re-process of a live document keeps its status "Processed" and is marked `reprocessing`
+        if not snap.exists or not (record.get("status") == "Processing" or record.get("reprocessing") is True):
             raise JobCancelled()
 
     def stage(self, stage: str, percent: int, message: str, force: bool = True):
@@ -141,11 +144,13 @@ class IngestionManager:
     async def _run(self, doc_id: str):
         ref = firebase_client.db.collection("documents").document(doc_id)
         progress = _Progress(doc_id)
+        keep_live, storing = False, False
         try:
             await run_blocking(progress.stage, "queued", 1, "Waiting for other documents to finish")
             async with self._semaphore():
                 await run_blocking(progress.stage, "downloading", 3, "Downloading the file")
                 record = await run_blocking(lambda: ref.get().to_dict() or {})
+                keep_live = record.get("reprocessing") is True and record.get("status") == "Processed"
                 pdf_bytes = await download_pdf(record.get("fileUrl"))
                 content_sha256 = hashlib.sha256(pdf_bytes).hexdigest()   # lets the upload form spot the same file twice
 
@@ -163,6 +168,7 @@ class IngestionManager:
                 warning = low_text_warning(text_stats)
 
                 await run_blocking(progress.stage, "storing", 88, f"Saving {len(all_docs)} passages")
+                storing = True       # from here the stored passages are being replaced: a failure can no longer leave the old version intact
                 await storage_service.store_chunks(
                     doc_id, all_docs, all_embeddings, embedding_model=embedding_service.model_id
                 )
@@ -188,23 +194,38 @@ class IngestionManager:
                         "warning": warning if warning else firestore.DELETE_FIELD,
                         "contentSha256": content_sha256,
                         "errorMessage": firestore.DELETE_FIELD,
+                        "reprocessing": firestore.DELETE_FIELD,
+                        "reprocessError": firestore.DELETE_FIELD,
                     },
                     also=retire,
                 )
                 # The set of documents that can answer questions just changed: every cached
                 # answer made before now is out of date.
                 await run_blocking(bump_epoch, firebase_client.db)
+                # Rebuild the in-memory search index now (in this worker thread) so the first
+                # question after a new document does not pay for it or run on an old index.
+                if Config.VECTOR_INDEX_ENABLED:
+                    try:
+                        epoch = await run_blocking(get_epoch, firebase_client.db)
+                        await run_blocking(vector_index.refresh, firebase_client.db, epoch, Config.VECTOR_INDEX_MAX_CHUNKS)
+                    except Exception as e:
+                        print(f"⚠️ Could not refresh the search index after ingestion: {e}")
                 print(f"✅ Ingestion finished for {doc_id}: {len(all_docs)} chunks")
                 log_event("ingest_done", documentId=doc_id, chunks=len(all_docs),
                           seconds=round(time.time() - progress.started, 1), images=image_stats)
         except JobCancelled:
             print(f"🚫 Ingestion of {doc_id} stopped: cancelled or deleted")
-            try:      # whatever this run wrote must not stay searchable
-                await run_blocking(storage_service.delete_stale_chunks, doc_id, set())
-            except Exception as e:
-                print(f"⚠️ Could not clean up chunks of {doc_id}: {e}")
+            if keep_live and not storing:
+                pass            # a live document's current passages are untouched: nothing to clean up
+            elif keep_live:
+                print(f"⚠️ Re-processing of {doc_id} was cancelled while saving: passages may be a mix of old and new")
+            else:
+                try:      # whatever this run wrote must not stay searchable
+                    await run_blocking(storage_service.delete_stale_chunks, doc_id, set())
+                except Exception as e:
+                    print(f"⚠️ Could not clean up chunks of {doc_id}: {e}")
         except Exception as e:
-            await self._fail(ref, doc_id, e)
+            await self._fail(ref, doc_id, e, keep_live=keep_live and not storing)
         finally:
             self._active.discard(doc_id)
 
@@ -227,7 +248,7 @@ class IngestionManager:
         print(f"📚 {old_id} will be superseded by {doc_id}")
         return [(old_id, {"supersededBy": doc_id, "supersededAt": firestore.SERVER_TIMESTAMP})]
 
-    async def _fail(self, ref, doc_id: str, error: Exception):
+    async def _fail(self, ref, doc_id: str, error: Exception, keep_live: bool = False):
         if isinstance(error, USER_FACING_ERRORS):
             message = str(error)
             print(f"❌ Ingestion of {doc_id} failed: {message}")
@@ -238,7 +259,19 @@ class IngestionManager:
             log_event("ingest_failed", documentId=doc_id, ref=reference, error=type(error).__name__)
         try:
             snap = await run_blocking(ref.get)
+            if keep_live and snap.exists and (snap.to_dict() or {}).get("reprocessing") is True:
+                # The new version could not be built, and nothing of the old one was touched: the
+                # document simply keeps answering from what it has. Tell the admin.
+                await run_blocking(ref.update, {
+                    "reprocessing": firestore.DELETE_FIELD,
+                    "reprocessError": message,
+                    "reprocessErrorAt": firestore.SERVER_TIMESTAMP,
+                    "processing": {"stage": "failed", "percent": 0, "message": message,
+                                   "updatedAtMs": int(time.time() * 1000)},
+                })
+                return
             if snap.exists and (snap.to_dict() or {}).get("status") == "Processing":
+                await run_blocking(bump_epoch, firebase_client.db)    # it stopped being live: refresh cached views
                 await run_blocking(ref.update, {
                     "status": "Error",
                     "errorMessage": message,
@@ -260,6 +293,15 @@ def fail_interrupted_jobs() -> int:
     if not db:
         return 0
     count = 0
+    for snap in db.collection("documents").where("reprocessing", "==", True).stream():
+        # a live document being re-processed: it kept answering from its old version the whole time
+        snap.reference.update({
+            "reprocessing": firestore.DELETE_FIELD,
+            "reprocessError": INTERRUPTED_MESSAGE,
+            "processing": {"stage": "failed", "percent": 0, "message": INTERRUPTED_MESSAGE,
+                           "updatedAtMs": int(time.time() * 1000)},
+        })
+        count += 1
     for snap in db.collection("documents").where("status", "==", "Processing").stream():
         snap.reference.update({
             "status": "Error",

@@ -31,7 +31,7 @@ from utils.rate_limit import (
 )
 from database.firebase_client import firebase_client
 from database.cache_repository import cache_repository
-from database.corpus_epoch import get_epoch
+from database.corpus_epoch import get_epoch, bump_epoch
 from database.chat_repository import chat_repository
 from database.faq_repository import faq_repository
 from database.storage_service import storage_service
@@ -41,19 +41,21 @@ from services.embedding_service import embedding_service
 from services.pdf_processor import pdf_processor
 from services.retrieval_service import retrieval_service
 from services.vector_index import vector_index
-from services.llm_service import llm_service, is_not_found, could_still_be_not_found
+from services.llm_service import llm_service, is_not_found, could_still_be_not_found, ModelUnavailable
 from services.query_condenser import query_condenser, needs_condensing, CondenseResult
 from services.ingestion import ingestion_manager, fail_interrupted_jobs
 from services.document_validity import describe
 from utils.threads import run_blocking
 from utils import observability as obs
 from utils.single_flight import in_flight, Hold
+from utils.daily_budget import daily_budget
 
 # Utilities
 from utils.intent_detector import detect_intent
 from utils.client_metadata import build_message_metadata
 from utils.deadline_extractor import extract_deadline_info
 from utils.confidence_calculator import calculate_confidence
+from utils.citation_check import check_citations
 from utils.file_security import (
     validate_file_url,
     download_pdf,
@@ -91,7 +93,35 @@ async def lifespan(_app):
         await run_blocking(fail_interrupted_jobs)
     except Exception as e:
         print(f"⚠️ Could not check for interrupted ingestion jobs: {e}")
+    # Today's model-call counts come back after a restart; later changes are saved in the background
+    try:
+        if firebase_client.is_connected:
+            n = await run_blocking(daily_budget.load, firebase_client.db)
+            print(f"📒 Daily budget restored ({n} counters)")
+    except Exception as e:
+        print(f"⚠️ Could not restore the daily budget: {e}")
+    saver = asyncio.create_task(_save_budget_forever())
+    from utils.alerts import send_alert
+    send_alert("Campus Intelligence service started.", key="started", min_interval=60)
     yield
+    saver.cancel()
+    try:
+        if firebase_client.is_connected:
+            await run_blocking(daily_budget.flush, firebase_client.db)
+    except Exception as e:
+        print(f"⚠️ Could not save the daily budget at shutdown: {e}")
+
+
+async def _save_budget_forever():
+    while True:
+        await asyncio.sleep(Config.BUDGET_SAVE_SECONDS)
+        try:
+            if firebase_client.is_connected:
+                await run_blocking(daily_budget.flush, firebase_client.db)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            print(f"⚠️ Could not save the daily budget (will retry): {e}")
 
 
 app = FastAPI(title="Campus Intel RAG Service", version="1.0.0", lifespan=lifespan)
@@ -130,6 +160,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["X-Request-ID"],       # so the browser can quote it when something fails
 )
 
 # Include chat routes WITHOUT /api prefix - mount at root level
@@ -291,7 +322,7 @@ async def query_documents_stream(
             except asyncio.CancelledError:
                 return
             except HTTPException as e:
-                yield _event("error", data=str(e.detail), userFacing=e.status_code < 500)
+                yield _event("error", data=str(e.detail), userFacing=e.status_code < 500 or isinstance(e, ModelUnavailable))
                 return
             except Exception as e:
                 ref = getattr(e, "ref", None)
@@ -404,7 +435,9 @@ async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=N
         # CLIP vector of the question, used only to look for relevant images
         image_query_embedding = (
             await run_blocking(embedding_service.embed_image_query, question)
-            if embedding_service.supports_images else None
+            if embedding_service.supports_images
+            and (not Config.VECTOR_INDEX_ENABLED or vector_index.may_have_image_chunks())
+            else None
         )
         print("✅ Query embedded")
         
@@ -423,7 +456,7 @@ async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=N
                 # version, has expired, or was deleted. Serve it only if every cited document
                 # is still live; otherwise answer afresh from the current documents.
                 cited = {s_.get('documentId') for s_ in found.get('sources', []) if s_.get('documentId')}
-                live_ids = await run_blocking(retrieval_service.live_document_ids, firebase_client.db)
+                live_ids = await run_blocking(retrieval_service.live_document_ids, firebase_client.db, None, None, corpus_epoch)
                 if cited - live_ids:
                     print(f"♻️ Cached answer ignored: it cites documents that are no longer current "
                           f"({len(cited - live_ids)})")
@@ -565,9 +598,16 @@ async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=N
 
         has_visual = any(doc.metadata.get('type') == 'image' for doc in relevant_docs)
 
-        # Calculate confidence
+        # Calculate confidence (from everything that was retrieved)
         confidence = calculate_confidence(sources)
         print(f"📊 Confidence: {confidence.get('level')} ({confidence.get('score')}%)")
+
+        # Citations must match what the model was shown: fabricated ones are removed from the text,
+        # and the sources listed are the ones actually cited (all of them if none checks out)
+        checked = check_citations(answer, sources)
+        obs.log_event("citations", cited=checked.cited, removed=checked.removed, uncited=checked.uncited)
+        answer, sources = checked.answer, checked.sources
+        answer_corrected = answer if checked.changed else None
         
         # Extract deadline info
         deadline = extract_deadline_info(answer, sources)
@@ -575,7 +615,7 @@ async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=N
         # Store in the shared cache under the STANDALONE question (never under an
         # unresolved follow-up)
         question_id = None
-        if cacheable:
+        if cacheable and not any(d.metadata.get('staleIndex') for d in relevant_docs):
             question_id = await cache_repository.store_question(
                 question,
                 query_embedding,
@@ -596,7 +636,8 @@ async def _answer_question_inner(request: QueryRequest, user_id: str, on_token=N
             cached=False,
             deadline=deadline,
             confidence=confidence,
-            standaloneQuestion=standalone_note
+            standaloneQuestion=standalone_note,
+            answerCorrected=answer_corrected,
         )
         # The user's own entry keeps the question as THEY typed it
         return await _save_exchange(
@@ -641,11 +682,14 @@ async def process_document(
         if ingestion_manager.is_active(request.documentId):
             raise HTTPException(status_code=409, detail="This document is already being processed")
 
-        await run_blocking(ref.update, {
-            "status": "Processing",
-            "processing": {"stage": "queued", "percent": 0, "message": "Queued",
-                           "updatedAtMs": int(time.time() * 1000)},
-        })
+        queued = {"stage": "queued", "percent": 0, "message": "Queued", "updatedAtMs": int(time.time() * 1000)}
+        keep_live = bool(request.reprocess) and record.get("status") == "Processed"
+        if keep_live:
+            # P1-12: the document keeps answering from its current version while the new one is built
+            await run_blocking(ref.update, {"reprocessing": True, "processing": queued})
+        else:
+            await run_blocking(ref.update, {"status": "Processing", "processing": queued})
+            await run_blocking(bump_epoch, firebase_client.db)     # it stopped being live: refresh cached views
         ingestion_manager.start(request.documentId)
         print(f"📄 Queued processing for document: {request.documentId}")
 

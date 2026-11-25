@@ -183,6 +183,22 @@ app.post(
       return res.end();
     }
 
+    // The model is stuck or overloaded (the RAG service gave up after its own timeout/retry):
+    // its message is written for students, so pass it on.
+    if (pythonResponse.status === 503) {
+      const body = await pythonResponse.json().catch(() => ({}));
+      res.write(
+        `data: ${JSON.stringify({
+          type: "error",
+          userFacing: true,
+          data: body.detail || "The assistant is not able to answer right now. Please try again in a moment.",
+        })}
+
+`
+      );
+      return res.end();
+    }
+
     if (!pythonResponse.ok || !pythonResponse.body) {
       const errorText = await pythonResponse.text();
       console.error(`❌ Python RAG error (${pythonResponse.status}): ${errorText}`);
@@ -227,6 +243,9 @@ app.post(
   }
   }
 );
+
+// Liveness for uptime monitors and container health checks: no database, no secrets
+app.get("/healthz", (req, res) => res.json({ status: "ok" }));
 
 // Calendar routes
 app.use("/calendar", calendarRoutes);

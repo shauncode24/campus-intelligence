@@ -48,8 +48,19 @@ class FakeDocRef:
     def get(self):
         return FakeSnapshot(self, self.collection.docs.get(self.id))
 
-    def set(self, data):
-        self.collection.docs[self.id] = _plain(data)
+    def set(self, data, merge=False):
+        if merge and self.id in self.collection.docs:
+            doc = self.collection.docs[self.id]
+            for key, value in _plain(data).items():
+                if isinstance(value, _Inc):
+                    value = (doc.get(key) or 0) + value.by
+                doc[key] = value
+            return
+        doc = _plain(data)
+        for key, value in list(doc.items()):
+            if isinstance(value, _Inc):
+                doc[key] = value.by
+        self.collection.docs[self.id] = doc
 
     def update(self, data):
         if self.id not in self.collection.docs:
@@ -140,20 +151,21 @@ class FakeBatch:
     def __init__(self, db):
         self.db, self.ops = db, []
 
-    def set(self, ref, data):
-        self.ops.append(("set", ref, data))
+    def set(self, ref, data, merge=False):
+        self.ops.append(("set", ref, data, merge))
 
     def update(self, ref, data):
-        self.ops.append(("update", ref, data))
+        self.ops.append(("update", ref, data, False))
 
     def delete(self, ref):
-        self.ops.append(("delete", ref, None))
+        self.ops.append(("delete", ref, None, False))
 
     def commit(self):
         self.db.batch_sizes.append(len(self.ops))
         assert len(self.ops) <= 500, "Firestore batches are limited to 500 operations"
-        for kind, ref, data in self.ops:
-            getattr(ref, kind)(*([data] if data is not None else []))
+        for kind, ref, data, merge in self.ops:
+            args = [data] if data is not None else []
+            getattr(ref, kind)(*args, **({"merge": True} if merge else {}))
         self.ops = []
 
 

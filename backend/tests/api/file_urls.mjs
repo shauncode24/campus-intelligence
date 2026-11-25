@@ -90,7 +90,7 @@ await db.collection("documents").doc("legacy").set({ name: "Legacy", status: "Pr
 pythonCalls.length = 0;
 r = await call("POST", "/documents/reprocess", { documentId: "legacy", fileUrl: "http://evil/x" });
 check("reprocess: forwards only documentId (Python re-validates stored URL)",
-  pythonCalls.length === 1 && JSON.stringify(pythonCalls[0].body) === JSON.stringify({ documentId: "legacy" }));
+  pythonCalls.length === 1 && JSON.stringify(pythonCalls[0].body) === JSON.stringify({ documentId: "legacy", reprocess: true }));
 
 // ---- bulk forwards ids only ----
 pythonCalls.length = 0;

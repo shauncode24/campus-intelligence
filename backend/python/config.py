@@ -69,11 +69,24 @@ class Config:
     MIN_TEXT_PAGE_FRACTION = float(os.getenv("MIN_TEXT_PAGE_FRACTION", "0.5"))
     MIN_IMAGE_PIXELS = int(os.getenv("MIN_IMAGE_PIXELS", "20000"))
     MIN_IMAGE_SCORE = float(os.getenv("MIN_IMAGE_SCORE", "0.26"))
+    # An image that was DESCRIBED at upload (caption) is searched and shown to the model through its
+    # description. Also attaching its pixels means downloading the whole PDF during the question (up to
+    # 50 MB) and sending image tokens, so it is off by default. Images that have no description (CLIP
+    # fallback) are always attached.
+    ATTACH_CAPTIONED_IMAGES = os.getenv("ATTACH_CAPTIONED_IMAGES", "false").lower() in ("1", "true", "yes")
+    # Extracted images are kept in memory so asking about the same figure again downloads nothing
+    IMAGE_CACHE_ENTRIES = int(os.getenv("IMAGE_CACHE_ENTRIES", "64"))
     GEMINI_MODEL_NAME = "gemini-2.5-flash"
     # Identical questions asked at the same moment share one model call (utils/single_flight.py)
     SINGLE_FLIGHT = os.getenv("SINGLE_FLIGHT", "true").lower() != "false"
     SINGLE_FLIGHT_WAIT_SECONDS = float(os.getenv("SINGLE_FLIGHT_WAIT_SECONDS", "120"))
     GEMINI_TEMPERATURE = 0.2
+    # Limits on the model call (P1-6). Without them one stuck call holds a request, a worker thread
+    # and a budget slot forever, and one long answer costs without bound.
+    GEMINI_TIMEOUT_SECONDS = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "60"))        # one request to the model
+    GEMINI_STREAM_STALL_SECONDS = float(os.getenv("GEMINI_STREAM_STALL_SECONDS", "30"))  # no new text for this long
+    GEMINI_MAX_RETRIES = int(os.getenv("GEMINI_MAX_RETRIES", "1"))                    # extra tries on a temporary error
+    GEMINI_MAX_OUTPUT_TOKENS = int(os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "4096"))     # includes the model's own thinking
     # Used only to ESTIMATE the cost shown in the metrics (US dollars per million tokens). These are
     # the list prices I knew for gemini-2.5-flash and may be out of date: check the current price
     # and set the env vars. They never affect behaviour.
@@ -165,6 +178,8 @@ class Config:
     # many (free) accounts.
     LLM_CALLS_PER_USER_PER_DAY = _int_env("LLM_CALLS_PER_USER_PER_DAY", 100)
     LLM_CALLS_GLOBAL_PER_DAY = _int_env("LLM_CALLS_GLOBAL_PER_DAY", 3000)
+    # How often the daily counts are written to the database (so a restart does not reset them)
+    BUDGET_SAVE_SECONDS = _int_env("BUDGET_SAVE_SECONDS", 10)
 
     # Input size limits
     MAX_QUESTION_CHARS = _int_env("MAX_QUESTION_CHARS", 2000)

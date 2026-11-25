@@ -60,8 +60,9 @@ class ChatRepository:
             return chat_id
             
         except Exception as e:
+            # Not swallowed: callers must be able to tell "the database failed" from "nothing there"
             print(f"❌ Error creating chat: {e}")
-            return None
+            raise
     
     @staticmethod
     async def get_user_chats(user_id: str, limit: int = 20) -> List[Dict]:
@@ -103,8 +104,9 @@ class ChatRepository:
             return chat_list
             
         except Exception as e:
+            # Not swallowed: callers must be able to tell "the database failed" from "nothing there"
             print(f"❌ Error fetching chats: {e}")
-            return []
+            raise
     
     @staticmethod
     async def delete_chat(user_id: str, chat_id: str) -> bool:
@@ -172,10 +174,9 @@ class ChatRepository:
             return True
             
         except Exception as e:
+            # Not swallowed: callers must be able to tell "the database failed" from "nothing there"
             print(f"❌ Error deleting chat: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
+            raise
     
     @staticmethod
     async def update_chat_title(user_id: str, chat_id: str, title: str) -> bool:
@@ -217,8 +218,9 @@ class ChatRepository:
             return True
             
         except Exception as e:
+            # Not swallowed: callers must be able to tell "the database failed" from "nothing there"
             print(f"❌ Error updating chat title: {e}")
-            return False
+            raise
     
     @staticmethod
     def derive_title(first_message: str) -> str:

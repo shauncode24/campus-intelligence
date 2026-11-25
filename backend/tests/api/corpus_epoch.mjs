@@ -17,7 +17,7 @@ await db.collection("documents").doc("a").set({ name: "A", status: "Processed", 
 await db.collection("documents").doc("b").set({ name: "B", status: "Processed", fileUrl: URL });
 check("epoch starts at 0", (await epoch()) === 0);
 check("delete works", (await call("DELETE", "/documents/a")).status === 200);
-check("deleting a document bumps the corpus epoch", (await epoch()) === 1);
-check("a second delete bumps it again", (await call("DELETE", "/documents/b")).status === 200 && (await epoch()) === 2);
-check("a failed delete (unknown document) does not bump it", (await call("DELETE", "/documents/zzz")).status === 404 && (await epoch()) === 2);
+check("deleting a document bumps the corpus epoch (when it stops being live, and when it is gone)", (await epoch()) === 2);
+check("a second delete bumps it again", (await call("DELETE", "/documents/b")).status === 200 && (await epoch()) === 4);
+check("a failed delete (unknown document) does not bump it", (await call("DELETE", "/documents/zzz")).status === 404 && (await epoch()) === 4);
 console.log(fails ? `\nFAILED: ${fails}` : "\nALL PASSED"); process.exit(fails ? 1 : 0);

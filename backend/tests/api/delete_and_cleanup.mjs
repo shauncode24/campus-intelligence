@@ -138,14 +138,14 @@ await db.collection("questions").doc("q_keep").set({ question: "keep", sources: 
 pythonCalls.length = 0;
 r = await call("POST", "/documents/reprocess", { documentId: "doc5" });
 j = await r.json();
-check("reprocess: 202 (runs in the background) and sends only the id to Python", r.status === 202 && JSON.stringify(pythonCalls) === JSON.stringify([{ documentId: "doc5" }]));
+check("reprocess: 202 (runs in the background) and sends only the id to Python", r.status === 202 && JSON.stringify(pythonCalls) === JSON.stringify([{ documentId: "doc5", reprocess: true }]));
 check("reprocess: cached answers citing the document invalidated", j.cacheEntriesRemoved === 1 && !(await exists("questions", "q_r1")) && (await exists("questions", "q_keep")));
 
 await db.collection("documents").doc("doc6").set({ name: "F", status: "Processed", fileUrl: url("f.pdf") });
 r = await call("POST", "/documents/reprocess", { documentId: "doc6" });
 const d6 = (await db.collection("documents").doc("doc6").get()).data();
 check("reprocess failure: 500 returned", r.status === 500);
-check("reprocess failure: document marked Error (not stuck in Processing)", d6.status === "Error" && !!d6.errorMessage);
+check("reprocess failure of a live document: it keeps answering (still Processed) and the admin is told", d6.status === "Processed" && !!d6.reprocessError);
 r = await call("POST", "/documents/reprocess", { documentId: "ghost" });
 check("reprocess unknown document -> 404", r.status === 404);
 

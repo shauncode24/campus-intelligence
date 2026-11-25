@@ -13,8 +13,30 @@ from services.vector_index import vector_index
 class RetrievalService:
     LIVE_FIELDS = ['status', 'effectiveDate', 'expiryDate', 'supersededBy', 'department', 'documentType']
 
+    # The decision data of every processed document, kept between questions (P1-3). It is looked
+    # up again when the corpus epoch changes (any document finishing, being replaced, deleted or
+    # re-processed bumps it) and at the latest after LIVE_SET_TTL_SECONDS. Whether a document is in
+    # force TODAY is decided again on every call from these records, so an expiry date passing
+    # needs no refresh.
+    LIVE_SET_TTL_SECONDS = 60
+    _live_cache = None            # (db, epoch, loaded_at, {doc_id: record})
+
     @staticmethod
-    def live_document_ids(db, filters=None, today=None) -> set:
+    def _processed_records(db, epoch=None) -> dict:
+        import time as _time
+        cache = RetrievalService._live_cache
+        if epoch is not None and cache and cache[0] is db and cache[1] == epoch                 and _time.monotonic() - cache[2] < RetrievalService.LIVE_SET_TTL_SECONDS:
+            return cache[3]
+        records = {}
+        query = db.collection('documents').where('status', '==', 'Processed').select(RetrievalService.LIVE_FIELDS)
+        for d in query.stream():
+            records[d.id] = d.to_dict() or {}
+        if epoch is not None:
+            RetrievalService._live_cache = (db, epoch, _time.monotonic(), records)
+        return records
+
+    @staticmethod
+    def live_document_ids(db, filters=None, today=None, epoch=None) -> set:
         """
         Ids of documents that may be used to answer a question right now: fully
         processed, not superseded by a newer version, in force (effective date reached)
@@ -24,11 +46,9 @@ class RetrievalService:
         never be used. Only the few fields needed for the decision are downloaded.
         """
         ids = set()
-        query = db.collection('documents').where('status', '==', 'Processed').select(RetrievalService.LIVE_FIELDS)
-        for d in query.stream():
-            record = d.to_dict() or {}
+        for doc_id, record in RetrievalService._processed_records(db, epoch).items():
             if is_live(record, today) and matches_filters(record, filters):
-                ids.add(d.id)
+                ids.add(doc_id)
         return ids
 
     @staticmethod
@@ -131,10 +151,10 @@ class RetrievalService:
         )
 
     @staticmethod
-    def _index_scored(db, query_embedding, document_ids, image_query_embedding, filters, k):
+    def _index_scored(db, query_embedding, document_ids, image_query_embedding, filters, k, epoch=None):
         """Same result as _scan_scored, from memory: only live documents (read fresh), best k text
         chunks and best IMAGE_TOP_K images."""
-        allowed = RetrievalService.live_document_ids(db, filters)
+        allowed = RetrievalService.live_document_ids(db, filters, epoch=epoch)
         if document_ids:
             allowed &= set(document_ids)
         text_hits, ignored = vector_index.search(False, embedding_service.model_id, query_embedding, allowed, k)
@@ -174,11 +194,14 @@ class RetrievalService:
             raise HTTPException(status_code=500, detail="Firebase not initialized")
 
         text_scored = image_scored = None
+        index_is_stale = False
         if Config.VECTOR_INDEX_ENABLED:
             from database.corpus_epoch import get_epoch
-            if vector_index.ensure(db, get_epoch(db), Config.VECTOR_INDEX_MAX_CHUNKS):
+            epoch = get_epoch(db)
+            if vector_index.ensure(db, epoch, Config.VECTOR_INDEX_MAX_CHUNKS):
                 text_scored, image_scored, ignored_other_model = RetrievalService._index_scored(
-                    db, query_embedding, document_ids, image_query_embedding, filters, k)
+                    db, query_embedding, document_ids, image_query_embedding, filters, k, epoch)
+                index_is_stale = vector_index.is_stale(db, epoch)
             elif not RetrievalService._warned_cap:
                 RetrievalService._warned_cap = True
                 print(f"⚠️ More than {Config.VECTOR_INDEX_MAX_CHUNKS} chunks: not indexed in memory, "
@@ -207,7 +230,13 @@ class RetrievalService:
         if image_scored:
             print(f"   Top image scores: {[f'{x[1]:.3f}' for x in image_scored[:3]]} (floor {Config.MIN_IMAGE_SCORE})")
 
-        return top_text + top_images
+        results = top_text + top_images
+        if index_is_stale:
+            # A background rebuild is still catching up with a corpus change: this answer may lack a
+            # document that just finished processing, so it must not be stored for reuse.
+            for doc in results:
+                doc.metadata['staleIndex'] = True
+        return results
 
     @staticmethod
     def _is_textual(doc):

@@ -10,6 +10,7 @@ http.createServer((req, res) => {
   let raw = ""; req.on("data", (c) => (raw += c));
   req.on("end", () => {
     bodies.push(JSON.parse(raw || "{}")); seenHeaders.push(req.headers);
+    if (mode === "503") { res.statusCode = 503; res.setHeader("Content-Type", "application/json"); return res.end(JSON.stringify({ detail: "The assistant is not able to answer right now. Please try again in a moment." })); }
     if (mode === "404") { res.statusCode = 404; res.setHeader("Content-Type", "application/json"); return res.end(JSON.stringify({ detail: "Chat not found" })); }
     res.setHeader("Content-Type", "application/x-ndjson");
     res.on("close", () => { if (!res.writableEnded) upstreamClosed++; });
@@ -53,6 +54,9 @@ check("saved:false is passed to the browser", ev.find((e) => e.type === "metadat
 mode = "404"; ev = await events(await post({ question: "q", chatId: "c1" }));
 const err = ev.find((e) => e.type === "error");
 check("a missing chat becomes a user-facing error", err?.userFacing === true && /no longer exists/.test(err.data));
+mode = "503"; ev = await events(await post({ question: "q", chatId: "c1" }));
+const err503 = ev.find((e) => e.type === "error");
+check("a stuck/overloaded model becomes a friendly user-facing error (no ref, no stack)", err503?.userFacing === true && /not able to answer right now/.test(err503.data) && !/ref /.test(err503.data));
 mode = "ok";
 await (await post({ question: "q", chatId: "c1", regenerate: true })).text();
 check("regenerate: true is forwarded", bodies.at(-1).regenerate === true);

@@ -9,6 +9,9 @@ import os
 import fitz
 import base64
 import re
+import asyncio
+from collections import OrderedDict
+from fastapi import HTTPException
 from utils.file_security import download_pdf
 from utils.threads import run_blocking
 from utils.observability import add_usage, note_model_call
@@ -24,6 +27,32 @@ Rules:
 4. Cite the source of each fact as [Document name, p. N], using the labels on the excerpts. Cite only sources you actually used.
 5. Copy dates, amounts, percentages and eligibility conditions exactly as written. If excerpts contradict each other, say so and cite both.
 6. Be concise and answer in the language of the question."""
+
+
+class ModelUnavailable(HTTPException):
+    """The model could not answer in time or kept failing. The message is written for students."""
+
+    def __init__(self, reason: str = ""):
+        super().__init__(status_code=503, detail="The assistant is not able to answer right now. Please try again in a moment.")
+        self.reason = reason
+        from utils.alerts import send_alert        # one message per outage, not one per student
+        send_alert("Campus Intelligence: the language model is failing or too slow "
+                   f"({reason.split(':')[0] or 'unknown error'}). Students are being told to try again.",
+                   key="model-unavailable", min_interval=900)
+
+
+_TRANSIENT_MARKERS = ("429", "500", "502", "503", "504", "unavailable", "overloaded", "deadline",
+                      "timed out", "timeout", "temporarily", "resource_exhausted", "connection")
+
+
+def is_transient(error: Exception) -> bool:
+    """Is this the kind of failure a second try could fix (busy, timeout, network), not a bad request?"""
+    if isinstance(error, (asyncio.TimeoutError, TimeoutError, ConnectionError)):
+        return True
+    if isinstance(error, ValueError):
+        return False
+    text = f"{type(error).__name__} {error}".lower()
+    return any(m in text for m in _TRANSIENT_MARKERS)
 
 
 def is_not_found(answer) -> bool:
@@ -95,33 +124,61 @@ class LLMService:
         print("🔄 Initializing Gemini...")
         self.llm = ChatGoogleGenerativeAI(
             model=Config.GEMINI_MODEL_NAME,
-            temperature=Config.GEMINI_TEMPERATURE
+            temperature=Config.GEMINI_TEMPERATURE,
+            timeout=Config.GEMINI_TIMEOUT_SECONDS,
+            max_retries=Config.GEMINI_MAX_RETRIES,
+            max_output_tokens=Config.GEMINI_MAX_OUTPUT_TOKENS,
         )
         print("✅ Gemini initialized")
     
-    async def _re_extract_image(self, file_url: str, page_num: int, img_index: int):
+    _image_cache = OrderedDict()     # (file_url, page, index) -> base64 image; small LRU
+
+    @classmethod
+    def _cache_get(cls, key):
+        if key in cls._image_cache:
+            cls._image_cache.move_to_end(key)
+            return cls._image_cache[key]
+        return None
+
+    @classmethod
+    def _cache_put(cls, key, value):
+        cls._image_cache[key] = value
+        cls._image_cache.move_to_end(key)
+        while len(cls._image_cache) > max(0, Config.IMAGE_CACHE_ENTRIES):
+            cls._image_cache.popitem(last=False)
+
+    async def _re_extract_image(self, file_url: str, page_num: int, img_index: int, pdf_bytes=None):
         """
-        Re-extract a specific image from PDF
-        
+        Re-extract a specific image from the PDF.
+
         Args:
             file_url: URL to the PDF file
             page_num: Page number (0-indexed)
             img_index: Image index on that page
-            
+            pdf_bytes: the file if the caller already has it (so one question downloads a file once)
+
         Returns:
-            str: Base64 encoded image
+            str: Base64 encoded image, or None
         """
+        key = (file_url, page_num, img_index)
+        cached = self._cache_get(key)
+        if cached:
+            return cached
         try:
-            # Download PDF (allow-listed host, no redirects, size/time capped)
-            pdf_bytes = await download_pdf(file_url)
-            
+            if pdf_bytes is None:
+                # Download PDF (allow-listed host, no redirects, size/time capped)
+                pdf_bytes = await download_pdf(file_url)
+
             # Extract the image (PyMuPDF is synchronous: keep it off the event loop)
-            return await run_blocking(self._extract_image_base64, pdf_bytes, page_num, img_index)
+            image = await run_blocking(self._extract_image_base64, pdf_bytes, page_num, img_index)
+            if image:
+                self._cache_put(key, image)
+            return image
 
         except Exception as e:
             print(f"❌ Error re-extracting image: {e}")
             return None
-    
+
     @staticmethod
     def _extract_image_base64(pdf_bytes: bytes, page_num: int, img_index: int):
         """Synchronous part of re-extraction: returns the base64 image, or None."""
@@ -164,7 +221,9 @@ class LLMService:
         # pixels are attached separately below
         text_docs = [doc for doc in retrieved_docs
                      if doc.metadata.get("type") == "text" or doc.metadata.get("caption")]
-        image_docs = [doc for doc in retrieved_docs if doc.metadata.get("type") == "image"]
+        image_docs = [doc for doc in retrieved_docs
+                      if doc.metadata.get("type") == "image"
+                      and (not doc.metadata.get("caption") or Config.ATTACH_CAPTIONED_IMAGES)]
 
         content.append({"type": "text", "text": "<context>\n"})
 
@@ -183,6 +242,7 @@ class LLMService:
 
         # Re-extract and add images
         db = firebase_client.db
+        pdf_downloads = {}     # file_url -> the one download of that file for THIS question
         for doc in image_docs[:3]:  # Limit to top 3 images to avoid token limits
             try:
                 # Get document file URL from Firestore
@@ -200,7 +260,17 @@ class LLMService:
                     print(f"🔄 Re-extracting image from page {_page_label(page_num)}...")
                     
                     # Re-extract the image
-                    img_base64 = await self._re_extract_image(file_url, page_num, img_index)
+                    img_base64 = self._cache_get((file_url, page_num, img_index))
+                    if not img_base64:
+                        if file_url not in pdf_downloads:
+                            try:
+                                pdf_downloads[file_url] = await download_pdf(file_url)
+                            except Exception as e:
+                                print(f"❌ Could not download the document for an image: {e}")
+                                pdf_downloads[file_url] = None
+                        if pdf_downloads[file_url] is not None:
+                            img_base64 = await self._re_extract_image(
+                                file_url, page_num, img_index, pdf_bytes=pdf_downloads[file_url])
                     
                     if img_base64:
                         content.append({
@@ -242,49 +312,85 @@ class LLMService:
         the rules are put at the start of the user message instead.
         """
         try:
-            response = self.llm.invoke([SystemMessage(content=system_prompt), message])
-        except ValueError as e:
-            if "system" not in str(e).lower():
-                raise
-            content = message.content
-            if isinstance(content, str):
-                content = [{"type": "text", "text": content}]
-            merged = HumanMessage(
-                content=[{"type": "text", "text": system_prompt + "\n\n"}] + list(content)
-            )
-            response = self.llm.invoke([merged])
+            try:
+                response = self.llm.invoke([SystemMessage(content=system_prompt), message])
+            except ValueError as e:
+                if "system" not in str(e).lower():
+                    raise
+                content = message.content
+                if isinstance(content, str):
+                    content = [{"type": "text", "text": content}]
+                merged = HumanMessage(
+                    content=[{"type": "text", "text": system_prompt + "\n\n"}] + list(content)
+                )
+                response = self.llm.invoke([merged])
+        except Exception as e:
+            if is_transient(e):             # already retried (and timed out) inside the client
+                raise ModelUnavailable(f"{type(e).__name__}: {e}") from e
+            raise
         note_model_call()
         add_usage(response)
         return _answer_text(response.content)
+
+    async def _stream_once(self, messages):
+        """One attempt: the text pieces of the model's reply. Gives up when the model goes quiet."""
+        iterator = self.llm.astream(messages).__aiter__()
+        try:
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(iterator.__anext__(), Config.GEMINI_STREAM_STALL_SECONDS)
+                except StopAsyncIteration:
+                    return
+                add_usage(chunk)
+                piece = _answer_text(chunk.content)
+                if piece:
+                    yield piece
+        finally:
+            close = getattr(iterator, "aclose", None)
+            if close:
+                try:
+                    await close()
+                except Exception:
+                    pass
 
     async def stream_answer(self, message):
         """
         The answer as it is generated: an async generator of text pieces, in order. Cancelling the
         task that iterates it closes the connection to the model, so generation stops being paid for.
-        Falls back to the rules-in-the-user-message form if the model rejects a system message
-        (only possible before the first piece arrives).
+
+        Limits (P1-6): the model must keep producing text (GEMINI_STREAM_STALL_SECONDS); a temporary
+        failure BEFORE the first piece is retried (GEMINI_MAX_RETRIES times); a failure after text
+        has been sent cannot be retried (the student already saw it) and ends the answer with
+        ModelUnavailable. Also falls back to the rules-in-the-user-message form if the model rejects
+        a system message (only possible before the first piece arrives).
         """
-        started = False
         note_model_call()
-        try:
-            async for chunk in self.llm.astream([SystemMessage(content=SYSTEM_PROMPT), message]):
-                add_usage(chunk)
-                piece = _answer_text(chunk.content)
-                if piece:
+        messages = [SystemMessage(content=SYSTEM_PROMPT), message]
+        started = False
+        attempt = 0
+        while True:
+            try:
+                async for piece in self._stream_once(messages):
                     started = True
                     yield piece
-        except ValueError as e:
-            if started or "system" not in str(e).lower():
+                return
+            except ValueError as e:
+                if started or "system" not in str(e).lower() or len(messages) == 1:
+                    raise
+                content = message.content
+                if isinstance(content, str):
+                    content = [{"type": "text", "text": content}]
+                messages = [HumanMessage(content=[{"type": "text", "text": SYSTEM_PROMPT + "\n\n"}] + list(content))]
+            except asyncio.CancelledError:
                 raise
-            content = message.content
-            if isinstance(content, str):
-                content = [{"type": "text", "text": content}]
-            merged = HumanMessage(content=[{"type": "text", "text": SYSTEM_PROMPT + "\n\n"}] + list(content))
-            async for chunk in self.llm.astream([merged]):
-                add_usage(chunk)
-                piece = _answer_text(chunk.content)
-                if piece:
-                    yield piece
+            except Exception as e:
+                if not is_transient(e):
+                    raise
+                if started or attempt >= Config.GEMINI_MAX_RETRIES:
+                    raise ModelUnavailable(f"{type(e).__name__}: {e}") from e
+                attempt += 1
+                print(f"⚠️ Model call failed ({type(e).__name__}); trying again ({attempt}/{Config.GEMINI_MAX_RETRIES})")
+                await asyncio.sleep(1.0)
 
     def generate_answer(self, message):
         """

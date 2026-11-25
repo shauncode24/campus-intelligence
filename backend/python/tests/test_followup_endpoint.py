@@ -69,6 +69,8 @@ class FollowUpCase(unittest.TestCase):
         authmod.firebase_auth.verify_id_token = lambda t, *a, **k: {"uid": {"tokA": "A", "tokB": "B"}[t]}
 
         rate_limit.limiter._hits.clear()
+        rate_limit.daily_budget.reset()
+        retrieval_service._live_cache = None
         Config.QUERY_RATE_PER_MINUTE = Config.QUERY_RATE_PER_MINUTE_PER_IP = 1000
         Config.QUERY_CONDENSING = True
 

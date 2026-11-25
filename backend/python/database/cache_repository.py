@@ -252,8 +252,9 @@ class CacheRepository:
             return new_favorite
             
         except Exception as e:
+            # Not swallowed: callers must be able to tell "the database failed" from "nothing there"
             print(f"❌ Error toggling favorite: {e}")
-            return None
+            raise
     
     @staticmethod
     async def update_personal_note(user_id: str, history_id: str, note: str):
@@ -284,8 +285,9 @@ class CacheRepository:
             return True
             
         except Exception as e:
+            # Not swallowed: callers must be able to tell "the database failed" from "nothing there"
             print(f"❌ Error updating note: {e}")
-            return False
+            raise
     
     @staticmethod
     async def delete_user_question(user_id: str, history_id: str):
@@ -313,8 +315,9 @@ class CacheRepository:
             return True
             
         except Exception as e:
+            # Not swallowed: callers must be able to tell "the database failed" from "nothing there"
             print(f"❌ Error deleting user question: {e}")
-            return False
+            raise
     
     @staticmethod
     async def get_user_history(user_id: str, limit: int = 20, favorites_only: bool = False):

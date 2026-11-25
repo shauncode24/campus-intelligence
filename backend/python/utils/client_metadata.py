@@ -38,4 +38,5 @@ def build_message_metadata(response) -> dict:
         "hasVisualContent": bool(response.hasVisualContent),
         "deadline": response.deadline,
         **({"stopped": True} if getattr(response, "stopped", False) else {}),
+        **({"answerCorrected": response.answerCorrected} if getattr(response, "answerCorrected", None) else {}),
     }

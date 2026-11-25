@@ -18,6 +18,7 @@ from fastapi import Depends, HTTPException, Request
 
 from auth import get_current_user_id, require_admin
 from config import Config
+from utils.daily_budget import daily_budget, seconds_until_tomorrow
 
 
 class SlidingWindowLimiter:
@@ -119,13 +120,29 @@ def admin_limit(admin_id: str = Depends(require_admin)) -> None:
     _enforce(f"admin:{admin_id}", Config.ADMIN_RATE_PER_MINUTE, 60, SLOW_DOWN)
 
 
+def _budget_alert(percent: int, used: int, limit: int) -> None:
+    from utils.alerts import send_alert
+    send_alert(f"Campus Intelligence: {used} of {limit} model calls used today ({percent}%). "
+               + ("Students are now being turned away until tomorrow." if percent >= 100
+                  else "Raise LLM_CALLS_GLOBAL_PER_DAY or look for abuse."),
+               key=f"budget-{percent}", min_interval=3600)
+
+
+daily_budget.on_threshold = _budget_alert
+
+
+def daily_budget_wait() -> float:
+    return seconds_until_tomorrow()
+
+
 def consume_llm_budget(user_id: str) -> None:
     """
     Spend one LLM call from the per-user and global daily budgets. Call it only
     immediately before an actual model call (cache hits and refusals that never
     reach the model cost nothing).
     """
-    _enforce(f"llm-day:{user_id}", Config.LLM_CALLS_PER_USER_PER_DAY, 86400,
-             "You've reached today's question limit. Please try again tomorrow.")
-    _enforce("llm-day:GLOBAL", Config.LLM_CALLS_GLOBAL_PER_DAY, 86400,
-             "The assistant has reached its daily capacity. Please try again tomorrow.")
+    exhausted = daily_budget.try_consume(user_id, Config.LLM_CALLS_PER_USER_PER_DAY, Config.LLM_CALLS_GLOBAL_PER_DAY)
+    if exhausted == "user":
+        raise too_many(daily_budget_wait(), "You've reached today's question limit. Please try again tomorrow.")
+    if exhausted == "global":
+        raise too_many(daily_budget_wait(), "The assistant has reached its daily capacity. Please try again tomorrow.")

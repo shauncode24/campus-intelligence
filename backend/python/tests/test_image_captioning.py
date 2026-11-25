@@ -277,9 +277,18 @@ class TestUsingDescriptionsToAnswer(CaptionCase):
     def test_the_answering_prompt_contains_the_description_and_the_real_pixels(self):
         docs = self.retrieve("what is the hostel fee amount", image_query_embedding=None)
 
-        async def fake_extract(file_url, page_num, img_index):
+        async def fake_extract(file_url, page_num, img_index, pdf_bytes=None):
             return "PIXELS64"
-        llm_service._re_extract_image = fake_extract
+        async def fake_download(url):
+            return b"%PDF"
+        from services import llm_service as llm_module
+        saved = (llm_service._re_extract_image, llm_module.download_pdf, Config.ATTACH_CAPTIONED_IMAGES)
+        llm_service._re_extract_image, llm_module.download_pdf = fake_extract, fake_download
+        Config.ATTACH_CAPTIONED_IMAGES = True       # off by default (P1-4): this checks the opt-in path
+        self.addCleanup(lambda: (setattr(llm_service, "_re_extract_image", saved[0]),
+                                 setattr(llm_module, "download_pdf", saved[1]),
+                                 setattr(Config, "ATTACH_CAPTIONED_IMAGES", saved[2])))
+        llm_service._image_cache.clear()
         message = asyncio.run(llm_service.create_multimodal_message("what is the hostel fee amount", docs, {"docF": "Fees"}))
         text = "".join(p["text"] for p in message.content if p["type"] == "text")
         self.assertIn("[Source: Fees, p. 1] (description of a figure)", text)

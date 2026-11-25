@@ -92,7 +92,7 @@ export default function DocumentManagement() {
   }, [fetchDocuments]);
 
   // While anything is being processed, keep the list current without a manual refresh
-  const anyProcessing = documents.some((d) => d.status === "Processing");
+  const anyProcessing = documents.some((d) => d.status === "Processing" || d.reprocessing === true);
   useEffect(() => {
     if (!anyProcessing) return undefined;
     const timer = setInterval(
@@ -154,7 +154,13 @@ export default function DocumentManagement() {
   const runReprocess = async (id) => {
     try {
       setDocuments((docs) =>
-        docs.map((d) => (d.id === id ? { ...d, status: "Processing" } : d))
+        docs.map((d) =>
+          d.id === id
+            ? d.status === "Processed"
+              ? { ...d, reprocessing: true } // still live, still answering
+              : { ...d, status: "Processing" }
+            : d
+        )
       );
       const response = await apiFetch(
         `${VITE_API_BASE_URL}/documents/reprocess`,
@@ -331,7 +337,7 @@ export default function DocumentManagement() {
                 pageRows.map((doc) => {
                   const status = doc.status || "Processed";
                   const note = STATE_LABEL[documentState(doc)];
-                  const busy = status === "Processing" || status === "Deleting";
+                  const busy = status === "Processing" || status === "Deleting" || doc.reprocessing === true;
                   return (
                     <tr key={doc.id}>
                       <td>
@@ -379,6 +385,16 @@ export default function DocumentManagement() {
                             {note}
                           </div>
                         )}
+                        {status === "Processed" && doc.reprocessing === true && (
+                          <div className="status-note" title="Students still get answers from the current version until the new one is ready">
+                            Updating… {doc.processing?.message || ""} (still answering from the current version)
+                          </div>
+                        )}
+                        {status === "Processed" && doc.reprocessError && !doc.reprocessing && (
+                          <div className="status-note error-note" title={doc.reprocessError}>
+                            Update failed, current version kept: {doc.reprocessError}
+                          </div>
+                        )}
                         {status === "Processed" && doc.warning && (
                           <div className="status-note warning-note" title={doc.warning}>
                             ⚠ {doc.warning}
@@ -392,7 +408,7 @@ export default function DocumentManagement() {
                       </td>
                       <td>
                         <div className="actions-cell">
-                          {status === "Processing" && (
+                          {(status === "Processing" || doc.reprocessing === true) && (
                             <button
                               className="action-btn"
                               onClick={() =>

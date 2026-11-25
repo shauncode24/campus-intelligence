@@ -169,6 +169,9 @@ router.delete("/:documentId", async (req, res) => {
       status: "Deleting",
       deletingAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+    // The RAG service keeps the set of live documents between questions and refreshes it when the
+    // corpus epoch changes: bump now so the document stops answering at once, not at the end.
+    await bumpCorpusEpoch(db, admin);
 
     const chunksDeleted = await deleteChunksForDocument(db, documentId);
     const cacheEntriesRemoved = await invalidateCachedAnswers(db, documentId);
@@ -218,11 +221,11 @@ router.delete("/:documentId", async (req, res) => {
  * is the caller's business (409: already being processed, 404, 400: unsafe address).
  * Anything else throws.
  */
-async function startProcessing(req, documentId) {
+async function startProcessing(req, documentId, reprocess = false) {
   const response = await fetch(`${PYTHON_RAG_URL}/process-document`, {
     method: "POST",
     headers: pythonHeaders(req),
-    body: JSON.stringify({ documentId }),
+    body: JSON.stringify({ documentId, ...(reprocess ? { reprocess: true } : {}) }),
   });
   if (response.status === 202 || response.ok) {
     return { accepted: true };
@@ -283,26 +286,38 @@ function processHandler({ reprocess }) {
 
       console.log(`${reprocess ? "🔄 Reprocessing" : "📄 Starting processing for"} document: ${documentId}`);
 
-      // Python sets "Processing" itself once it accepts; setting it here too keeps the
-      // UI right if Python is slow to answer.
-      await docRef.update({
-        status: "Processing",
-        [reprocess ? "reprocessingStartedAt" : "processingStartedAt"]:
-          admin.firestore.FieldValue.serverTimestamp(),
-      });
+      // A live document being re-processed KEEPS answering from its current version until the new
+      // one is ready (status stays "Processed"; the RAG service marks `reprocessing`). Anything
+      // else is set to "Processing" here, which keeps the UI right if Python is slow to answer.
+      const keepLive = reprocess && previous.status === "Processed";
+      if (!keepLive) {
+        await docRef.update({
+          status: "Processing",
+          [reprocess ? "reprocessingStartedAt" : "processingStartedAt"]:
+            admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await bumpCorpusEpoch(db, admin);   // the document just stopped being live (see DELETE above)
+      } else {
+        await docRef.update({ reprocessingStartedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
 
       let started;
       try {
-        started = await startProcessing(req, documentId);
+        started = await startProcessing(req, documentId, keepLive);
       } catch (error) {
-        await recordFailure(documentId, error);
+        if (keepLive) {
+          // nothing was touched: the document keeps answering; just report
+          await docRef.update({ reprocessError: "Could not start re-processing. Please try again." }).catch(() => {});
+        } else {
+          await recordFailure(documentId, error);
+        }
         throw error;
       }
 
       if (!started.accepted) {
         // Not started: put the document back the way it was (a 409 means a job is
         // already running, which still shows "Processing").
-        if (started.status !== 409) {
+        if (started.status !== 409 && !keepLive) {
           await docRef.update({ status: previous.status || "Error" });
         }
         return res.status(started.status).json({ error: started.message, message: started.message });
@@ -448,6 +463,18 @@ router.delete("/cancel-processing/:documentId", async (req, res) => {
     }
 
     const docData = docSnapshot.data();
+
+    // A live document being re-processed: stop the job, leave its current passages alone
+    if (docData.status === "Processed" && docData.reprocessing === true) {
+      await docRef.update({
+        reprocessing: admin.firestore.FieldValue.delete(),
+        reprocessError: admin.firestore.FieldValue.delete(),
+      });
+      return res.json({
+        success: true,
+        message: "Re-processing cancelled. The document keeps answering from its current version.",
+      });
+    }
 
     if (docData.status !== "Processing") {
       return res.status(400).json({
