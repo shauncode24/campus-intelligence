@@ -113,3 +113,30 @@ Still to build (audit P1-1): running the real rewriter on a real follow-up set, 
 `must_include`, citation accuracy against gold pages, refusal accuracy, an LLM-judged
 faithfulness score calibrated against human labels, tokens and cost per question), a
 multi-turn set for follow-up questions, an image set, and a CI job that runs the gate.
+
+## Answer-level evaluation (P1-1) and chunking experiments (P1-2)
+
+Retrieval metrics say whether the right page was found. These say whether the ANSWER was right.
+
+```
+backend\venv\Scripts\python.exe eval\run_answer_eval.py --pages <pages.jsonl> --questions <questions.jsonl> --answerer extractive
+backend\venv\Scripts\python.exe eval\run_answer_eval.py ... --answerer gemini --env-file <secrets> --yes   # REAL, PAID calls
+backend\venv\Scripts\python.exe eval\run_answer_eval.py ... --compare eval\results\<baseline>.json --max-drop 0.05
+backend\venv\Scripts\python.exe eval\run_chunking_experiment.py --pages <pages.jsonl> --questions <questions.jsonl>
+```
+
+It runs the production steps (retrieve top 5, drop chunks under the relevance floor, no chunk left =
+"not found" without a model call, otherwise the answerer) and scores: **correct** (an answerable
+question's answer contains every `must_include` string, literally), **false refusals**, **refused**
+(an unanswerable question was declined), **hallucinated**, **cites a gold page**, **fabricated** and
+**uncited** citations. The `extractive` answerer needs no model (quotes the best passage) and gives a
+reproducible floor; `gemini` is the real thing. Exit code 3 on regression, so it can gate a change.
+
+`run_chunking_experiment.py` re-runs retrieval with different chunk sizes, overlap, a title prefix,
+cross-page passages and header stripping and tells you, with intervals, whether any of them clearly
+beats the production setting. **On the synthetic demo none does, and that proves nothing**: use it
+on the real golden set. Nothing about chunking should be changed on the strength of synthetic numbers.
+
+Limits: `must_include` matching is literal (it cannot tell a paraphrase from a wrong answer), so
+"correct" is a lower bound; read the failure list in every report. The numbers in `results/answers-*`
+are from the synthetic demo and are not your baseline.

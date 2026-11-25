@@ -1,0 +1,636 @@
+{
+  "meta": {
+    "name": "answers-extractive",
+    "date": "2026-11-25 02:12",
+    "git_commit": "528c6b1",
+    "dataset_fingerprint": "f7c6931f3826",
+    "synthetic": true,
+    "warnings": [
+      "Only 10 unanswerable questions (recommended minimum 15). Refusal/abstention figures are very rough."
+    ],
+    "answerer": {
+      "answerer": "extractive",
+      "retriever": "production",
+      "embedding_backend": "bge-small",
+      "embedding_model": "BAAI/bge-small-en-v1.5",
+      "embedding_dimension": 384,
+      "embedding_max_tokens": 512,
+      "chunk_size": 500,
+      "chunk_overlap": 100,
+      "num_chunks": 23,
+      "production_relevance_floor": 0.5
+    },
+    "min_score": 0.5,
+    "k": 5
+  },
+  "results": {
+    "summary": {
+      "answerable": {
+        "n": 32,
+        "correct": {
+          "mean": 0.625,
+          "ci": [
+            0.46875,
+            0.78125
+          ],
+          "n": 32
+        },
+        "false_refusal": {
+          "mean": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "n": 32
+        },
+        "cites_gold_when_answered": {
+          "mean": 0.6875,
+          "ci": [
+            0.53125,
+            0.84375
+          ],
+          "n": 32
+        }
+      },
+      "unanswerable": {
+        "n": 10,
+        "refused": {
+          "mean": 0.4,
+          "ci": [
+            0.1,
+            0.7
+          ],
+          "n": 10
+        },
+        "hallucinated": {
+          "mean": 0.6,
+          "ci": [
+            0.3,
+            0.9
+          ],
+          "n": 10
+        }
+      },
+      "citations": {
+        "answers": 38,
+        "with_fabricated": {
+          "mean": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "n": 38
+        },
+        "uncited": {
+          "mean": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "n": 38
+        }
+      },
+      "seconds": {
+        "total": 0.74,
+        "p50": 0.0165,
+        "p95": 0.020950000000000003
+      }
+    },
+    "rows": [
+      {
+        "id": "q01",
+        "type": "numeric",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.017,
+        "answer": "the end of the programme. Students who pay after the due date are charged a late fee of Rs. 200 per day, up to a maximum of Rs. 5,000 per semester. [Fee Payment Policy, p. 1]"
+      },
+      {
+        "id": "q02",
+        "type": "numeric",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.021,
+        "answer": "the end of the programme. Students who pay after the due date are charged a late fee of Rs. 200 per day, up to a maximum of Rs. 5,000 per semester. [Fee Payment Policy, p. 1]"
+      },
+      {
+        "id": "q03",
+        "type": "deadline",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.015,
+        "answer": "Refunds and instalments. Students who withdraw before the first day of classes receive a refund of 90 percent of tuition fees. After the first day of classes no refund is given. Hostel fees are refunded separately; see the Hostel Rules. Students facing financial hardship may apply to pay tuition in two equal instalments by submitting Form F-7 to the Accounts Office at least seven days before the due date, along with a written note from the faculty advisor. Instalment requests are decided within [Fee Payment Policy, p. 2]"
+      },
+      {
+        "id": "q04",
+        "type": "procedure",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.018,
+        "answer": "Fee Payment Policy - Example Institute of Technology. Tuition fees for each semester must be paid on or before the 15th of the month in which the semester begins. Payments can be made online through the student portal using UPI, net banking or card, or in person at the Accounts Office, Block A, Room 12, between 10 AM and 4 PM on working days. A receipt is generated automatically and must be kept until the end of the programme. Students who pay after the due date are charged a late fee of Rs. 200 [Fee Payment Policy, p. 1]"
+      },
+      {
+        "id": "q05",
+        "type": "procedure",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.022,
+        "answer": "Need-based scholarship. The need-based scholarship is open to students whose annual family income is below Rs. 4,00,000. Applicants must upload the income certificate issued by the Tahsildar, the previous year's mark sheet, and a bank passbook copy. The selection committee meets in the first week of August and results are published by 15 August. Selected students receive a waiver of up to 75 percent of tuition fees. Students who provide false income information will have the scholarship [Scholarship Guidelines, p. 2]"
+      },
+      {
+        "id": "q06",
+        "type": "numeric",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.02,
+        "answer": "Refunds and instalments. Students who withdraw before the first day of classes receive a refund of 90 percent of tuition fees. After the first day of classes no refund is given. Hostel fees are refunded separately; see the Hostel Rules. Students facing financial hardship may apply to pay tuition in two equal instalments by submitting Form F-7 to the Accounts Office at least seven days before the due date, along with a written note from the faculty advisor. Instalment requests are decided within [Fee Payment Policy, p. 2]"
+      },
+      {
+        "id": "q07",
+        "type": "eligibility",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.017,
+        "answer": "Minimum attendance. Every student must attend at least 75 percent of the classes held in each course to be eligible to sit for the end semester examination. Attendance is calculated separately for lectures and laboratory sessions, and both must meet the 75 percent requirement. Attendance is recorded by the faculty member at the start of each session and is visible to students on the portal within 24 hours. Students are responsible for checking their attendance regularly and reporting errors to [Attendance and Leave Regulations, p. 1]"
+      },
+      {
+        "id": "q08",
+        "type": "procedure",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.016,
+        "answer": "Condonation and medical leave. The Dean may condone a shortage of attendance of up to 10 percent, that is, attendance between 65 and 75 percent, on medical grounds. The student must submit a medical certificate issued by a registered practitioner within five working days of returning to class, together with the Condonation Form AR-3. A condonation fee of Rs. 1,000 per course applies. Attendance below 65 percent cannot be condoned under any circumstances and the student must repeat the course. [Attendance and Leave Regulations, p. 2]"
+      },
+      {
+        "id": "q09",
+        "type": "numeric",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.017,
+        "answer": "Condonation and medical leave. The Dean may condone a shortage of attendance of up to 10 percent, that is, attendance between 65 and 75 percent, on medical grounds. The student must submit a medical certificate issued by a registered practitioner within five working days of returning to class, together with the Condonation Form AR-3. A condonation fee of Rs. 1,000 per course applies. Attendance below 65 percent cannot be condoned under any circumstances and the student must repeat the course. [Attendance and Leave Regulations, p. 2]"
+      },
+      {
+        "id": "q10",
+        "type": "multi_doc",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.021,
+        "answer": "Minimum attendance. Every student must attend at least 75 percent of the classes held in each course to be eligible to sit for the end semester examination. Attendance is calculated separately for lectures and laboratory sessions, and both must meet the 75 percent requirement. Attendance is recorded by the faculty member at the start of each session and is visible to students on the portal within 24 hours. Students are responsible for checking their attendance regularly and reporting errors to [Attendance and Leave Regulations, p. 1]"
+      },
+      {
+        "id": "q11",
+        "type": "fact",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.019,
+        "answer": "below 65 percent cannot be condoned under any circumstances and the student must repeat the course. Leave for sports or cultural events representing the Institute is counted as present, up to a maximum of 10 days per semester. [Attendance and Leave Regulations, p. 2]"
+      },
+      {
+        "id": "q12",
+        "type": "deadline",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.012,
+        "answer": "Hostel admission. Hostel accommodation is available to full-time undergraduate and postgraduate students. Applications open on 1 June each year and close on 30 June. Applicants must submit the hostel application form to the Warden's office with a fee receipt, two passport-size photographs and the local guardian declaration. Rooms are allotted on the basis of distance from home and academic year; first-year students are allotted double-occupancy rooms and final-year students may request single [Hostel Admission and Rules, p. 1]"
+      },
+      {
+        "id": "q13",
+        "type": "numeric",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.013,
+        "answer": "first-year students are allotted double-occupancy rooms and final-year students may request single rooms. The annual hostel fee is Rs. 60,000, payable in two equal instalments. [Hostel Admission and Rules, p. 1]"
+      },
+      {
+        "id": "q14",
+        "type": "fact",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.017,
+        "answer": "Hostel rules. The hostel gates close at 10:00 PM for first-year students and at 11:00 PM for all other students. Late entry requires prior written permission from the Warden. Visitors are allowed only in the visitors' lounge between 4 PM and 7 PM. Cooking appliances, including induction stoves and kettles, are not permitted in rooms. Students who leave the hostel permanently must return the room key and obtain a No Dues certificate from the Warden. Refund of the hostel security deposit of Rs. [Hostel Admission and Rules, p. 2]"
+      },
+      {
+        "id": "q15",
+        "type": "numeric",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.02,
+        "answer": "key and obtain a No Dues certificate from the Warden. Refund of the hostel security deposit of Rs. 10,000 is made within 30 days of submitting the No Dues certificate. [Hostel Admission and Rules, p. 2]"
+      },
+      {
+        "id": "q16",
+        "type": "fact",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.016,
+        "answer": "Hostel rules. The hostel gates close at 10:00 PM for first-year students and at 11:00 PM for all other students. Late entry requires prior written permission from the Warden. Visitors are allowed only in the visitors' lounge between 4 PM and 7 PM. Cooking appliances, including induction stoves and kettles, are not permitted in rooms. Students who leave the hostel permanently must return the room key and obtain a No Dues certificate from the Warden. Refund of the hostel security deposit of Rs. [Hostel Admission and Rules, p. 2]"
+      },
+      {
+        "id": "q17",
+        "type": "deadline",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.017,
+        "answer": "Revaluation. A student may apply for revaluation of an answer script within seven days of the declaration of results. The application is made on the portal and the revaluation fee is Rs. 500 per paper. Revaluation is carried out by a second examiner who is not told the original marks. If the marks change by more than 10 percent, a third examiner is appointed. The final marks after revaluation replace the original marks even if they are lower. Photocopies of answer scripts can be requested for [Examination and Revaluation Regulations, p. 2]"
+      },
+      {
+        "id": "q18",
+        "type": "numeric",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.017,
+        "answer": "Revaluation. A student may apply for revaluation of an answer script within seven days of the declaration of results. The application is made on the portal and the revaluation fee is Rs. 500 per paper. Revaluation is carried out by a second examiner who is not told the original marks. If the marks change by more than 10 percent, a third examiner is appointed. The final marks after revaluation replace the original marks even if they are lower. Photocopies of answer scripts can be requested for [Examination and Revaluation Regulations, p. 2]"
+      },
+      {
+        "id": "q19",
+        "type": "fact",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.013,
+        "answer": "Hostel admission. Hostel accommodation is available to full-time undergraduate and postgraduate students. Applications open on 1 June each year and close on 30 June. Applicants must submit the hostel application form to the Warden's office with a fee receipt, two passport-size photographs and the local guardian declaration. Rooms are allotted on the basis of distance from home and academic year; first-year students are allotted double-occupancy rooms and final-year students may request single [Hostel Admission and Rules, p. 1]"
+      },
+      {
+        "id": "q20",
+        "type": "eligibility",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.018,
+        "answer": "Merit scholarship. The merit scholarship covers 50 percent of tuition fees and is awarded to students who secure a CGPA of 9.0 or above in the previous academic year. Applications are submitted on the scholarship portal between 1 July and 31 July. Students with any active backlog are not eligible. The scholarship is renewed every year provided the student maintains a CGPA of at least 8.5 and attendance of at least 80 percent. Recipients must not hold another full-tuition scholarship at the same [Scholarship Guidelines, p. 1]"
+      },
+      {
+        "id": "q21",
+        "type": "eligibility",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.018,
+        "answer": "Need-based scholarship. The need-based scholarship is open to students whose annual family income is below Rs. 4,00,000. Applicants must upload the income certificate issued by the Tahsildar, the previous year's mark sheet, and a bank passbook copy. The selection committee meets in the first week of August and results are published by 15 August. Selected students receive a waiver of up to 75 percent of tuition fees. Students who provide false income information will have the scholarship [Scholarship Guidelines, p. 2]"
+      },
+      {
+        "id": "q22",
+        "type": "deadline",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.015,
+        "answer": "Eligibility for placements. To register for campus placements a student must have a completed profile on the placement portal, an updated resume approved by the placement cell, and a CGPA of at least 6.5. Students with an active backlog on the date of the company visit are not eligible to sit for that drive. Registration for the placement season opens on 1 August and closes on 31 August. Students who register must attend the pre-placement training sessions; absence from more than two sessions [Placement Policy, p. 1]"
+      },
+      {
+        "id": "q23",
+        "type": "eligibility",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.015,
+        "answer": "Eligibility for placements. To register for campus placements a student must have a completed profile on the placement portal, an updated resume approved by the placement cell, and a CGPA of at least 6.5. Students with an active backlog on the date of the company visit are not eligible to sit for that drive. Registration for the placement season opens on 1 August and closes on 31 August. Students who register must attend the pre-placement training sessions; absence from more than two sessions [Placement Policy, p. 1]"
+      },
+      {
+        "id": "q24",
+        "type": "multi_doc",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.017,
+        "answer": "Revaluation. A student may apply for revaluation of an answer script within seven days of the declaration of results. The application is made on the portal and the revaluation fee is Rs. 500 per paper. Revaluation is carried out by a second examiner who is not told the original marks. If the marks change by more than 10 percent, a third examiner is appointed. The final marks after revaluation replace the original marks even if they are lower. Photocopies of answer scripts can be requested for [Examination and Revaluation Regulations, p. 2]"
+      },
+      {
+        "id": "u01",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "declined": false,
+        "correct": false,
+        "hallucinated": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.014,
+        "answer": "first-year students are allotted double-occupancy rooms and final-year students may request single rooms. The annual hostel fee is Rs. 60,000, payable in two equal instalments. [Hostel Admission and Rules, p. 1]"
+      },
+      {
+        "id": "u02",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "declined": false,
+        "correct": false,
+        "hallucinated": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.014,
+        "answer": "below 65 percent cannot be condoned under any circumstances and the student must repeat the course. Leave for sports or cultural events representing the Institute is counted as present, up to a maximum of 10 days per semester. [Attendance and Leave Regulations, p. 2]"
+      },
+      {
+        "id": "u03",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "declined": false,
+        "correct": false,
+        "hallucinated": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.018,
+        "answer": "Refunds and instalments. Students who withdraw before the first day of classes receive a refund of 90 percent of tuition fees. After the first day of classes no refund is given. Hostel fees are refunded separately; see the Hostel Rules. Students facing financial hardship may apply to pay tuition in two equal instalments by submitting Form F-7 to the Accounts Office at least seven days before the due date, along with a written note from the faculty advisor. Instalment requests are decided within [Fee Payment Policy, p. 2]"
+      },
+      {
+        "id": "u04",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "declined": false,
+        "correct": false,
+        "hallucinated": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.016,
+        "answer": "key and obtain a No Dues certificate from the Warden. Refund of the hostel security deposit of Rs. 10,000 is made within 30 days of submitting the No Dues certificate. [Hostel Admission and Rules, p. 2]"
+      },
+      {
+        "id": "u05",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "declined": false,
+        "correct": false,
+        "hallucinated": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.018,
+        "answer": "the end of the programme. Students who pay after the due date are charged a late fee of Rs. 200 per day, up to a maximum of Rs. 5,000 per semester. [Fee Payment Policy, p. 1]"
+      },
+      {
+        "id": "u06",
+        "type": "absent_in_domain",
+        "answerable": false,
+        "declined": false,
+        "correct": false,
+        "hallucinated": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.017,
+        "answer": "Minimum attendance. Every student must attend at least 75 percent of the classes held in each course to be eligible to sit for the end semester examination. Attendance is calculated separately for lectures and laboratory sessions, and both must meet the 75 percent requirement. Attendance is recorded by the faculty member at the start of each session and is visible to students on the portal within 24 hours. Students are responsible for checking their attendance regularly and reporting errors to [Attendance and Leave Regulations, p. 1]"
+      },
+      {
+        "id": "u07",
+        "type": "out_of_scope",
+        "answerable": false,
+        "declined": true,
+        "correct": true,
+        "hallucinated": false,
+        "seconds": 0.019,
+        "answer": null
+      },
+      {
+        "id": "u08",
+        "type": "out_of_scope",
+        "answerable": false,
+        "declined": true,
+        "correct": true,
+        "hallucinated": false,
+        "seconds": 0.016,
+        "answer": null
+      },
+      {
+        "id": "u09",
+        "type": "out_of_scope",
+        "answerable": false,
+        "declined": true,
+        "correct": true,
+        "hallucinated": false,
+        "seconds": 0.015,
+        "answer": null
+      },
+      {
+        "id": "u10",
+        "type": "out_of_scope",
+        "answerable": false,
+        "declined": true,
+        "correct": true,
+        "hallucinated": false,
+        "seconds": 0.014,
+        "answer": null
+      },
+      {
+        "id": "f01",
+        "type": "follow_up",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.017,
+        "answer": "One student one job policy. A student who accepts an offer with a package below Rs. 10 lakh per annum may still sit for other drives, but a student who accepts an offer of Rs. 10 lakh or more is barred from further drives. Students must inform the placement cell within 24 hours of receiving an offer. Declining an offer after accepting it in writing results in a ban from the remaining placement season. Internship offers obtained through the placement cell follow the same rules. [Placement Policy, p. 2]"
+      },
+      {
+        "id": "f02",
+        "type": "follow_up",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": true,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": true,
+        "seconds": 0.016,
+        "answer": "below 65 percent cannot be condoned under any circumstances and the student must repeat the course. Leave for sports or cultural events representing the Institute is counted as present, up to a maximum of 10 days per semester. [Attendance and Leave Regulations, p. 2]"
+      },
+      {
+        "id": "f03",
+        "type": "follow_up",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.012,
+        "answer": "Need-based scholarship. The need-based scholarship is open to students whose annual family income is below Rs. 4,00,000. Applicants must upload the income certificate issued by the Tahsildar, the previous year's mark sheet, and a bank passbook copy. The selection committee meets in the first week of August and results are published by 15 August. Selected students receive a waiver of up to 75 percent of tuition fees. Students who provide false income information will have the scholarship [Scholarship Guidelines, p. 2]"
+      },
+      {
+        "id": "f04",
+        "type": "follow_up",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.014,
+        "answer": "date, along with a written note from the faculty advisor. Instalment requests are decided within five working days. Examination fees are not covered by the instalment facility and must be paid in full. [Fee Payment Policy, p. 2]"
+      },
+      {
+        "id": "f05",
+        "type": "follow_up",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.011,
+        "answer": "Examinations. End semester examinations are held in the last three weeks of each semester. Students must carry their ID card and the hall ticket, which is available on the portal seven days before the first examination. Mobile phones and smart watches are not allowed in the examination hall. A student found with unauthorised material is booked for malpractice and the case is referred to the Disciplinary Committee. Results are declared within 21 days of the last examination and are published on [Examination and Revaluation Regulations, p. 1]"
+      },
+      {
+        "id": "f06",
+        "type": "follow_up",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.015,
+        "answer": "Hostel admission. Hostel accommodation is available to full-time undergraduate and postgraduate students. Applications open on 1 June each year and close on 30 June. Applicants must submit the hostel application form to the Warden's office with a fee receipt, two passport-size photographs and the local guardian declaration. Rooms are allotted on the basis of distance from home and academic year; first-year students are allotted double-occupancy rooms and final-year students may request single [Hostel Admission and Rules, p. 1]"
+      },
+      {
+        "id": "f07",
+        "type": "follow_up",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.013,
+        "answer": "Need-based scholarship. The need-based scholarship is open to students whose annual family income is below Rs. 4,00,000. Applicants must upload the income certificate issued by the Tahsildar, the previous year's mark sheet, and a bank passbook copy. The selection committee meets in the first week of August and results are published by 15 August. Selected students receive a waiver of up to 75 percent of tuition fees. Students who provide false income information will have the scholarship [Scholarship Guidelines, p. 2]"
+      },
+      {
+        "id": "f08",
+        "type": "follow_up",
+        "answerable": true,
+        "declined": false,
+        "false_refusal": false,
+        "correct": false,
+        "fabricated_citations": 0,
+        "uncited": false,
+        "cites_gold": false,
+        "seconds": 0.012,
+        "answer": "Refunds and instalments. Students who withdraw before the first day of classes receive a refund of 90 percent of tuition fees. After the first day of classes no refund is given. Hostel fees are refunded separately; see the Hostel Rules. Students facing financial hardship may apply to pay tuition in two equal instalments by submitting Form F-7 to the Accounts Office at least seven days before the due date, along with a written note from the faculty advisor. Instalment requests are decided within [Fee Payment Policy, p. 2]"
+      }
+    ]
+  }
+}
