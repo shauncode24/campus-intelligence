@@ -6,6 +6,7 @@ import { accountUserLimiter } from "../middleware/rateLimit.js";
 import { failInternal } from "../utils/httpErrors.js";
 import { deleteUserData } from "../services/userData.js";
 import { revokeTokens } from "../services/calendarService.js";
+import { loadTokens } from "../services/calendarTokens.js";
 
 const router = express.Router();
 
@@ -31,8 +32,8 @@ router.delete("/", requireAuth, accountUserLimiter, async (req, res) => {
 
     // Best effort: tell Google the calendar link is no longer wanted
     try {
-      const tokenSnap = await db.collection("user_calendar_tokens").doc(req.uid).get();
-      if (tokenSnap.exists) await revokeTokens((tokenSnap.data() || {}).tokens);
+      const tokens = await loadTokens(db, admin, req.uid);
+      if (tokens) await revokeTokens(tokens);
     } catch (e) {
       console.warn("Could not revoke the calendar token at Google:", e.name);
     }

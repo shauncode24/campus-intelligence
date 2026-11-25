@@ -10,6 +10,7 @@ import { db } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
 import dotenv from "dotenv";
 import { requireAuth } from "../middleware/auth.js";
+import { saveTokens, loadTokens, encryptionConfigured } from "../services/calendarTokens.js";
 import { calendarUserLimiter } from "../middleware/rateLimit.js";
 import { failInternal } from "../utils/httpErrors.js";
 
@@ -32,6 +33,13 @@ const STATE_PATTERN = /^[a-f0-9]{48}$/;
  */
 router.get("/auth", requireAuth, calendarUserLimiter, async (req, res) => {
   try {
+    if (!encryptionConfigured()) {
+      // fail closed: do not send people through Google only to be unable to keep the result safely
+      return res.status(503).json({
+        error: "Calendar is not available",
+        message: "Calendar connection is not configured on this server yet.",
+      });
+    }
     const nonce = crypto.randomBytes(24).toString("hex");
 
     await db
@@ -40,6 +48,8 @@ router.get("/auth", requireAuth, calendarUserLimiter, async (req, res) => {
       .set({
         uid: req.uid,
         expiresAt: Date.now() + STATE_TTL_MS,
+        // a Firestore TTL policy on `expireAt` deletes abandoned sign-in attempts by itself
+        expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
 
     res.json({ authUrl: getAuthUrl(nonce) });
@@ -88,11 +98,8 @@ router.get("/callback", async (req, res) => {
     // Exchange code for tokens
     const tokens = await getTokensFromCode(code);
 
-    // Store tokens in Firestore (still plaintext: encryption is tracked as P2-9)
-    await db.collection("user_calendar_tokens").doc(uid).set({
-      tokens,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    // Stored encrypted (services/calendarTokens.js); never as plain text
+    await saveTokens(db, admin, uid, tokens);
 
     // Redirect to frontend with success
     res.redirect(`${frontendUrl}/calendar/success`);
@@ -122,20 +129,15 @@ router.post("/create-event", requireAuth, calendarUserLimiter, async (req, res) 
     }
     const { title, date, sourceDocument } = cleaned.event;
 
-    // Get the authenticated user's tokens
-    const tokenDoc = await db
-      .collection("user_calendar_tokens")
-      .doc(userId)
-      .get();
+    // Get the authenticated user's tokens (decrypted)
+    const tokens = await loadTokens(db, admin, userId);
 
-    if (!tokenDoc.exists) {
+    if (!tokens) {
       return res.status(401).json({
         error: "Not authorized",
         message: "Please connect your Google Calendar first",
       });
     }
-
-    const { tokens } = tokenDoc.data();
 
     // Create event
     const event = await createCalendarEvent(tokens, cleaned.event);
@@ -178,14 +180,12 @@ router.post("/create-event", requireAuth, calendarUserLimiter, async (req, res) 
  */
 router.get("/status", requireAuth, calendarUserLimiter, async (req, res) => {
   try {
-    const tokenDoc = await db
-      .collection("user_calendar_tokens")
-      .doc(req.uid)
-      .get();
+    const tokenDoc = await db.collection("user_calendar_tokens").doc(req.uid).get();
 
     res.json({
       connected: tokenDoc.exists,
       connectedAt: tokenDoc.exists ? tokenDoc.data().createdAt : null,
+      available: encryptionConfigured(),
     });
   } catch (error) {
     console.error("Status check error:", error);
