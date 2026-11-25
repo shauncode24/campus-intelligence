@@ -342,20 +342,20 @@ Rules I'll follow when you approve: **one item at a time, never commit, give a c
 
 | ID | Change | Fixes | Depends | Verification |
 |---|---|---|---|---|
-| P1-1 | Answer-level evaluation (correctness, citation, refusal) | E1 | P0-8 | Report; CI gate |
-| P1-2 | Chunking experiments (size, title prefix, cross-page, header strip) | R2 | P0-8 | Recall@5 before/after |
-| P1-3 | Cache the live-document set; background index rebuild | R4 | none | Reads per question constant |
-| P1-4 | Image path: no PDF download per question | R5 | none | No download in a question (test); image p95 |
-| P1-5 | Citation validation and showing only cited sources | R6 | P1-1 | Fabricated-citation tests |
-| P1-6 | Model timeout, bounded retry, output cap | R9 | none | Stubbed slow/failing model tests |
-| P1-7 | Persist daily LLM counters in Firestore | A1 | none | Restart does not reset the budget |
-| P1-8 | Deployment runbook, Node Dockerfile, one-domain reverse proxy, staging project | T2, A2 | host choice | Fresh deploy from the runbook |
-| P1-9 | Monitoring and alerts (uptime, spend, global-cap alert) | T4 | P1-8 | Alert fires in a drill |
-| P1-10 | Backups, TTL policies, restore drill | D1, S9 | P1-8 | Timed restore |
-| P1-11 | Guest-to-account linking and guest banner; error reference + timeout in the UI | F1, F2 | none | Browser walkthrough |
-| P1-12 | Reprocess without downtime | A3 | none | Document answerable throughout a reprocess |
-| P1-13 | Calendar token encryption | S6.2 | P1-8 (key storage) | Tokens unreadable in a Firestore export |
-| P1-14 | Repository errors propagate | A4 | none | Failing-DB tests |
+| P1-1 ✅ **harness done; real baseline needs P0-8** | Answer-level evaluation (correctness, citation, refusal) | E1 | P0-8 | Report; CI gate |
+| P1-2 ✅ **harness done; no conclusion without P0-8** | Chunking experiments (size, title prefix, cross-page, header strip) | R2 | P0-8 | Recall@5 before/after |
+| P1-3 ✅ **DONE** | Cache the live-document set; background index rebuild | R4 | none | Reads per question constant |
+| P1-4 ✅ **DONE** | Image path: no PDF download per question | R5 | none | No download in a question (test); image p95 |
+| P1-5 ✅ **DONE** | Citation validation and showing only cited sources | R6 | P1-1 | Fabricated-citation tests |
+| P1-6 ✅ **DONE** | Model timeout, bounded retry, output cap | R9 | none | Stubbed slow/failing model tests |
+| P1-7 ✅ **DONE** | Persist daily LLM counters in Firestore | A1 | none | Restart does not reset the budget |
+| P1-8 ✅ **files + runbook; not run on a host** | Deployment runbook, Node Dockerfile, one-domain reverse proxy, staging project | T2, A2 | host choice | Fresh deploy from the runbook |
+| P1-9 ✅ **alerts in code; console steps are yours** | Monitoring and alerts (uptime, spend, global-cap alert) | T4 | P1-8 | Alert fires in a drill |
+| P1-10 ✅ **TTL fields, guest purge, runbook; backups are yours** | Backups, TTL policies, restore drill | D1, S9 | P1-8 | Timed restore |
+| P1-11 ✅ **DONE (not tried in a browser)** | Guest-to-account linking and guest banner; error reference + timeout in the UI | F1, F2 | none | Browser walkthrough |
+| P1-12 ✅ **DONE** | Reprocess without downtime | A3 | none | Document answerable throughout a reprocess |
+| P1-13 ✅ **DONE** | Calendar token encryption | S6.2 | P1-8 (key storage) | Tokens unreadable in a Firestore export |
+| P1-14 ✅ **DONE** | Repository errors propagate | A4 | none | Failing-DB tests |
 
 ### P2: significant
 
@@ -434,3 +434,53 @@ Rules I'll follow when you approve: **one item at a time, never commit, give a c
 - **Limits:** the shared answer cache (no user id) is not erased per user; deleting one chat still leaves its History rows; no automatic retention yet; the privacy text is my draft, not legal advice.
 
 All of P0-1..P0-4, P0-6, P0-7, P0-9 done. Remaining P0: P0-5 (deferred by you), P0-8 (needs your real PDFs and questions).
+
+---
+
+## 8. P1 progress log
+
+### P1-14 ✅ Repository errors propagate (A4)
+- **Changed:** `create_chat`, `get_user_chats`, `delete_chat`, `update_chat_title`, `toggle_favorite`, `update_personal_note`, `delete_user_question` now re-raise a database failure instead of returning `[]` / `False` / `None` (which looked like "no chats" / "not found"). The routes already turn it into a 500 with a reference. The answer cache stays best-effort on purpose (a cache failure must not stop an answer).
+- **Verified:** `tests/test_repository_errors.py`: every user route answers 500 (with a ref, no internal text) when the database fails; a missing item is still 404; an empty account is still an empty list.
+
+### P1-6 ✅ Model timeout, bounded retry, output cap (R9)
+- **Changed:** `llm_service.py`: client timeout 60 s, 1 library retry, `max_output_tokens` 4096 (all env-configurable: `GEMINI_TIMEOUT_SECONDS`, `GEMINI_MAX_RETRIES`, `GEMINI_MAX_OUTPUT_TOKENS`); streaming gives up after `GEMINI_STREAM_STALL_SECONDS` (30) without new text, retries once if nothing had been shown yet, otherwise ends with a friendly 503/error event (`ModelUnavailable`); the Node relay passes that message on.
+- **Verified:** `tests/test_model_limits.py` (9) and `chat_proxy.mjs`. **Not verified:** real Gemini timeouts. 4096 includes the model's thinking tokens: if long answers get cut, raise it. A truncated answer is not detected.
+
+### P1-7 ✅ Daily budget survives restarts (A1)
+- **Changed:** `utils/daily_budget.py`: counts kept in memory, written to Firestore (`llm_usage`) every 10 s and at shutdown, read back at start-up. A refused call charges nothing (before, a refusal by the global cap still charged the user). The day is the UTC day; the refusal now says when to retry. `llm_usage` is part of "delete my data".
+- **Verified:** `tests/test_daily_budget.py` (8). **Limit:** a hard kill loses up to 10 s of counts; still single-instance.
+
+### P1-3 ✅ Per-question reads constant; background rebuild (R4)
+- **Changed:** the set of live documents is kept between questions (refreshed on a corpus-epoch change, at most 60 s old; whether a document is in force today is re-decided on every call, so expiry needs no refresh); the Node delete/reprocess routes and the Python process/fail paths now bump the epoch at the moment a document stops being live. After a corpus change the search index is rebuilt by a background thread while questions are answered from the previous index; such answers are marked and **not stored in the shared cache**. The first build and a rebuild after this process wrote chunks still wait. Ingestion refreshes the index itself when it finishes.
+- **Verified:** `tests/test_live_cache_and_rebuild.py` (8); existing index/version/embedding tests adapted (they edit records without bumping the epoch).
+- **Limit:** a document edited by hand in the Firestore console takes up to 60 s to count. Right after a new document finishes (in another process) a question may not find it for the seconds the rebuild takes.
+
+### P1-4 ✅ No PDF download per question (R5)
+- **Changed:** a figure that was described at upload is used through its description (pixels no longer re-extracted unless `ATTACH_CAPTIONED_IMAGES=true`); undescribed pictures download their file once per question and are remembered in a 64-entry memory cache; the CLIP embedding of the question is skipped when the index holds no CLIP image vectors.
+- **Verified:** `tests/test_image_path.py` (real PDF fixtures; counts downloads). **Not measured:** image-question p95 on a real host.
+
+### P1-12 ✅ Reprocess without downtime (A3)
+- **Changed:** re-processing a live document keeps it `Processed` and answering (`reprocessing` flag, progress shown in the admin list); the old passages are overwritten only when the new ones are ready; failures before saving (download, parse, scan found) leave it untouched and show "Update failed, current version kept"; cancel does not delete passages; a restart clears a stuck flag.
+- **Verified:** `tests/test_reprocess_live.py` (7) and the adapted Node tests. **Limit:** during the few seconds of the final write, a question may see a mix of old and new passages of the same document.
+
+### P1-5 ✅ Citation validation and cited-only sources (R6)
+- **Changed:** `utils/citation_check.py`: a citation naming a document/page the model was not shown is removed from the answer; the listed sources are the cited ones (all of them if nothing checks out, flagged `uncited` in the log); the stored and cached answer is the cleaned one; for streamed answers the browser is told to replace its text (`answerCorrected`).
+- **Verified:** `tests/test_citation_check.py` (11). **Limits:** only the `[Name, p. N]` form is checked (a fact with no citation is not detected); the student may see the invented citation for a moment before the text is replaced.
+
+### P1-13 ✅ Calendar tokens encrypted (S6.2)
+- **Changed:** `services/calendarTokens.js`: AES-256-GCM, bound to the user id, key `TOKEN_ENCRYPTION_KEY`; without a key connecting a calendar answers 503 (fails closed, nothing stored in plain text); old plain records are used and upgraded on first use.
+- **Verified:** `tests/api/calendar_tokens.mjs` (22). **Your step:** set the key (see `.env.example`).
+
+### P1-11 ✅ Guest banner and linking; error reference and timeout (F1, F2)
+- **Changed:** a guest who signs up is upgraded in place (same account, chats kept); a banner tells guests their chats live in this browser; `apiFetch` gives up after 30 s waiting for a response (streams unaffected); error toasts quote a `(ref ...)` taken from the response's request id (the Python service now exposes the header to the browser).
+- **Verified:** `src/utils/errorRef.test.mjs`, build, lint on the changed files. **NOT verified: none of this was clicked through in a browser**: the upgrade of a real guest, the banner layout, the toast text.
+
+### P1-1 / P1-2 (harness only)
+- **Changed:** `eval/answer_eval.py` + `run_answer_eval.py` (answer correctness, false refusals, refusal of unanswerable questions, hallucination, citation accuracy/fabrication, regression gate; `extractive` baseline with no model, `gemini` for real, paid runs behind `--env-file --yes`); `eval/chunking.py` + `run_chunking_experiment.py` (sizes, overlap, title prefix, cross-page, header stripping, with confidence intervals and a "clearly better/worse" verdict). Tests: `eval/tests/test_answer_eval.py`.
+- **Results so far:** synthetic demo only (`eval/results/answers-extractive.*`, `chunking-synthetic.*`): no chunking variant is clearly different, which proves nothing. **No chunking change was made and none should be until P0-8 exists.** The CI gate for answers needs a real baseline.
+
+### P1-8 / P1-9 / P1-10 (files, code and a runbook; not run on a host)
+- **Changed:** `backend/Dockerfile` + `.dockerignore` (Node API, non-root, health check) and Node `GET /healthz`; `deploy/docker-compose.yml` + `Caddyfile` (one domain, HTTPS, `/api` and `/rag`, no buffering of streamed answers, static addresses so `TRUSTED_PROXY_IPS` is right) + `deploy/.env.example`; `DEPLOY.md` (sizing, first deployment, updates, rollback, staging, drills); `utils/alerts.py` (log + optional `ALERT_WEBHOOK_URL`: daily budget at 70/90/100 %, model outage, start-up); `expireAt` fields for Firestore TTL policies on `calendar_oauth_states` and `llm_usage`; `services/guestPurge.js` + `scripts/purgeGuests.js` (erase guests unused for N days with their data; N at least 7).
+- **Verified:** `tests/test_alerts.py` (8), `tests/test_deployment_files.py` (7: the files agree with each other and the code), `tests/api/guest_purge.mjs` (10).
+- **NOT verified / yours:** nothing was built or run with Docker or Caddy here; the Node image was never built; no host exists yet; uptime monitor, billing budget alerts, scheduled Firestore backups, TTL policies and the restore drill are console/`gcloud` steps in `DEPLOY.md` that only you can do. Staging means separate Firebase/Supabase projects, also yours.
