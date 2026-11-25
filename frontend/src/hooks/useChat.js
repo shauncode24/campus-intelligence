@@ -117,8 +117,12 @@ export function useChat(chatId, userId) {
               body.error ||
               "You're sending questions too quickly. Please wait a moment.";
           }
+          if (response.status >= 500) {
+            const ref = response.headers.get("X-Request-ID");
+            if (ref) message = `Something went wrong. Please try again. (ref ${ref})`;
+          }
           const failure = new Error(message);
-          failure.userFacing = response.status === 429;
+          failure.userFacing = response.status === 429 || response.status >= 500;
           throw failure;
         }
 
@@ -164,7 +168,8 @@ export function useChat(chatId, userId) {
                     ...prev,
                     {
                       role: "bot",
-                      text: accumulatedText,
+                      // the server removed citations the model invented after the text was streamed
+                      text: metadata.answerCorrected || accumulatedText,
                       timestamp: new Date().toISOString(),
                       ...metadata,
                     },

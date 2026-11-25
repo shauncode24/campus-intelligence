@@ -1,0 +1,37 @@
+.guest-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  background: #fff8e1;
+  border: 1px solid #f3d98b;
+  border-radius: 10px;
+  color: #5f4b00;
+  font-size: 0.9rem;
+}
+
+.guest-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guest-banner-primary {
+  background: #1a73e8;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.guest-banner-dismiss {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  font-size: 1rem;
+}

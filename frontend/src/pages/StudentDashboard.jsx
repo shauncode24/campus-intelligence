@@ -11,6 +11,7 @@ import { handleError } from "../utils/errors";
 import { apiFetch } from "../utils/api";
 import "./StudentDashboard.css";
 import Header from "./../components/Header";
+import GuestBanner from "../components/GuestBanner";
 
 const { VITE_PYTHON_RAG_URL } = import.meta.env;
 
@@ -168,6 +169,7 @@ export default function StudentDashboard() {
 
       <div className={`main-content ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className={`dashboard-content ${showWelcome ? "" : "hidden"}`}>
+          <GuestBanner />
           <WelcomeScreen isVisible={showWelcome} sidebarOpen={sidebarOpen} />
 
           {!showWelcome && (

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import toast from "react-hot-toast";
 import { handleError } from "../utils/errors";
 import "./UserLogin.css";
 
 export default function UserLogin() {
-  const [isSignup, setIsSignup] = useState(false);
+  const location = useLocation();
+  const [isSignup, setIsSignup] = useState(() => new URLSearchParams(location.search).get("mode") === "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
